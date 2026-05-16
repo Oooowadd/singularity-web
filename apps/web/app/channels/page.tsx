@@ -1,7 +1,9 @@
 export default function ChannelsPage() {
   return (
-    <div className="p-8">
-      <h1 className="font-display text-5xl italic leading-none">Channels</h1>
+    <div className="flex flex-1 flex-col gap-6 p-8">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Channels</h1>
+      </header>
     </div>
   );
 }
