@@ -1,0 +1,6 @@
+{
+  "name": "@singularity/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Drizzle ORM schema + migrations (single source of truth)."
+}

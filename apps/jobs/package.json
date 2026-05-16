@@ -1,0 +1,6 @@
+{
+  "name": "@singularity/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Trigger.dev v3 long-running task definitions (Class B). Implemented Week 3+."
+}

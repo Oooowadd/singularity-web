@@ -57,3 +57,10 @@ next-env.d.ts
 # Python sidecar build artifacts
 *.egg-info/
 .pytest_cache/
+
+# Claude Code skills (restore via skills-lock.json + `npx skills install` then move from .agents/skills/ → .claude/skills/)
+.agents/
+.claude/skills/
+
+# Local data dumps (xlsx exports, never commit)
+*.xlsx
