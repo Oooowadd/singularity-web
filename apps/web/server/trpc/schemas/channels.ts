@@ -1,0 +1,18 @@
+import { z } from "zod";
+
+export const platformSchema = z.enum(["youtube", "xhs"]);
+
+export const createChannelInput = z.object({
+  name: z.string().min(1, "Required").max(80),
+  platform: platformSchema,
+  platformUrl: z.string().url("Must be a valid URL"),
+  description: z.string().max(500).optional().nullable(),
+});
+
+export type CreateChannelInput = z.infer<typeof createChannelInput>;
+
+export const deleteChannelInput = z.object({
+  id: z.string().uuid(),
+});
+
+export type DeleteChannelInput = z.infer<typeof deleteChannelInput>;
