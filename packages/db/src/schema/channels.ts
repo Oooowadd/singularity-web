@@ -1,4 +1,4 @@
-import { jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { users } from "./users";
 
@@ -26,6 +26,7 @@ export const channels = pgTable(
   },
   (table) => ({
     userSlugUnique: unique("channels_user_slug_unique").on(table.userId, table.slug),
+    userIdx: index("channels_user_id_idx").on(table.userId),
   })
 );
 

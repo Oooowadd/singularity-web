@@ -1,4 +1,15 @@
-import { bigint, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 import { channels } from "./channels";
 import { pipelineRuns } from "./runs";
@@ -43,20 +54,28 @@ export const clerkVideos = pgTable(
   },
   (table) => ({
     channelVideoUnique: unique("clerk_videos_channel_video_unique").on(table.channelId, table.platformVideoId),
+    channelIdx: index("clerk_videos_channel_id_idx").on(table.channelId),
   })
 );
 
 export const sopTypeEnum = pgEnum("sop_type", ["human", "ai_reference", "hottest"]);
 
-export const clerkSops = pgTable("clerk_sops", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  channelId: uuid("channel_id").notNull().references(() => channels.id, { onDelete: "cascade" }),
-  sopType: sopTypeEnum("sop_type").notNull(),
-  language: text("language").notNull().default("zh"),
-  contentMd: text("content_md").notNull(),
-  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
-  runId: uuid("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
-});
+export const clerkSops = pgTable(
+  "clerk_sops",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    channelId: uuid("channel_id").notNull().references(() => channels.id, { onDelete: "cascade" }),
+    sopType: sopTypeEnum("sop_type").notNull(),
+    language: text("language").notNull().default("zh"),
+    contentMd: text("content_md").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    runId: uuid("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
+  },
+  (table) => ({
+    channelIdx: index("clerk_sops_channel_id_idx").on(table.channelId),
+  })
+);
 
 export type ClerkVideo = typeof clerkVideos.$inferSelect;
 export type NewClerkVideo = typeof clerkVideos.$inferInsert;

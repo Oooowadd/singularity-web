@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { channels } from "./channels";
 import { pipelineRuns } from "./runs";
@@ -26,24 +26,35 @@ export const museMonitorVideos = pgTable(
       table.channelId,
       table.platformVideoId,
     ),
+    channelIdx: index("muse_monitor_videos_channel_id_idx").on(table.channelId),
   })
 );
 
-export const museIdeas = pgTable("muse_ideas", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  channelId: uuid("channel_id").notNull().references(() => channels.id, { onDelete: "cascade" }),
-  sourceVideoId: uuid("source_video_id").references(() => museMonitorVideos.id, { onDelete: "set null" }),
-  ideaNumber: integer("idea_number").notNull(),
-  storyAngle: text("story_angle"),
-  factsAndData: text("facts_and_data"),
-  whySimilar: text("why_similar"),
-  viralTrigger: text("viral_trigger"),
-  approved: boolean("approved").notNull().default(false),
-  scripted: boolean("scripted").notNull().default(false),
-  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-  runId: uuid("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
-});
+export const museIdeas = pgTable(
+  "muse_ideas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    channelId: uuid("channel_id").notNull().references(() => channels.id, { onDelete: "cascade" }),
+    sourceVideoId: uuid("source_video_id").references(() => museMonitorVideos.id, { onDelete: "set null" }),
+    ideaNumber: integer("idea_number").notNull(),
+    storyAngle: text("story_angle"),
+    factsAndData: text("facts_and_data"),
+    whySimilar: text("why_similar"),
+    viralTrigger: text("viral_trigger"),
+    approved: boolean("approved").notNull().default(false),
+    scripted: boolean("scripted").notNull().default(false),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    runId: uuid("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
+  },
+  (table) => ({
+    videoIdeaUnique: unique("muse_ideas_source_video_idea_unique").on(
+      table.sourceVideoId,
+      table.ideaNumber,
+    ),
+    queueIdx: index("muse_ideas_queue_idx").on(table.channelId, table.approved, table.scripted),
+  })
+);
 
 export type MuseMonitorVideo = typeof museMonitorVideos.$inferSelect;
 export type NewMuseMonitorVideo = typeof museMonitorVideos.$inferInsert;

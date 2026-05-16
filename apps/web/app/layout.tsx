@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Caveat, Inter, JetBrains_Mono } from "next/font/google";
 
 import { AppSidebar } from "@/components/app-sidebar";
+import { AuthChip } from "@/components/auth-chip";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -47,6 +48,7 @@ export default function RootLayout({
                 <span className="ml-auto font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
                   beta · q3 2026
                 </span>
+                <AuthChip />
               </header>
               <main className="flex flex-1 flex-col">{children}</main>
             </SidebarInset>

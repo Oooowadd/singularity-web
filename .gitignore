@@ -30,8 +30,8 @@ out/
 # Vercel
 .vercel/
 
-# Drizzle
-drizzle/meta/_journal.json
+# Drizzle migrations are tracked in git (SQL + meta snapshots + journal)
+# drizzle-kit uses _journal.json + snapshot files to compute diffs on next generate.
 
 # IDE
 .vscode/*
