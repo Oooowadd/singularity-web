@@ -161,23 +161,26 @@ singularity-web/
 - [ ] Create monorepo: pnpm + Turborepo + Next.js 15 + Tailwind + shadcn
 - [ ] Setup Supabase project, Drizzle schema (users, channels, sessions)
 - [ ] Setup Logto Cloud, integrate Email OTP
-- [ ] Setup Vercel deploy
-- [ ] Setup Render project for scraper sidecar
+- [ ] Setup deploy host（Vercel vs Render — 2026-05-16 D6 待选；Render 利于跟 sidecar 统一管理，Vercel 函数 800s 限制对 Class A 任务影响小）
+- [ ] Setup Render project for scraper sidecar（若 D5 选 TikHub-only 可跳过此步）
 - [ ] Setup Trigger.dev project
+- [ ] **不**做 user-facing Settings UI：archive 让用户填 LLM / Whisper / YouTube / XHS keys 的 635 行页面整页删；keys 服务端托管（env vars，后续考虑 secrets manager）
 - [ ] **交付**：访问 web 域名 → 邮箱注册 → 登录后欢迎页
 
 ### Week 2: Channel CRUD + 抓取 sidecar
 
+- [ ] **D5 决定 XHS 数据层**：(A) TikHub-only（79 endpoint、$0.01/call、10 req/s、托管 sign.js + cookie）；(B) 混合（yt-dlp Python sidecar + TikHub for XHS）；(C) Spider_XHS Python sidecar（archive 路线）。调研 TikHub 是否覆盖 YouTube transcript，对比 5K 批改/月成本
 - [ ] Channel schema + tRPC CRUD endpoints
 - [ ] Channel 列表 UI（shadcn DataTable）
-- [ ] Python sidecar: yt-dlp + bgutil-pot-provider Docker compose
-- [ ] Sidecar API: `POST /youtube/fetch-channel`, `POST /youtube/transcript`
-- [ ] Next.js 通过内部 JWT 调 sidecar
-- [ ] **交付**：UI 创建频道 → 触发 sidecar 抓取 → 数据落 Supabase
+- [ ] Python sidecar: yt-dlp + bgutil-pot-provider Docker compose（若 D5=A 则整个 `apps/scraper` 不需要）
+- [ ] Sidecar API: `POST /youtube/fetch-channel`, `POST /youtube/transcript`（同上条件）
+- [ ] Next.js 通过内部 JWT 调 sidecar（同上条件）
+- [ ] **交付**：UI 创建频道 → 触发抓取 → 数据落 Supabase
 
 ### Week 3: Clerk 管线（分析器 + SOP 生成）
 
 - [ ] Port `services/analyzer.py` → `packages/shared/agents/clerk-analyzer.ts`
+- [ ] analyzer 输出**双字段**：`facts_and_data`（paraphrased）+ `verbatim_facts`（数字 / 型号 / 日期 / 引用字符级保留 + `[src: ...]` 来源；archive 2026-05 加的，原 plan 没覆盖）
 - [ ] Port `services/sop_generator.py` → 输出 HTML/Markdown 而非 `.docx`
 - [ ] Trigger.dev task: `analyze-channel`
 - [ ] UI: 分析进度页（`useRealtimeRun` 推进度）
@@ -194,16 +197,18 @@ singularity-web/
 
 ### Week 5: Poet 管线（Bible + 短脚本）
 
-- [ ] Port `bible_generator.py` 含 drift detection
+- [ ] Port `bible_generator.py` 含 drift detection（lexical overlap + AI-bias 标记词；≥3 命中 Bible 存为 `is_active=false` + 文件名 `_DRIFTED` 后缀；UI 黄色 banner + Regenerate）
 - [ ] Port `script_writer.py` 短脚本路径（< 20 min）
 - [ ] Port `humanizer.py`
 - [ ] Trigger.dev task: `generate-script-short`
-- [ ] UI: Bible 编辑器 + script 列表
-- [ ] **交付**：选 idea + bible → 生成短脚本 → markdown 预览
+- [ ] UI: Bible 编辑器（含 inline 编辑）+ script 列表 + drift 警告 banner
+- [ ] **Poet Custom Topic flow**（archive 2026-05 加的，原 plan 没覆盖）—— 跳过 Muse，用户输入主题 + 附件（YouTube / XHS URL / 粘贴文本）→ 用 active Bible + SOP 直接生成。新表 `poet_custom_topics`，archive 整体 ~614 LOC（`poet_custom_repo.py` + `routers/poet.py` 的 `POST /custom-topic` + UI panel `CustomTopicPanel.tsx` 507 行）
+- [ ] **交付**：选 idea + bible → 生成短脚本 → markdown 预览；或用 Custom Topic 直接进入 Poet
 
 ### Week 6: Poet 长稿管线（Class B 主线）
 
-- [ ] Port `script_writer.py` 长稿路径（outline → section expand）
+- [ ] Port `script_writer.py` 长稿路径（outline → section expand；触发阈值：中文 ≥2000 字 / 英文 ≥1500 词，约 10 min+）
+- [ ] Script writer prompt 强制 **VERBATIM PRESERVATION** 规则（archive 2026-05 加的，原 plan 没覆盖）：references 里的数字 / 日期 / 型号 / 人名 / 引用一律字符级保留，不 paraphrase；source 标注 `[src: ...]`
 - [ ] Trigger.dev task: `generate-script-long`（无 timeout）
 - [ ] UI: 长稿生成页（phase 切换：outline / section 1/N / humanize / done）
 - [ ] **交付**：30 分钟视频脚本一键生成，前端流式看进度
@@ -219,6 +224,7 @@ singularity-web/
 ### Week 8: Polish + Beta 上线
 
 - [ ] Onboarding flow（首次登录引导）
+- [ ] 用户 profile / quota 页（取代 archive 的 Settings.tsx；无 user-facing API key 配置）
 - [ ] Quota 系统（Free tier：3 video/mo + 5 images + 5 scripts，带水印）
 - [ ] 计费骨架（预留 Stripe，不开收费）
 - [ ] Bug 修复 + 体验打磨
@@ -232,7 +238,7 @@ singularity-web/
 | #   | 风险                            | 概率 | 影响 | 缓解                                                                    |
 | --- | ------------------------------- | ---- | ---- | ----------------------------------------------------------------------- |
 | R1  | yt-dlp PoToken 持续维护负担     | 高   | 中   | 选用 `bgutil-ytdlp-pot-provider` 社区方案；备 `youtubei.js` 作 fallback |
-| R2  | XHS sign.js Node 实现需自行编写 | 高   | 中   | 第一版用 Node `vm` 模块跑现有 sign.js；改动小                           |
+| R2  | XHS sign.js Node 实现需自行编写 | 高 → 待 D5 | 中 | **W2 评估 TikHub**（托管 sign.js + cookie + 79 endpoint，$0.01/call、10 req/s）；选用则风险降为低，Python sidecar 可能整体不需要。回退：Node `vm` 跑 archive 的 sign.js |
 | R3  | Trigger.dev v3 vendor lock      | 中   | 中   | 任务逻辑写在 `apps/jobs/`，可迁 Inngest/Hatchet；接口层抽象             |
 | R4  | Logto Cloud 价格未来上涨        | 低   | 低   | $24/mo 无限 MAU 已有竞争力；最坏迁 Casdoor 自部署                       |
 | R5  | Vercel 5TB 出口后成本明显上升   | 中   | 高   | 监控带宽；50K MAU 前迁 Cloudflare Pages                                 |
@@ -285,8 +291,10 @@ singularity-web/
 | ------ | ------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------- | ------ |
 | **D1** | Electron 旧版处理                           | A) 立即停止维护，专心 web B) 双轨并行到 M3                                  | **A** — 旧版无真实用户，绑定本地数据，维护成本高                | Week 1 |
 | **D2** | 现有 ~6K Python LOC 命运                    | A) `git rm -r`，仅保留 prompts + sidecar 必要部分 B) 移到 `archive/` 作参考 | **B** — 便于查 prompt 历史和 LLM 调用经验                       | Week 1 |
-| **D3** | 1 人还是 2 人开发？时间表是否需根据人力调整 | —                                                                           | 8 周计划假设 1 人全职。2 人可压到 5 周                          | Week 1 |
+| **D3** | 1 人还是 2 人开发？时间表是否需根据人力调整 | — | **✓ 2026-05-16 锁定：1 人 8 周节奏** | ✓ |
 | **D4** | 是否提前启动 ICP / 微信开放平台申请流程     | A) 立刻启动（M3 上线 WeChat） B) 等 beta 反馈再说                           | **A** — 备案 3-6 月，启动越早越好；不然 WeChat 上线时间持续后延 | Week 2 |
+| **D5** | 生产 XHS 数据层 | A) TikHub-only（删除 Python sidecar）B) 混合（yt-dlp Python + TikHub for XHS） C) Spider_XHS Python sidecar | **W2 调研后定**（TikHub 是否覆盖 YouTube transcript？5K 批改/月成本对比 vs Render sidecar） | Week 2 |
+| **D6** | Deploy host | A) Vercel（800s 函数限制） B) Render（与 sidecar 统一管理） | **W1 末定**（取决于 D5：若 D5=A 则 Render 跟 sidecar 统一的优势降低） | Week 1 |
 
 ---
 
@@ -389,5 +397,24 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
 
 ---
 
-**Date locked**: 2026-05-15
+## 10. Plan revisions
+
+### 2026-05-16
+
+下列条目来自 archive 的 2026-05 更新（原 2026-05-15 plan 没覆盖）或本日新决策：
+
+1. **W3**：analyzer 输出 `verbatim_facts`（字符级保留 + `[src: ...]` 来源）
+2. **W5**：Poet **Custom Topic flow**（跳过 Muse 的第三种 Poet 入口；archive ~614 LOC）
+3. **W5**：Bible drift detection 落地（`is_active=false` + `_DRIFTED` 后缀 + UI banner）
+4. **W6**：Script writer **VERBATIM PRESERVATION** 规则
+5. **W1 / W8**：取消 user-facing Settings UI（archive `Settings.tsx` 635 行）；keys 服务端托管；W8 用户页改 profile / quota
+6. **D3 resolved**：1 人 8 周节奏
+7. **新 D5**：XHS 数据层（TikHub-only vs 混合 vs Spider_XHS）—— W2 决
+8. **新 D6**：Deploy host（Vercel vs Render）—— W1 末定，与 D5 联动
+9. **栈实操数字**：Next.js 15 → **16.2.6**（App Router 不变；`@latest` 拿到 16）；pnpm 11 的 `allowBuilds` 显式批准 `sharp` + `unrs-resolver`，跳过 `msw`
+10. **长稿阈值修正**：中文 ≥**2000** 字 / 英文 ≥**1500** 词（CLAUDE.md 之前写 4000/3000 是误记，archive `script_writer.py:_write_script_long_form()` 实际值）
+
+---
+
+**Date locked**: 2026-05-15（原版）；revisions 2026-05-16 追加
 **Next review**: 完成 Week 1 后
