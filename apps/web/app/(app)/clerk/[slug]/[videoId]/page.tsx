@@ -87,16 +87,25 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
           >
             {video.url} <ExternalLink className="size-3" />
           </a>
-          <span className="font-mono text-xs">{formatViews(video.views)} views</span>
+          <span className="font-mono text-xs">{formatViews(video.views)} 播放</span>
           <span className="font-mono text-xs">{formatDuration(video.durationSec)}</span>
           {video.openingHookType ? (
             <Badge variant="secondary" className="font-mono text-[10px]">
               {video.openingHookType}
             </Badge>
           ) : null}
+          {video.transcriptSource === "caption" ? (
+            <Badge variant="secondary" className="text-[10px]">
+              字幕
+            </Badge>
+          ) : video.transcriptSource === "asr" ? (
+            <Badge variant="outline" className="text-[10px]">
+              AI 转写
+            </Badge>
+          ) : null}
           {video.analyzedAt ? (
             <span className="font-mono text-xs">
-              analyzed {video.analyzedAt.toLocaleDateString("zh-CN")}
+              {video.analyzedAt.toLocaleDateString("zh-CN")} 分析
             </span>
           ) : null}
         </div>
@@ -104,28 +113,28 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
 
       <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
-          <Section title="Thumbnail description" body={video.thumbnailDescription} />
-          <Section title="Why the thumbnail works" body={video.thumbnailWhyItWorks} />
-          <Section title="Opening hook" body={video.openingHook} />
-          <Section title="Text hook" body={video.textHook} />
-          <Section title="Hooks throughout" body={video.hooksThroughout} />
-          <Section title="All hook types" body={video.allHookTypes} />
-          <Section title="Rehooks used" body={video.rehooksUsed} />
+          <Section title="封面描述" body={video.thumbnailDescription} />
+          <Section title="封面有效原因" body={video.thumbnailWhyItWorks} />
+          <Section title="开场钩子" body={video.openingHook} />
+          <Section title="文字钩子" body={video.textHook} />
+          <Section title="全片钩子" body={video.hooksThroughout} />
+          <Section title="钩子类型" body={video.allHookTypes} />
+          <Section title="二次钩子" body={video.rehooksUsed} />
         </div>
 
         <div className="flex flex-col gap-6">
-          <Section title="Framework" body={video.framework} />
-          <Section title="Opening structure" body={video.openingStructure} />
-          <Section title="Script structure" body={video.scriptStructure} />
-          <Section title="Storytelling framework" body={video.storytellingFramework} />
-          <Section title="Retention pattern" body={video.retentionPattern} />
-          <Section title="CTA placement" body={video.ctaPlacement} />
-          <Section title="Key takeaways" body={video.keyTakeaways} />
+          <Section title="内容框架" body={video.framework} />
+          <Section title="开场结构" body={video.openingStructure} />
+          <Section title="脚本结构" body={video.scriptStructure} />
+          <Section title="叙事框架" body={video.storytellingFramework} />
+          <Section title="留存策略" body={video.retentionPattern} />
+          <Section title="CTA 位置" body={video.ctaPlacement} />
+          <Section title="核心要点" body={video.keyTakeaways} />
         </div>
       </div>
 
       {video.transcript && video.transcript !== "None" ? (
-        <Section title="Transcript" body={video.transcript} />
+        <Section title="字幕 / 转写文本" body={video.transcript} />
       ) : null}
     </div>
   );

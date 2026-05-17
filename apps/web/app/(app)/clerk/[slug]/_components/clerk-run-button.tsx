@@ -193,6 +193,7 @@ function translatePhase(phase: string | undefined): string | undefined {
     "analyzing video": "正在分析视频",
     "fetching video metadata": "获取视频元数据",
     "fetching transcript": "获取字幕",
+    "transcribing audio": "音频转写中",
     "running analyzer": "AI 分析中",
     "running analyzer (no caption)": "AI 分析中（无字幕）",
     "writing analysis": "写入数据库",
