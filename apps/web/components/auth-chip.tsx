@@ -15,7 +15,7 @@ export async function AuthChip() {
       label={label}
       onSignOut={async () => {
         "use server";
-        await signOut(logtoConfig);
+        await signOut(logtoConfig, new URL("/signed-out", logtoConfig.baseUrl).toString());
       }}
     />
   );
