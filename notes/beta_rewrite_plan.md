@@ -216,12 +216,20 @@ singularity-web/
 
 ### Week 5: Poet 管线（Bible + 短脚本）
 
-- [ ] Port `bible_generator.py` 含 drift detection（lexical overlap + AI-bias 标记词；≥3 命中 Bible 存为 `is_active=false` + 文件名 `_DRIFTED` 后缀；UI 黄色 banner + Regenerate）
-- [ ] Port `script_writer.py` 短脚本路径（< 20 min）
-- [ ] Port `humanizer.py`
-- [ ] Trigger.dev task: `generate-script-short`
-- [ ] UI: Bible 编辑器（含 inline 编辑）+ script 列表 + drift 警告 banner
-- [ ] **Poet Custom Topic flow**（archive 2026-05 加的，原 plan 没覆盖）—— 跳过 Muse，用户输入主题 + 附件（YouTube / XHS URL / 粘贴文本）→ 用 active Bible + SOP 直接生成。新表 `poet_custom_topics`，archive 整体 ~614 LOC（`poet_custom_repo.py` + `routers/poet.py` 的 `POST /custom-topic` + UI panel `CustomTopicPanel.tsx` 507 行）
+- [x] **D1**：3 个 prompt 移植到 `packages/shared/src/prompts/poet.ts`：CHANNEL_BIBLE / SCRIPT_WRITING / CHINESE_HUMANIZER（长稿 OUTLINE/EXPAND + Custom Topic 的 TOPIC_ANALYSIS 移到 W6）
+- [x] **D1**：`packages/shared/src/services/poet/bible.ts` — Bible 生成 + drift detection（archive 移植 BIAS_MARKERS + STOPWORDS + tokenize + checkDrift，≥3 marker hits 触发 ai_markers，token 集合不重合触发 no_overlap）
+- [x] **D1**：`packages/shared/src/services/poet/scriptWriter.ts` — 短稿路径（target 默认 5min = 1000 zh chars / 750 en words；formatReferencesBlock + formatVerbatimFacts；temp 0.5 max_tokens 8192）
+- [x] **D1**：`packages/shared/src/services/poet/humanizer.ts` — 仅中文，温度 0.6，失败时返回原文不抛错
+- [x] **D2**：Trigger.dev tasks — `apps/jobs/trigger/generate-bible.ts`（自动 inactive 老 Bible + drift 时存为 inactive + 写 drift event）与 `generate-script-short.ts`（idea → context loading → write → humanize 中文 → save + mark idea.scripted）
+- [x] **D2**：tRPC `poet.{generateBible, updateBible, activateBible, generateScript, activeRun}` + 复用 `getActiveAgentRun("poet")` 刷新续断 token
+- [x] **D2**：UI `/poet/[slug]`：active Bible 卡片（含编辑 sheet）+ 重新生成 / 生成 sheet（textarea 提示"越具体越好"）+ drift 黄色 banner（reason 中文化）+ 待写选题列表（per-idea「写稿」按钮，无 active Bible 时 disable）+ 已生成脚本列表（collapsible `<details>` + 字数 + 时长 + 全文 pre-wrap）+ PoetRunProgress（统一进度卡片，识别 bible / script kind）
+- [x] **D2**：智能引用 — 短稿任务自动用 `museMonitorVideos.transcript` 作 reference；若空则 fallback 到 channel 顶部 2 个 `clerk_videos.transcript`
+- [x] **D2**：smoke test `packages/db/scripts/poet-services-smoke.ts` 5/5 绿 — drift heuristics 离线四案例全对、Bible 生成 2136 字（具体品牌/食材正确：博朗 MQ535、小皮 Little Freddie、秋田满满）、短稿 42s 1195 字含完整 6 个 markers + verbatim 数字（12mg vs 2.6mg, 2023 guideline）、humanizer 44s markers + numbers 全保留 + 口语化转换正确（"我啥也没干"/"我去，这什么概念"）
+- [x] **D2 已知行为**：drift `no_overlap` 在中文上偏 false-positive — 算法用 bag-of-words 比对，中文文段无 word boundary 时 tokenize 出长 run（如 "0-3岁宝宝快手营养辅食" 是一个 token），与用户的描述 token 不交。匹配 archive 原行为，UI 给"重新生成"出口；保守地认为这种 false-positive 比漏掉真 drift 安全。未来可上 jieba 分词
+- [ ] **D3 next**：端到端 live test —— 用户实测 UI；先生成圣经→Muse 通过一个 idea→点写稿→看脚本
+- [ ] **D3 polish next**：scripts 单独详情页（含 markdown 渲染 + 复制全文按钮 + 当时引用的 Bible/SOP）
+- [ ] **W6 移交**：长稿 outline → section expand 管线（中文 ≥2000 字触发）
+- [ ] **W6 移交**：Poet Custom Topic flow（跳过 Muse，URL/文本附件 → analyze → script，新表已存在）
 - [ ] **交付**：选 idea + bible → 生成短脚本 → markdown 预览；或用 Custom Topic 直接进入 Poet
 
 ### Week 6: Poet 长稿管线（Class B 主线）
@@ -436,6 +444,17 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
 ---
 
 ### 2026-05-17
+
+37. **W5 D1-D2 完成 — Poet 短稿管线 + Bible + drift + humanizer**：
+    - **3 prompts 1:1**（`packages/shared/src/prompts/poet.ts`）：CHANNEL_BIBLE（强 anti-substitution 规则）/ SCRIPT_WRITING（含 verbatim preservation + section markers HOOK/TEASE/ITEM/CTA/CLIMAX/CLOSE）/ CHINESE_HUMANIZER。zh 模式 CHANNEL_BIBLE 套 CHINESE_WRAPPER 但保留 TOPIC: 英文锚 + 章节名英文
+    - **Bible service** drift 双启发式从 archive 完整移植：BIAS_MARKERS (8 项 AI/LLM/ChatGPT/Midjourney/Runway/machine learning/人工智能/大模型) + STOPWORDS 完整 list；`tokenize(text)` 用 `[\w一-鿿]+` regex 与 archive 一致；checkDrift 返回 schema 用我们的 enum (`no_overlap` / `ai_markers` / `topic_substitution`) 而非 archive 的字符串
+    - **scriptWriter** 仅短稿（长稿延后 W6）。`formatReferencesBlock` cap 24K chars + "FETCH FAILED" 占位；`formatVerbatimFacts` 给"无 verbatim → 严守 References"提示。`computeTargetWordCount(durationMin, lang)` 默认 5min → 1000 zh / 750 en（短稿路径），≥2000 zh / ≥1500 en 触发长稿（W6 接）
+    - **humanizer** 中文 only（archive 1:1，英文 script 跳过 humanizer pass），失败时 return scriptText 原文
+    - **Trigger tasks** generate-bible：先 `UPDATE poet_bible SET is_active=false WHERE channel_id=X AND is_active=true` 再 insert；drift 命中时新 Bible insert with `is_active=false` + 写 `poet_drift_events`。generate-script-short：load active Bible + 最新 ai_reference SOP + idea + reference transcript (museMonitorVideos 优先，fallback 到 channel top-2 clerk_videos)。中文 script 走 humanizer 二次
+    - **tRPC `poet.*`**：generateBible / updateBible (inline edit) / activateBible (切多版本) / generateScript (检查 active Bible + idea approved 双 precondition + 中文错误) / activeRun (识别 bible/script kind + 颁发 1h token)
+    - **UI `/poet/[slug]`** 重构：active Bible 卡片（编辑 sheet + 重新生成 sheet）+ drift 黄色 banner + 待写选题列表（disabled 状态明确指出"先生成圣经"）+ 脚本 collapsible 列表（语言 badge + 字数 + 时长 + 全文 pre-wrap）+ 统一进度卡片 PoetRunProgress 自动识别 bible 还是 script
+    - **Service smoke 5/5 绿**：drift 离线四案例（tokenize / no_overlap / ai_markers / clean 全对）；Bible 88s 2136字（"0-3岁宝宝快手营养辅食"主题，具体品牌齐全：博朗 MQ535、小皮、秋田满满、伊威、BLW 排敏顺序）；短稿 42s 1195字含完整 [HOOK]/[TEASE]/[ITEM]/[CLOSE]markers + verbatim numbers 准确（"100克鸡肝 12 毫克 vs 100克牛肉 2.6 毫克"、"2023 年最新指南"）；humanizer 44s 后所有数字与 markers 全保留，口语化转换效果好（"我啥也没干，就在网上扒了"、"我去，这什么概念"）
+    - **已知行为**：中文 Bible 容易触发 `no_overlap` false-positive — algorithm 用 bag-of-words 比对，中文长 run 在 punctuation/space 之间被 tokenize 成单个 token（archive 同样有此问题，未上 jieba），结果 user idea 与 topic 的 token 集合不交即触发。UI 给"重新生成"出口；保守地认为这种 false-positive 比漏掉真 drift 安全。未来可上 jieba 中文分词
 
 36. **W4 D1-D2 完成 — Muse 管线骨架 + UI**：
     - **3 prompts 1:1 移植**（`packages/shared/src/prompts/muse.ts`）：CLASSIFICATION / VIRAL_TRIGGER / IDEA_GENERATION。Builder 函数全接 `language`；zh 模式套 CHINESE_WRAPPER + 对 JSON 类提示加"keys English / values 中文"加固
