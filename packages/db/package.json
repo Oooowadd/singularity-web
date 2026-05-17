@@ -17,10 +17,13 @@
     "sanity-check": "tsx scripts/sanity-check.ts",
     "tikhub-smoke": "tsx scripts/tikhub-smoke.ts",
     "groq-asr-smoke": "tsx scripts/groq-asr-smoke.ts",
+    "asr-fallback-smoke": "tsx scripts/asr-fallback-smoke.ts",
+    "asr-branch-smoke": "tsx scripts/asr-branch-smoke.ts",
     "test-clerk-pipeline": "tsx scripts/test-clerk-pipeline.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
+    "@singularity/shared": "workspace:*",
     "@trigger.dev/sdk": "^4.4.6",
     "ai": "^6.0.184",
     "dotenv": "^17.4.2",

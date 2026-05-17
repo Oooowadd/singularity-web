@@ -166,6 +166,9 @@ importers:
       '@ai-sdk/deepseek':
         specifier: ^2.0.35
         version: 2.0.35(zod@4.4.3)
+      '@singularity/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@trigger.dev/sdk':
         specifier: ^4.4.6
         version: 4.4.6(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
@@ -206,6 +209,9 @@ importers:
       ai:
         specifier: ^6.0.184
         version: 6.0.184(zod@4.4.3)
+      groq-sdk:
+        specifier: ^1.2.0
+        version: 1.2.0
       zod:
         specifier: ^4.0.0
         version: 4.4.3

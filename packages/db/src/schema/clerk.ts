@@ -33,6 +33,7 @@ export const clerkVideos = pgTable(
     sourceChannelName: text("source_channel_name"),
     sourceChannelId: text("source_channel_id"),
     transcript: text("transcript"),
+    transcriptSource: text("transcript_source"),
     thumbnailDescription: text("thumbnail_description"),
     thumbnailWhyItWorks: text("thumbnail_why_it_works"),
     openingHook: text("opening_hook"),

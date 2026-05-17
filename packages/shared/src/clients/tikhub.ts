@@ -158,31 +158,50 @@ export async function getCaptionsManifest(videoId: string): Promise<CaptionTrack
 }
 
 /**
- * Fetch the actual transcript text by hitting YouTube's signed timedtext URL
- * (returned in the captions manifest). YouTube charges nothing; TikHub
- * charges nothing. The XML uses `<p t="ms" d="ms">text</p>` per caption line.
+ * Fetch transcript text from YouTube's signed timedtext URL. The bare URL
+ * returns the legacy `<text>` format; `&fmt=srv3` switches to the newer
+ * `<p>` format with timing attributes. Some `base_url`s only honor one;
+ * we parse both shapes and pick whichever yields non-empty text.
  */
 export async function fetchTranscriptText(baseUrl: string): Promise<string> {
-  const res = await fetch(baseUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
-  if (!res.ok) throw new Error(`YouTube timedtext HTTP ${res.status}`);
-  const xml = await res.text();
-  // Strip XML tags, decode HTML entities, normalize whitespace.
-  const lines = xml.match(/<p[^>]*>([^<]*)<\/p>/g) ?? [];
-  const text = lines
-    .map((line) => line.replace(/<[^>]*>/g, ""))
-    .join("\n")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)));
-  return text.trim();
+  const fetchOne = async (url: string): Promise<string> => {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) throw new Error(`YouTube timedtext HTTP ${res.status}`);
+    return res.text();
+  };
+
+  const parse = (xml: string): string => {
+    const pLines = xml.match(/<p[^>]*>([\s\S]*?)<\/p>/g) ?? [];
+    const textLines = xml.match(/<text[^>]*>([\s\S]*?)<\/text>/g) ?? [];
+    const lines = pLines.length > 0 ? pLines : textLines;
+    return lines
+      .map((line) => line.replace(/<[^>]*>/g, ""))
+      .join("\n")
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)))
+      .trim();
+  };
+
+  const urlWithFmt = baseUrl.includes("fmt=") ? baseUrl : `${baseUrl}&fmt=srv3`;
+  const xml = await fetchOne(urlWithFmt);
+  const text = parse(xml);
+  if (text.length > 0) return text;
+  if (urlWithFmt !== baseUrl) {
+    const fallback = await fetchOne(baseUrl);
+    return parse(fallback);
+  }
+  return "";
 }
 
 /**
- * Pick the best caption track from a list using a language preference order,
- * then fetch the actual transcript text. Returns null if `tracks` is empty.
+ * Pick the best caption track and fetch its transcript. Tries tracks in
+ * preference order and falls through to the next one whenever a fetch
+ * returns empty — some YouTube `base_url`s respond with 0-byte XML and we
+ * don't want to declare success on those.
  */
 export async function transcriptFromTracks(
   tracks: CaptionTrack[],
@@ -197,9 +216,15 @@ export async function transcriptFromTracks(
     if (bi === -1) return -1;
     return ai - bi;
   });
-  const track = sorted[0]!;
-  const text = await fetchTranscriptText(track.base_url);
-  return { text, languageCode: track.language_code };
+  for (const track of sorted) {
+    try {
+      const text = await fetchTranscriptText(track.base_url);
+      if (text.length > 0) return { text, languageCode: track.language_code };
+    } catch {
+      /* try next track */
+    }
+  }
+  return null;
 }
 
 /**

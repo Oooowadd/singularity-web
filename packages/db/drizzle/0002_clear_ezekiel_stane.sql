@@ -1,0 +1,1 @@
+ALTER TABLE "clerk_videos" ADD COLUMN "transcript_source" text;
