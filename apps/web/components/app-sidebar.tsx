@@ -22,9 +22,9 @@ const GENERAL = [
 ];
 
 const AGENTS = [
-  { label: "Clerk", href: "/clerk/run", dot: "bg-clerk" },
-  { label: "Muse", href: "/muse/run", dot: "bg-muse" },
-  { label: "Poet", href: "/poet/run", dot: "bg-poet" },
+  { label: "Clerk", href: "/clerk", dot: "bg-clerk" },
+  { label: "Muse", href: "/muse", dot: "bg-muse" },
+  { label: "Poet", href: "/poet", dot: "bg-poet" },
 ];
 
 export function AppSidebar() {
