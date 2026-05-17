@@ -192,8 +192,13 @@ singularity-web/
 - [x] **D1 诊断**：fixed 3 个 live test 暴露的 issue：(a) `generateObject` strict Zod 在 DeepSeek compatibility mode 易拒，换成 `generateText` + 软 JSON parse；(b) TikHub `/web_v2/get_video_info` 对最新视频 metadata 稀疏，fall back 到 channel-listing 字段；(c) DeepSeek 偶尔输出 NULL byte (U+0000)，postgres TEXT 拒，加 `safeText()` 全局过滤
 - [x] **D2**：SOP generator（port `services/sop_generator.py`）— 跑完分析后用 V4-Pro 生成 human / ai_reference / hottest 三种 SOP markdown 写 `clerk_sops`；@MKBHD 测试 generated 2 SOPs (15.6KB + 13.1KB)，hottest 因 transcript 空自动跳过
 - [x] **D2**：`/clerk/[slug]` 加 SOP 渲染（react-markdown + remark-gfm，最新 generation 自动顶起，旧 SOPs 跑前先 delete 清理）
+- [x] **D2 polish 1 — 中文化**：sidebar + Channels CRUD + Clerk page + Run button + 进度面板 + toast + SOPs 标签 + 删除/编辑对话框 + signed-out 页全 zh-CN；UI 不再露 "DeepSeek" / "TikHub" 等供应商名字
+- [x] **D2 polish 2 — 刷新续断**：`apps/web/lib/clerk-run.ts` `getActiveClerkRun()` 查 active pipeline_runs + `auth.createPublicToken()` 1h 颁发 → ClerkRunButton 的 `initialActive` prop → 自动重接 `useRealtimeRun`
+- [x] **D2 polish 3 — 细化进度**：每视频拆 4 个 sub-phase（fetch metadata / fetch transcript / running analyzer / writing），SOP 阶段标注预计时长（"约 1-2 分钟"）；UI 加进度条 + 百分比 + elapsed timer + 视频标题 detail
+- [x] **D2 polish 4 — 中文输出保证**：4 个 prompt builder 全接 `language` 参数 + 在 zh 模式下走 CHINESE_WRAPPER；analyzer 额外加 reinforcement "JSON keys 保留英文，VALUES 中文"；ai_reference 加 reinforcement "章节锚保留英文，描述内容中文"。tRPC default language flipped to "zh"。**Verified**：英文 transcript (Rick Astley) + language=zh → V4 Pro 27s 返回纯中文 JSON，4/4 字段全中文，4/4 keys 全英文（`packages/db/scripts/verify-chinese-output.ts`）
 - ~~D2 verbatim_facts 双字段~~ → 注：archive 2026-05 加的，**仅 Poet 用**，不在 Clerk
 - [ ] **D3 next**：ASR fallback —— captions 空的视频走 TikHub `streams_v2` + Groq Whisper（已端到端验证过）
+- [ ] **D3 polish next**：单视频重跑 / 单 SOP 重跑 / 手动 transcript override / Imagination gate（< 3 transcripts 拒生 SOP，防 LLM 编造）
 - [x] **交付**：选频道 → 启动 Clerk 分析 → 流式进度 → SOP markdown 渲染（在 /clerk/[slug] 可见）
 
 ### Week 4: Muse 管线（监控 + idea 生成）
@@ -436,6 +441,14 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
     - **Live test 验证**：@MKBHD limit=1，1/1 analyzed，opening_hook_type = "Bold Claim with Teaser Stack"，framework = "Anticipation & Reveal Framework"
     - **Diagnostic scripts**：`test-clerk-pipeline.ts`（创 temp channel → trigger → poll → verify）+ `debug-video-info.ts`（compare TikHub video_info* variants）
     - **3 issues 暴露 + 修复**：(a) `generateObject` strict Zod 在 DeepSeek compatibility mode 易拒 → `generateText` + 软 JSON parse；(b) TikHub `/web_v2/get_video_info` 对新视频 metadata 稀疏 → fall back 到 channel-listing 字段；(c) DeepSeek 偶尔输出 NULL byte (U+0000) → `safeText()` 过滤
+
+34. **W3 D2 polish 全面打磨**（基于第一次 live test 后的 UX 反馈）：
+    - **全 UI 中文化**（客户是中国创作者）— sidebar、channels CRUD、clerk page、run button、进度面板、toast、SOPs 标签、删除/编辑对话框、signed-out 页全部 zh-CN；agent 名保留 Latin 加中文角色标签（"Clerk · 分析师" / "Muse · 选题官" / "Poet · 写手"）
+    - **供应商隐藏**（用户不应看到我们用的什么 LLM / 数据源）— 移除 UI 里的 "DeepSeek V4 Pro" / "TikHub" 等字眼，统一改成 "AI 分析中" / "抓取频道视频列表"。Notes 内部 / CLAUDE.md / git commit messages 仍保留具体供应商
+    - **刷新续断** — `getActiveClerkRun()` RSC 挂载时查 `pipeline_runs WHERE status IN ('pending','running') AND agent='clerk'`，用 `auth.createPublicToken({ scopes: { read: { runs: [triggerRunId] }}, expirationTime: "1h" })` 颁发 1 小时 token，传给 `<ClerkRunButton initialActive={...}>` 自动重接 `useRealtimeRun`。**Fix 之前的 UX bug**：刷新页面后进度条消失
+    - **细化进度** — 每视频拆 4 个 sub-phase（fetch metadata → fetch transcript → running analyzer → writing analysis），SOP 阶段标注预计时长（"AI 写作中（约 1-2 分钟）"）；UI 加 w-72 卡片 + 进度条 + 百分比 + 每秒更新的 elapsed timer + 视频标题 detail（line-clamp-2）
+    - **中文输出强制保证** — 4 个 prompt builders 全接 `language`，zh 模式过 `CHINESE_WRAPPER`；analyzer 额外 reinforcement "JSON keys 保留英文，VALUES 中文"；ai_reference 加 "章节锚保留英文，描述中文"；tRPC default language flipped en → zh
+    - **验证**：英文 transcript (Rick Astley) + `language=zh` 调 V4 Pro，27s 返回纯中文 JSON（"开篇以'我们并非爱情新手'建立共鸣..."），4/4 字段中文、4/4 keys 英文。`packages/db/scripts/verify-chinese-output.ts` 留作 prompt 改动后回归测
 
 33. **W3 D2 完成 — SOP 生成 + UI 渲染**：
     - Trigger task 在分析全部视频之后跑 SOP 阶段：human / ai_reference / hottest 三种，DeepSeek V4-Pro，temperature 0.4, maxOutputTokens 8192
