@@ -149,3 +149,57 @@
     @apply font-sans;
   }
 }
+
+@keyframes splash-draw {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes splash-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+
+.splash-line {
+  fill: none;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: splash-draw 1.2s ease-in-out forwards;
+}
+
+.splash-line-clerk {
+  stroke: var(--clerk);
+  animation-delay: 0s;
+}
+.splash-line-muse {
+  stroke: var(--muse);
+  animation-delay: 0.15s;
+}
+.splash-line-poet {
+  stroke: var(--poet);
+  animation-delay: 0.3s;
+}
+
+.splash-dot {
+  animation: splash-pulse 1.4s ease-in-out infinite;
+}
+.splash-dot-1 {
+  animation-delay: 0s;
+}
+.splash-dot-2 {
+  animation-delay: 0.18s;
+}
+.splash-dot-3 {
+  animation-delay: 0.36s;
+}

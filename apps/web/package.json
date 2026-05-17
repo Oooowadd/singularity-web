@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:webpack": "next dev --no-turbopack",
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
+    "dev:webpack": "NODE_OPTIONS='--max-old-space-size=4096' next dev --no-turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

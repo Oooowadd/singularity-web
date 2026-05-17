@@ -6,12 +6,13 @@ import { logtoConfig } from "@/lib/logto";
 export async function proxy(request: NextRequest) {
   const { isAuthenticated } = await getLogtoContext(logtoConfig);
   if (!isAuthenticated) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/api/auth/sign-in", request.url));
   }
 }
 
 export const config = {
   matcher: [
+    "/",
     "/clerk/:path*",
     "/muse/:path*",
     "/poet/:path*",
