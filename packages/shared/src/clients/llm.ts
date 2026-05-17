@@ -1,13 +1,5 @@
 import { createDeepSeek } from "@ai-sdk/deepseek";
 
-if (!process.env.DEEPSEEK_API_KEY) {
-  throw new Error("DEEPSEEK_API_KEY not set in env");
-}
-
-const deepseek = createDeepSeek({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-});
-
 /**
  * Two-tier DeepSeek model strategy:
  *
@@ -16,12 +8,26 @@ const deepseek = createDeepSeek({
  *
  * Both models are reasoning-enabled by default; response carries
  * `reasoning_content` alongside the answer.
+ *
+ * Client is lazy-initialized so module import does not require the env
+ * variable to be set at bundle time (Trigger.dev evaluates module-level
+ * code during deployment scan; we only want the throw to happen when
+ * the model is actually called).
  */
-export const flash = deepseek("deepseek-v4-flash");
-export const pro = deepseek("deepseek-v4-pro");
+let _deepseek: ReturnType<typeof createDeepSeek> | null = null;
+
+function getDeepseek() {
+  if (!_deepseek) {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      throw new Error("DEEPSEEK_API_KEY not set in env");
+    }
+    _deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY });
+  }
+  return _deepseek;
+}
 
 export type LlmTier = "flash" | "pro";
 
 export function llm(tier: LlmTier = "flash") {
-  return tier === "pro" ? pro : flash;
+  return getDeepseek()(tier === "pro" ? "deepseek-v4-pro" : "deepseek-v4-flash");
 }

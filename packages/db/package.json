@@ -16,9 +16,11 @@
     "import-archive": "tsx scripts/import-archive.ts",
     "sanity-check": "tsx scripts/sanity-check.ts",
     "tikhub-smoke": "tsx scripts/tikhub-smoke.ts",
-    "groq-asr-smoke": "tsx scripts/groq-asr-smoke.ts"
+    "groq-asr-smoke": "tsx scripts/groq-asr-smoke.ts",
+    "test-clerk-pipeline": "tsx scripts/test-clerk-pipeline.ts"
   },
   "dependencies": {
+    "@trigger.dev/sdk": "^4.4.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "groq-sdk": "^1.2.0",

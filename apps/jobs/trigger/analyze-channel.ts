@@ -10,8 +10,7 @@ import { buildVideoAnalysisPrompt } from "@singularity/shared/prompts/clerk";
 import { clerkAnalysisSchema, clerkAnalysisToDbRow } from "@singularity/shared/schemas/clerk";
 import {
   getChannelVideos,
-  getTranscript,
-  getVideoInfo,
+  getVideoWithTranscript,
   resolveChannelId,
 } from "@singularity/shared/clients/tikhub";
 
@@ -90,8 +89,7 @@ export const analyzeChannel = task({
         });
 
         try {
-          const info = await getVideoInfo(videoId);
-          const transcript = await getTranscript(videoId);
+          const { info, transcript } = await getVideoWithTranscript(videoId);
 
           const prompt = buildVideoAnalysisPrompt({
             title: info.title,

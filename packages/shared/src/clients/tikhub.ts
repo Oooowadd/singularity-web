@@ -60,20 +60,29 @@ export type YouTubeVideoRef = {
   video_id: string;
   title: string;
   url?: string;
-  views?: number;
   view_count?: number;
-  duration_sec?: number;
-  thumbnail_url?: string;
-  published_at?: string;
+  duration?: string; // human-readable like "21:13"
+  thumbnail?: string;
+  published_time?: string;
+  description?: string;
+  is_live?: boolean;
 };
 
 export async function getChannelVideos(channelId: string): Promise<YouTubeVideoRef[]> {
-  const data = await get<{ videos?: YouTubeVideoRef[] }>(
-    "/api/v1/youtube/web/get_channel_videos_v3",
+  const data = await get<{ videos?: YouTubeVideoRef[]; continuation_token?: string }>(
+    "/api/v1/youtube/web_v2/get_channel_videos",
     { channel_id: channelId },
   );
-  return data.videos ?? [];
+  return (data.videos ?? []).filter((v) => v.video_id && !v.is_live);
 }
+
+export type CaptionTrack = {
+  language_code: string;
+  language_name: string;
+  base_url: string;
+  is_translatable?: boolean;
+  kind?: string;
+};
 
 export type YouTubeVideoInfo = {
   video_id: string;
@@ -86,53 +95,60 @@ export type YouTubeVideoInfo = {
   channel_name: string;
   description?: string;
   published_at?: string;
+  captions: CaptionTrack[];
 };
 
+/**
+ * `/web_v2/get_video_info` returns a stable flat metadata shape AND the
+ * captions list in one call — so for the analyze pipeline we don't need
+ * a separate captions_v2 round-trip. (The `/web/get_video_info_v3` endpoint
+ * returns raw YouTube InnerTube for some video IDs, so it's unsafe.)
+ */
 export async function getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
-  const data = await get<Record<string, unknown>>(
-    "/api/v1/youtube/web/get_video_info_v3",
-    { video_id: videoId },
-  );
-
-  // TikHub returns variable shapes across endpoints. Normalize what we need.
-  const d = data as {
+  const d = await get<{
     video_id?: string;
     title?: string;
-    url?: string;
-    view_count?: number;
-    views?: number;
-    duration_sec?: number;
-    length_seconds?: number;
-    thumbnail_url?: string;
-    thumbnails?: Array<{ url?: string }>;
+    video_url?: string;
+    view_count?: number | string;
+    length_seconds?: number | string;
+    thumbnails?: Array<{ url: string; width?: number; height?: number }>;
     channel_id?: string;
-    channel_name?: string;
+    author?: string;
     description?: string;
-    published_at?: string;
-  };
+    upload_date?: string;
+    publish_date?: string;
+    captions?: CaptionTrack[];
+  }>("/api/v1/youtube/web_v2/get_video_info", { video_id: videoId });
+
+  const largestThumb =
+    d.thumbnails && d.thumbnails.length > 0
+      ? [...d.thumbnails].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]
+      : undefined;
+
+  const viewsNum = typeof d.view_count === "number" ? d.view_count : Number(d.view_count) || 0;
+  const lenNum =
+    typeof d.length_seconds === "number" ? d.length_seconds : Number(d.length_seconds) || 0;
 
   return {
     video_id: d.video_id ?? videoId,
     title: d.title ?? "",
-    url: d.url ?? `https://www.youtube.com/watch?v=${videoId}`,
-    views: d.view_count ?? d.views ?? 0,
-    duration_sec: d.duration_sec ?? d.length_seconds ?? 0,
-    thumbnail_url: d.thumbnail_url ?? d.thumbnails?.[d.thumbnails.length - 1]?.url ?? "",
+    url: d.video_url ?? `https://www.youtube.com/watch?v=${videoId}`,
+    views: viewsNum,
+    duration_sec: lenNum,
+    thumbnail_url: largestThumb?.url ?? "",
     channel_id: d.channel_id ?? "",
-    channel_name: d.channel_name ?? "",
+    channel_name: d.author ?? "",
     description: d.description,
-    published_at: d.published_at,
+    published_at: d.publish_date ?? d.upload_date,
+    captions: d.captions ?? [],
   };
 }
 
-export type CaptionTrack = {
-  language_code: string;
-  language_name: string;
-  base_url: string;
-  is_translatable?: boolean;
-  kind?: string;
-};
-
+/**
+ * Standalone captions manifest call. Use this only when you already have
+ * a `video_id` and don't need the rest of the metadata; for the analyze
+ * pipeline, `getVideoInfo()` already includes the captions array.
+ */
 export async function getCaptionsManifest(videoId: string): Promise<CaptionTrack[]> {
   const data = await get<{ captions?: CaptionTrack[] }>(
     "/api/v1/youtube/web_v2/get_video_captions_v2",
@@ -165,14 +181,13 @@ export async function fetchTranscriptText(baseUrl: string): Promise<string> {
 }
 
 /**
- * Convenience: best-effort transcript text for a video. Returns null if no
- * captions in any language (caller should fall through to ASR).
+ * Pick the best caption track from a list using a language preference order,
+ * then fetch the actual transcript text. Returns null if `tracks` is empty.
  */
-export async function getTranscript(
-  videoId: string,
+export async function transcriptFromTracks(
+  tracks: CaptionTrack[],
   preferLangs: string[] = ["en", "zh", "zh-CN", "zh-TW"],
 ): Promise<{ text: string; languageCode: string } | null> {
-  const tracks = await getCaptionsManifest(videoId);
   if (tracks.length === 0) return null;
   const sorted = [...tracks].sort((a, b) => {
     const ai = preferLangs.indexOf(a.language_code);
@@ -185,6 +200,22 @@ export async function getTranscript(
   const track = sorted[0]!;
   const text = await fetchTranscriptText(track.base_url);
   return { text, languageCode: track.language_code };
+}
+
+/**
+ * Convenience: fetch video info + transcript in the minimum API calls.
+ * Returns the metadata plus transcript text (or null if no captions).
+ */
+export async function getVideoWithTranscript(
+  videoId: string,
+  preferLangs: string[] = ["en", "zh", "zh-CN", "zh-TW"],
+): Promise<{
+  info: YouTubeVideoInfo;
+  transcript: { text: string; languageCode: string } | null;
+}> {
+  const info = await getVideoInfo(videoId);
+  const transcript = await transcriptFromTracks(info.captions, preferLangs);
+  return { info, transcript };
 }
 
 export type AudioStream = {
