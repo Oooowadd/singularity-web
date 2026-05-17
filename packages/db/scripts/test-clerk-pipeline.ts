@@ -25,7 +25,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { runs, tasks } from "@trigger.dev/sdk";
 
-import { channels, clerkVideos, pipelineRuns, users } from "../src/schema";
+import { channels, clerkSops, clerkVideos, pipelineRuns, users } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
@@ -144,6 +144,23 @@ async function main() {
       console.log(`    opening_hook_type: ${v.openingHookType ?? "—"}`);
       console.log(`    framework: ${(v.framework ?? "").slice(0, 100)}`);
       console.log(`    analyzed_at: ${v.analyzedAt?.toISOString() ?? "—"}`);
+    }
+
+    const sops = await db
+      .select({
+        sopType: clerkSops.sopType,
+        language: clerkSops.language,
+        length: clerkSops.contentMd,
+        generatedAt: clerkSops.generatedAt,
+      })
+      .from(clerkSops)
+      .where(eq(clerkSops.channelId, channel.id));
+    console.log(`\n${sops.length} SOPs generated:`);
+    for (const sop of sops) {
+      console.log(
+        `  - ${sop.sopType} (${sop.language}): ${sop.length.length} chars, generated ${sop.generatedAt.toISOString()}`,
+      );
+      console.log(`    preview: ${sop.length.slice(0, 200).replace(/\n/g, " ⏎ ")}`);
     }
 
     console.log(`\nFinal pipeline_runs row:`);
