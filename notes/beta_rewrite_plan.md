@@ -185,12 +185,15 @@ singularity-web/
 
 ### Week 3: Clerk 管线（分析器 + SOP 生成）
 
-- [ ] Port `services/analyzer.py` → `packages/shared/agents/clerk-analyzer.ts`
-- [ ] analyzer 输出**双字段**：`facts_and_data`（paraphrased）+ `verbatim_facts`（数字 / 型号 / 日期 / 引用字符级保留 + `[src: ...]` 来源；archive 2026-05 加的，原 plan 没覆盖）
-- [ ] Port `services/sop_generator.py` → 输出 HTML/Markdown 而非 `.docx`
-- [ ] Trigger.dev task: `analyze-channel`
-- [ ] UI: 分析进度页（`useRealtimeRun` 推进度）
-- [ ] **交付**：选频道 → 启动 Clerk 分析 → 流式进度 → SOP HTML 渲染
+- [x] **D1**：Port `prompts/clerk_prompts.py` → `packages/shared/prompts/clerk.ts`（6 个 prompts 1:1 移植，含 builder 函数 + Zod schema + clerkAnalysisToDbRow mapper）
+- [x] **D1**：Trigger.dev task `clerk-analyze-channel`（apps/jobs/trigger/analyze-channel.ts）— 端到端 live test 跑通 @MKBHD，DeepSeek V4 Pro 实分析落 DB
+- [x] **D1**：`apps/web/lib/{llm,tikhub}.ts` 经 `packages/shared/clients/` thin shared client（lazy-init 避开 Trigger.dev bundle-time throw）
+- [x] **D1**：tRPC `clerk.startAnalysis` + `clerk.runStatus` mutation/query；UI `/clerk/[slug]` Run analysis button + `useRealtimeRun` 进度显示
+- [x] **D1 诊断**：fixed 3 个 live test 暴露的 issue：(a) `generateObject` strict Zod 在 DeepSeek compatibility mode 易拒，换成 `generateText` + 软 JSON parse；(b) TikHub `/web_v2/get_video_info` 对最新视频 metadata 稀疏，fall back 到 channel-listing 字段；(c) DeepSeek 偶尔输出 NULL byte (U+0000)，postgres TEXT 拒，加 `safeText()` 全局过滤
+- [ ] **D2 next**：SOP generator（port `services/sop_generator.py`）— 跑完分析后用 V4-Pro 生成 human / ai_reference / hottest 三种 SOP markdown 写 `clerk_sops`
+- [ ] **D2 next**：analyzer 输出 **verbatim_facts** 双字段（注：archive 2026-05 加的，**仅 Poet 用**，不在 Clerk）
+- [ ] **D3 next**：ASR fallback —— captions 空的视频走 TikHub `streams_v2` + Groq Whisper（已端到端验证过）
+- [ ] **交付**：选频道 → 启动 Clerk 分析 → 流式进度 → SOP markdown 渲染
 
 ### Week 4: Muse 管线（监控 + idea 生成）
 
@@ -423,6 +426,20 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
 ---
 
 ### 2026-05-17
+
+31. **W3 D1 完成 — Clerk 分析管线端到端**：
+    - **`packages/shared/`** 新 workspace：prompts（archive 1:1 port，6 个 prompts）+ Zod schemas + LLM/TikHub clients（shared between web 和 jobs，避免双 app 重复 import）
+    - **Trigger.dev task `clerk-analyze-channel`**：拿 channel videos → 逐视频 metadata + captions + DeepSeek V4 Pro 分析 → 写 clerk_videos，metadata.set 推进度
+    - **tRPC `clerk.startAnalysis` + `clerk.runStatus`**：tRPC 验 ownership → 创 pipeline_run → 触发 task → return handle.id + publicAccessToken
+    - **UI `/clerk/[slug]` Run analysis button**：tRPC mutation → useRealtimeRun → 进度条 + 完成 toast
+    - **Live test 验证**：@MKBHD limit=1，1/1 analyzed，opening_hook_type = "Bold Claim with Teaser Stack"，framework = "Anticipation & Reveal Framework"
+    - **Diagnostic scripts**：`test-clerk-pipeline.ts`（创 temp channel → trigger → poll → verify）+ `debug-video-info.ts`（compare TikHub video_info* variants）
+    - **3 issues 暴露 + 修复**：(a) `generateObject` strict Zod 在 DeepSeek compatibility mode 易拒 → `generateText` + 软 JSON parse；(b) TikHub `/web_v2/get_video_info` 对新视频 metadata 稀疏 → fall back 到 channel-listing 字段；(c) DeepSeek 偶尔输出 NULL byte (U+0000) → `safeText()` 过滤
+
+32. **W3 D1 运维发现**：
+    - Trigger.dev 本地 dev worker 读 `.env` from cwd（apps/jobs/）—— 需要 symlink `apps/jobs/.env.local → ../../.env.local` 才能拿到 DATABASE_URL / DEEPSEEK_API_KEY / TIKHUB_API_KEY
+    - Workspace dep 修改（packages/shared/*.ts）**触发 hot-reload**（worker 重建到 .9 .10 .11 ... 版本递增）但需要 1-2s
+    - DeepSeek `responseFormat: JSON schema` 走 OpenAI compatibility — schema 当 system message 注入，模型偶尔输出不严格匹配的 JSON。已知 risk，用 `generateText` + 软 parse 解决
 
 28. **D6 final — Vercel 锁定**：D5=A 后 Render 跟 sidecar 统一管理的优势消失；Vercel Pro 800s 函数 + Trigger.dev 长任务组合就是最优解。生产部署目标：vercel.com，custom domain TBD（W7-W8）
 
