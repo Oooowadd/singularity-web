@@ -81,7 +81,7 @@ export default async function PoetLandingPage() {
               <TableRow key={r.channelId}>
                 <TableCell className="font-medium">
                   <Link
-                    href={`/channels/${encodeURIComponent(r.channelSlug)}`}
+                    href={`/poet/${encodeURIComponent(r.channelSlug)}`}
                     className="hover:text-foreground hover:underline"
                   >
                     {r.channelName}

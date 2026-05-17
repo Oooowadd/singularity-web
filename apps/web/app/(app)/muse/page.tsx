@@ -74,7 +74,7 @@ export default async function MuseLandingPage() {
               <TableRow key={r.channelId}>
                 <TableCell className="font-medium">
                   <Link
-                    href={`/channels/${encodeURIComponent(r.channelSlug)}`}
+                    href={`/muse/${encodeURIComponent(r.channelSlug)}`}
                     className="hover:text-foreground hover:underline"
                   >
                     {r.channelName}

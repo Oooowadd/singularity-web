@@ -111,9 +111,12 @@ export default async function ChannelDetailPage({ params }: Props) {
       .orderBy(desc(poetBible.updatedAt)),
   ]);
 
+  const encodedSlug = encodeURIComponent(channel.slug);
   const stats = [
     {
       label: "Clerk",
+      href: `/clerk/${encodedSlug}`,
+      hasData: (clerkVideoCount?.c ?? 0) > 0,
       lines: [
         `${clerkVideoCount?.c ?? 0} videos`,
         `${clerkSopCount?.c ?? 0} SOPs`,
@@ -121,6 +124,8 @@ export default async function ChannelDetailPage({ params }: Props) {
     },
     {
       label: "Muse",
+      href: `/muse/${encodedSlug}`,
+      hasData: (museIdeaCount?.c ?? 0) > 0 || (museVideoCount?.c ?? 0) > 0,
       lines: [
         `${museVideoCount?.c ?? 0} monitored`,
         `${museIdeaCount?.c ?? 0} ideas`,
@@ -128,6 +133,8 @@ export default async function ChannelDetailPage({ params }: Props) {
     },
     {
       label: "Poet",
+      href: `/poet/${encodedSlug}`,
+      hasData: (poetBibleCount?.c ?? 0) > 0 || (poetTopicCount?.c ?? 0) > 0,
       lines: [
         `${poetBibleCount?.c ?? 0} bibles`,
         `${poetTopicCount?.c ?? 0} custom topics`,
@@ -173,24 +180,39 @@ export default async function ChannelDetailPage({ params }: Props) {
       </header>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {s.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-1">
-                {s.lines.map((line) => (
-                  <span key={line} className="font-mono text-sm">
-                    {line}
-                  </span>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {stats.map((s) => {
+          const card = (
+            <Card
+              className={
+                s.hasData
+                  ? "transition-colors hover:bg-muted/50"
+                  : ""
+              }
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {s.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-1">
+                  {s.lines.map((line) => (
+                    <span key={line} className="font-mono text-sm">
+                      {line}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+          return s.hasData ? (
+            <Link key={s.label} href={s.href}>
+              {card}
+            </Link>
+          ) : (
+            <div key={s.label}>{card}</div>
+          );
+        })}
       </section>
 
       {topClerkVideos.length > 0 ? (
