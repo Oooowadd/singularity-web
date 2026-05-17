@@ -295,7 +295,7 @@ singularity-web/
 | **D2** | 现有 ~6K Python LOC 命运                    | A) `git rm -r`，仅保留 prompts + sidecar 必要部分 B) 移到 `archive/` 作参考 | **B** — 便于查 prompt 历史和 LLM 调用经验                       | Week 1 |
 | **D3** | 1 人还是 2 人开发？时间表是否需根据人力调整 | — | **✓ 2026-05-16 锁定：1 人 8 周节奏** | ✓ |
 | **D4** | 是否提前启动 ICP / 微信开放平台申请流程     | A) 立刻启动（M3 上线 WeChat） B) 等 beta 反馈再说                           | **A** — 备案 3-6 月，启动越早越好；不然 WeChat 上线时间持续后延 | Week 2 |
-| **D5** | 生产 XHS 数据层 | A) TikHub-only（删除 Python sidecar）B) 混合（yt-dlp Python + TikHub for XHS） C) Spider_XHS Python sidecar | **W2 调研后定**（TikHub 是否覆盖 YouTube transcript？5K 批改/月成本对比 vs Render sidecar） | Week 2 |
+| **D5** | 生产 XHS 数据层 | A) TikHub-only（删除 Python sidecar）B) 混合（yt-dlp Python + TikHub for XHS） C) Spider_XHS Python sidecar | **2026-05-17 调研后建议 B**，但 W2 先做 $5 TikHub YouTube transcript smoke test：若覆盖则切 A 删 sidecar。详见 §10 第 23 项 | Week 2 |
 | **D6** | Deploy host | A) Vercel（800s 函数限制） B) Render（与 sidecar 统一管理） | **W1 末定**（取决于 D5：若 D5=A 则 Render 跟 sidecar 统一的优势降低） | Week 1 |
 
 ---
@@ -419,6 +419,16 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
 ---
 
 ### 2026-05-17
+
+23. **D5 调研结果 — 建议 B（混合），但先 smoke test A**：
+    - **A: TikHub-only**：79+ XHS endpoint + 50+ YouTube endpoint，但 YouTube **transcript 在公开文档未确认**。定价 $0.001→$0.0005/call（不是 flat $0.01），MVP 估 $10/月，Growth $350/月。Alipay / USDT / PayPal 付款
+    - **B: 混合（推荐默认）**：TikHub 吃 XHS（避开 sign.js 战争），yt-dlp + bgutil-pot-provider v1.3.1 吃 YouTube。Render SG $7-25/月 + TikHub XHS 调用。MVP $12-30/月，Growth ~$200/月。**警告**：yt-dlp 2026 在 datacenter IP 上有 ban 风险（#15899 #16072），Render SG 的 geo 缓解，最坏切 residential proxy 或把 YouTube 也走 TikHub
+    - **C: Spider_XHS**：v4.0.0（2026-04 还在更），但 107 个 open issue + 每几周 sign.js 更新 + ICP 风控变化频繁。solo dev 8 周 ship 路径风险过高 — **拒**
+    - **行动**：W2 D3 前花 2h + $5 试 TikHub YouTube transcript 是否真有；有 → 切 A（删 `apps/scraper/`，省 1 周）；无 → 走 B
+    - 来源：tikhub.io/pricing, github.com/cv-cat/Spider_XHS, github.com/Brainicism/bgutil-ytdlp-pot-provider, yt-dlp issue #16607
+
+24. **Sign-out 链压缩**：之前 4-hop（sign-out → / → proxy → /api/auth/sign-in → Logto）改为公共 `/signed-out` 页面落地（Logto Management API 注册 postLogoutRedirectUri）。用户登出后看到 "Signed out." + Sign in 按钮，不会被立刻再次踢回登录
+25. **Channel detail + edit 页**：`/channels/[slug]` RSC 渲染 stat cards（clerk/muse/poet 各表 count）+ top 5 预览（最高 views clerk 视频 / bibles / custom topics / muse ideas）；右上 Edit 抽屉 Sheet 改 name/platform/URL/description（slug 锁住不让改避免 URL 变更）
 
 11. **W1 完成**：monorepo + Next.js 16.2.6 + 11 张表上 Supabase + Logto branded sign-in 端到端通；splash 动画 + dashboard 空状态 CTA 全 live tested
 12. **W2 D1 完成**：channel CRUD（list/create/delete）live tested
