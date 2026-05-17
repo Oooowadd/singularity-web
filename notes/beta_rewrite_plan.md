@@ -169,15 +169,15 @@ singularity-web/
 
 ### Week 2: Channel CRUD + 抓取 sidecar — **D1+D2 完成 2026-05-17**
 
-- [ ] **D5 决定 XHS 数据层**：(A) TikHub-only（79 endpoint、$0.01/call、10 req/s、托管 sign.js + cookie）；(B) 混合（yt-dlp Python sidecar + TikHub for XHS）；(C) Spider_XHS Python sidecar（archive 路线）。调研 TikHub 是否覆盖 YouTube transcript，对比 5K 批改/月成本
+- [x] **D5 — A 锁定**：TikHub-only（79 XHS endpoint + 50 YouTube endpoint，$0.001-0.01/call，1 req/sec per route）；Python sidecar 整目录不建
 - [x] **D1**：Channel schema + tRPC v11 CRUD endpoints（list/create/delete，slug 自动生成 + 冲突检测）
 - [x] **D1**：Channel 列表 UI（shadcn Table + AlertDialog 删除确认 + Field/Input/Select/Textarea 创建表单）
 - [x] **D2**：xlsx archive 数据 import（`packages/db/scripts/import-archive.ts` — 10 channels + 218 clerk_videos + 31 sops + 10 muse_videos + 50 ideas + 7 bibles + 18 custom topics 全绑 justinliuforever@gmail.com）
-- [ ] **D2 续**：Channel detail/edit 页（`/channels/[slug]` — 平台 URL + description + competitors + 关联实体计数）
-- [ ] **D3**：Python sidecar yt-dlp + bgutil-pot-provider Docker compose（若 D5=A 则整个 `apps/scraper` 不需要）
-- [ ] **D3**：Sidecar API: `POST /youtube/fetch-channel`, `POST /youtube/transcript`（同上条件）
-- [ ] **D3**：Next.js 通过内部 JWT 调 sidecar（同上条件）
-- [ ] **交付**：UI 创建频道 → 触发抓取 → 数据落 Supabase
+- [x] **D2 续**：Channel detail/edit 页（`/channels/[slug]` — Edit drawer + 3 stat cards 链跳 agent 视图）
+- [x] **D2 续**：Agent 浏览 UI（`/clerk` 三级 + `/muse` 二级 + `/poet` 三级 + topic detail + 7 个 loading skeleton）
+- [x] **D2 续**：sanity-check + tikhub-smoke + groq-asr-smoke 三个测试脚本
+- ~~D3 Python sidecar~~ → ✗ 不做（D5=A）
+- [ ] **下一步**：W3 Clerk pipeline（见下）
 
 ### Week 3: Clerk 管线（分析器 + SOP 生成）
 
@@ -295,7 +295,7 @@ singularity-web/
 | **D2** | 现有 ~6K Python LOC 命运                    | A) `git rm -r`，仅保留 prompts + sidecar 必要部分 B) 移到 `archive/` 作参考 | **B** — 便于查 prompt 历史和 LLM 调用经验                       | Week 1 |
 | **D3** | 1 人还是 2 人开发？时间表是否需根据人力调整 | — | **✓ 2026-05-16 锁定：1 人 8 周节奏** | ✓ |
 | **D4** | 是否提前启动 ICP / 微信开放平台申请流程     | A) 立刻启动（M3 上线 WeChat） B) 等 beta 反馈再说                           | **A** — 备案 3-6 月，启动越早越好；不然 WeChat 上线时间持续后延 | Week 2 |
-| **D5** | 生产 XHS 数据层 | A) TikHub-only（删除 Python sidecar）B) 混合（yt-dlp Python + TikHub for XHS） C) Spider_XHS Python sidecar | **2026-05-17 调研后建议 B**，但 W2 先做 $5 TikHub YouTube transcript smoke test：若覆盖则切 A 删 sidecar。详见 §10 第 23 项 | Week 2 |
+| **D5** | 生产 XHS / YouTube 数据层 | A) TikHub-only B) 混合 C) Spider_XHS | **✓ 2026-05-17 锁 A**（11 endpoint smoke test 全过 + Groq Whisper ASR fallback 端到端验证）。`apps/scraper/` 子树整体不建。详见 §10 第 26 项 | ✓ |
 | **D6** | Deploy host | A) Vercel（800s 函数限制） B) Render（与 sidecar 统一管理） | **W1 末定**（取决于 D5：若 D5=A 则 Render 跟 sidecar 统一的优势降低） | Week 1 |
 
 ---
@@ -419,6 +419,32 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
 ---
 
 ### 2026-05-17
+
+26. **D5 final — A 锁定（TikHub-only，无 Python sidecar）**：
+    - 11 endpoint smoke test 全过（YouTube + XHS 关键路径覆盖）
+    - **YouTube transcript 文本路径已验证**：`/web_v2/get_video_captions_v2` ($0.001) → 拿 manifest base_url → 直 fetch YouTube timedtext signed URL（**免费**），3877 chars 真 transcript（Rick Astley 例）
+    - **ASR fallback 端到端通**：`/web_v2/get_video_streams_v2` ($0.003) → 4 个 audio-only 格式（最小 1.2MB opus webm）→ Groq Whisper large-v3 → 3.2s 完成 3.5min 音频 transcribe，输出完整歌词
+    - **Per-video 加权成本**：0.8×$0.002 + 0.2×$0.009 = **~$0.004/视频**
+    - **核心 endpoint 选型**（参数名最易踩坑）：
+      - `/youtube/web/get_channel_id_v2?channel_url=` （不是 url）
+      - `/youtube/web/get_channel_info?channel_id=`
+      - `/youtube/web/get_channel_videos_v3?channel_id=`
+      - `/youtube/web/get_video_info_v3?video_id=`
+      - `/youtube/web_v2/get_video_captions_v2?video_id=` → 直 fetch base_url 拿文本
+      - `/youtube/web_v2/get_video_streams_v2?video_id=` → ASR fallback
+      - `/youtube/web/search_video?search_query=` （不是 keyword）
+      - `/xiaohongshu/app_v2/search_notes?keyword=` （app_v2 用 keyword；web_v2 用 keywords 复数；web_v3 不稳）
+      - `/xiaohongshu/web_v2/fetch_hot_list` （无参）
+    - 已知 rate limit：**1 request/sec per route**（单 endpoint 1 秒只能调一次，需要批量时跨 endpoint 并发）
+    - 已知 caveat：YouTube CDN 对免费 IP 限速（Rick Astley 1.2MB audio 下载用了 82s）。Trigger.dev 在 server side 跑 audio download 应该快很多；或者 Vercel function 在 us-east 跑
+
+27. **ASR 选 Groq Whisper large-v3 锁定**：
+    - $0.111/h = $0.00185/min，SOTA 多语言 Whisper
+    - 100x realtime（5min 视频 ~3s 完成）
+    - TS SDK：`groq-sdk` npm
+    - MVP 1K ASR-required 视频/月 × 5min = **$9.25/月**
+    - 拒：OpenAI Whisper（$0.006/min，贵 3x），Cloudflare Workers AI（部署复杂度高），Deepgram/AssemblyAI（贵 2-3x 且无 quality 优势）
+    - Growth scale 切 turbo 或 Modal 自托管可降 60%，beta 阶段无需
 
 23. **D5 调研结果 — 建议 B（混合），但先 smoke test A**：
     - **A: TikHub-only**：79+ XHS endpoint + 50+ YouTube endpoint，但 YouTube **transcript 在公开文档未确认**。定价 $0.001→$0.0005/call（不是 flat $0.01），MVP 估 $10/月，Growth $350/月。Alipay / USDT / PayPal 付款

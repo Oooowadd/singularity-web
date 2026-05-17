@@ -14,11 +14,14 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "import-archive": "tsx scripts/import-archive.ts",
-    "sanity-check": "tsx scripts/sanity-check.ts"
+    "sanity-check": "tsx scripts/sanity-check.ts",
+    "tikhub-smoke": "tsx scripts/tikhub-smoke.ts",
+    "groq-asr-smoke": "tsx scripts/groq-asr-smoke.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "groq-sdk": "^1.2.0",
     "postgres": "^3.4.9",
     "tsx": "^4.22.0",
     "xlsx": "^0.18.5"
