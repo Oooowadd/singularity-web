@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 
-import { channels, museIdeas, museMonitorVideos } from "@singularity/db";
+import { channels, museIdeas, museMonitorVideos, type CompetitorRef } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getActiveAgentRun } from "@/lib/agent-run";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
+
+import { IdeaApproveToggle } from "./_components/idea-approve-toggle";
+import { MuseRunButton } from "./_components/muse-run-button";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -42,7 +46,10 @@ export default async function MuseChannelPage({ params }: Props) {
 
   if (!channel || channel.userId !== user.id) notFound();
 
-  const [monitored, ideas] = await Promise.all([
+  const competitors = (channel.competitors ?? []) as CompetitorRef[];
+  const youtubeCompetitors = competitors.filter((c) => c.platform === "youtube");
+
+  const [monitored, ideas, activeRun] = await Promise.all([
     db
       .select()
       .from(museMonitorVideos)
@@ -66,6 +73,7 @@ export default async function MuseChannelPage({ params }: Props) {
       .leftJoin(museMonitorVideos, eq(museMonitorVideos.id, museIdeas.sourceVideoId))
       .where(eq(museIdeas.channelId, channel.id))
       .orderBy(asc(museIdeas.ideaNumber)),
+    getActiveAgentRun(channel.id, user.id, "muse"),
   ]);
 
   return (
@@ -77,28 +85,39 @@ export default async function MuseChannelPage({ params }: Props) {
         className="w-fit text-muted-foreground"
       >
         <ChevronLeft data-icon="inline-start" />
-        Muse
+        Muse · 选题官
       </Button>
 
-      <header className="flex items-center gap-3">
-        <span className="size-2 rounded-full bg-muse" />
-        <h1 className="text-2xl font-semibold tracking-tight">{channel.name}</h1>
-        <Badge variant="secondary" className="font-mono text-[10px] uppercase">
-          {ideas.length} ideas
-        </Badge>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="size-2 rounded-full bg-muse" />
+          <h1 className="text-2xl font-semibold tracking-tight">{channel.name}</h1>
+          <Badge variant="secondary" className="font-mono text-[10px]">
+            {ideas.length} 个选题
+          </Badge>
+          <Badge variant="secondary" className="font-mono text-[10px]">
+            {youtubeCompetitors.length} 个对标频道
+          </Badge>
+        </div>
+        <MuseRunButton
+          channelId={channel.id}
+          channelName={channel.name}
+          competitorCount={youtubeCompetitors.length}
+          initialActive={activeRun}
+        />
       </header>
 
       {monitored.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">Monitored videos</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">已巡视视频</h2>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead className="w-40">Source channel</TableHead>
-                <TableHead className="w-20">Duration</TableHead>
-                <TableHead className="w-24">Relevant</TableHead>
-                <TableHead className="w-32">Topic</TableHead>
+                <TableHead>标题</TableHead>
+                <TableHead className="w-40">对标频道</TableHead>
+                <TableHead className="w-20">时长</TableHead>
+                <TableHead className="w-24">相关性</TableHead>
+                <TableHead className="w-32">分类</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -126,11 +145,11 @@ export default async function MuseChannelPage({ params }: Props) {
                       <span className="text-xs text-muted-foreground">—</span>
                     ) : v.relevant ? (
                       <Badge variant="secondary" className="text-[10px]">
-                        relevant
+                        相关
                       </Badge>
                     ) : (
-                      <span className="font-mono text-[10px] text-muted-foreground uppercase">
-                        rejected
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        已排除
                       </span>
                     )}
                   </TableCell>
@@ -146,7 +165,7 @@ export default async function MuseChannelPage({ params }: Props) {
 
       {ideas.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">Ideas</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">选题列表</h2>
           <div className="flex flex-col gap-4">
             {ideas.map((idea) => (
               <article
@@ -159,7 +178,7 @@ export default async function MuseChannelPage({ params }: Props) {
                       #{idea.ideaNumber}
                       {idea.sourceTitle ? (
                         <>
-                          {" · from "}
+                          {" · 来源："}
                           {idea.sourceUrl ? (
                             <a
                               href={idea.sourceUrl}
@@ -179,24 +198,19 @@ export default async function MuseChannelPage({ params }: Props) {
                       {idea.storyAngle ?? "—"}
                     </h3>
                   </div>
-                  <div className="flex shrink-0 gap-1">
-                    {idea.approved ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        approved
-                      </Badge>
-                    ) : null}
-                    {idea.scripted ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        scripted
-                      </Badge>
-                    ) : null}
+                  <div className="flex shrink-0">
+                    <IdeaApproveToggle
+                      ideaId={idea.id}
+                      approved={idea.approved}
+                      scripted={idea.scripted}
+                    />
                   </div>
                 </header>
 
                 {idea.factsAndData ? (
                   <div className="flex flex-col gap-1">
                     <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Facts & data
+                      事实与数据
                     </h4>
                     <p className="text-sm whitespace-pre-wrap">{idea.factsAndData}</p>
                   </div>
@@ -205,7 +219,7 @@ export default async function MuseChannelPage({ params }: Props) {
                 {idea.whySimilar ? (
                   <div className="flex flex-col gap-1">
                     <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Why similar
+                      为什么对标
                     </h4>
                     <p className="text-sm whitespace-pre-wrap">{idea.whySimilar}</p>
                   </div>
@@ -214,7 +228,7 @@ export default async function MuseChannelPage({ params }: Props) {
                 {idea.viralTrigger ? (
                   <div className="flex flex-col gap-1">
                     <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Viral trigger
+                      爆款触发因素
                     </h4>
                     <p className="text-sm whitespace-pre-wrap">{idea.viralTrigger}</p>
                   </div>
@@ -223,6 +237,15 @@ export default async function MuseChannelPage({ params }: Props) {
             ))}
           </div>
         </section>
+      ) : monitored.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
+          <span>还没有选题</span>
+          {youtubeCompetitors.length > 0 ? (
+            <span className="text-xs">点击右上角"开始巡视"，分析对标频道的爆款并生成选题</span>
+          ) : (
+            <span className="text-xs">先在频道设置中添加对标账号</span>
+          )}
+        </div>
       ) : null}
     </div>
   );

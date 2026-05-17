@@ -44,6 +44,9 @@ export function EditChannelSheet({ channel }: Props) {
   const [platform, setPlatform] = useState<"youtube" | "xhs">(channel.platform);
   const [platformUrl, setPlatformUrl] = useState(channel.platformUrl);
   const [description, setDescription] = useState(channel.description ?? "");
+  const [competitorsText, setCompetitorsText] = useState(
+    (channel.competitors ?? []).map((c) => c.url).join("\n"),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const updateMutation = trpc.channels.update.useMutation({
@@ -60,12 +63,21 @@ export function EditChannelSheet({ channel }: Props) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const competitors = competitorsText
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .map((url) => ({
+        platform: (url.includes("xiaohongshu") ? "xhs" : "youtube") as "youtube" | "xhs",
+        url,
+      }));
     const result = updateChannelInput.safeParse({
       id: channel.id,
       name,
       platform,
       platformUrl,
       description: description || null,
+      competitors,
     });
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Invalid input");
@@ -133,9 +145,23 @@ export function EditChannelSheet({ channel }: Props) {
                 id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="选填"
+                placeholder="选填，用于让 AI 了解频道定位"
                 rows={4}
               />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="edit-competitors">对标频道</FieldLabel>
+              <Textarea
+                id="edit-competitors"
+                value={competitorsText}
+                onChange={(e) => setCompetitorsText(e.target.value)}
+                placeholder="每行一个频道主页 URL&#10;例如 https://www.youtube.com/@mkbhd"
+                rows={5}
+              />
+              <p className="text-xs text-muted-foreground">
+                Muse 会定期巡视这些频道，提取爆款机制并生成选题
+              </p>
             </Field>
           </FieldGroup>
 

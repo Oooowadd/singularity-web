@@ -52,12 +52,13 @@ export default async function MuseLandingPage() {
       <header className="flex items-center gap-3">
         <span className="size-2 rounded-full bg-muse" />
         <h1 className="text-2xl font-semibold tracking-tight">Muse · 选题官</h1>
-        <span className="text-sm text-muted-foreground">监控竞品 + 生成选题</span>
+        <span className="text-sm text-muted-foreground">巡视对标账号，提取爆款机制并生成选题</span>
       </header>
 
       {ideaRows.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-16 text-sm text-muted-foreground">
-          还没有选题
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
+          <span>还没有选题</span>
+          <span className="text-xs">前往任一频道的「编辑」配置对标账号，然后在 Muse 频道页启动巡视</span>
         </div>
       ) : (
         <Table>
