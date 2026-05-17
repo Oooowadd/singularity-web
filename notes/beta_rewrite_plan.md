@@ -190,10 +190,11 @@ singularity-web/
 - [x] **D1**：`apps/web/lib/{llm,tikhub}.ts` 经 `packages/shared/clients/` thin shared client（lazy-init 避开 Trigger.dev bundle-time throw）
 - [x] **D1**：tRPC `clerk.startAnalysis` + `clerk.runStatus` mutation/query；UI `/clerk/[slug]` Run analysis button + `useRealtimeRun` 进度显示
 - [x] **D1 诊断**：fixed 3 个 live test 暴露的 issue：(a) `generateObject` strict Zod 在 DeepSeek compatibility mode 易拒，换成 `generateText` + 软 JSON parse；(b) TikHub `/web_v2/get_video_info` 对最新视频 metadata 稀疏，fall back 到 channel-listing 字段；(c) DeepSeek 偶尔输出 NULL byte (U+0000)，postgres TEXT 拒，加 `safeText()` 全局过滤
-- [ ] **D2 next**：SOP generator（port `services/sop_generator.py`）— 跑完分析后用 V4-Pro 生成 human / ai_reference / hottest 三种 SOP markdown 写 `clerk_sops`
-- [ ] **D2 next**：analyzer 输出 **verbatim_facts** 双字段（注：archive 2026-05 加的，**仅 Poet 用**，不在 Clerk）
+- [x] **D2**：SOP generator（port `services/sop_generator.py`）— 跑完分析后用 V4-Pro 生成 human / ai_reference / hottest 三种 SOP markdown 写 `clerk_sops`；@MKBHD 测试 generated 2 SOPs (15.6KB + 13.1KB)，hottest 因 transcript 空自动跳过
+- [x] **D2**：`/clerk/[slug]` 加 SOP 渲染（react-markdown + remark-gfm，最新 generation 自动顶起，旧 SOPs 跑前先 delete 清理）
+- ~~D2 verbatim_facts 双字段~~ → 注：archive 2026-05 加的，**仅 Poet 用**，不在 Clerk
 - [ ] **D3 next**：ASR fallback —— captions 空的视频走 TikHub `streams_v2` + Groq Whisper（已端到端验证过）
-- [ ] **交付**：选频道 → 启动 Clerk 分析 → 流式进度 → SOP markdown 渲染
+- [x] **交付**：选频道 → 启动 Clerk 分析 → 流式进度 → SOP markdown 渲染（在 /clerk/[slug] 可见）
 
 ### Week 4: Muse 管线（监控 + idea 生成）
 
@@ -435,6 +436,14 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
     - **Live test 验证**：@MKBHD limit=1，1/1 analyzed，opening_hook_type = "Bold Claim with Teaser Stack"，framework = "Anticipation & Reveal Framework"
     - **Diagnostic scripts**：`test-clerk-pipeline.ts`（创 temp channel → trigger → poll → verify）+ `debug-video-info.ts`（compare TikHub video_info* variants）
     - **3 issues 暴露 + 修复**：(a) `generateObject` strict Zod 在 DeepSeek compatibility mode 易拒 → `generateText` + 软 JSON parse；(b) TikHub `/web_v2/get_video_info` 对新视频 metadata 稀疏 → fall back 到 channel-listing 字段；(c) DeepSeek 偶尔输出 NULL byte (U+0000) → `safeText()` 过滤
+
+33. **W3 D2 完成 — SOP 生成 + UI 渲染**：
+    - Trigger task 在分析全部视频之后跑 SOP 阶段：human / ai_reference / hottest 三种，DeepSeek V4-Pro，temperature 0.4, maxOutputTokens 8192
+    - Old SOPs for the channel deleted before new pass — UI 始终展示最新
+    - Hottest SOP 仅在 top-viewed 视频有 transcript 时生成（archive anti-fabrication rule）
+    - `/clerk/[slug]` 加 SOPs section：collapsible cards (`<details>`) + react-markdown + remark-gfm + 自定义 `.prose-clerk` CSS（不引 @tailwindcss/typography 插件）
+    - @MKBHD limit=2 test：1/2 analyzed + 2 SOPs (15.6KB human + 13.1KB ai_reference)；hottest 自动 skip 因 transcript 空
+    - 实际生成的 markdown 格式跟 archive sop_generator.py 输出一致（含 7 sections Content Formula / Common Themes / Thumbnail Essentials / Hook Playbook / Script Blueprint / Storytelling / Retention）
 
 32. **W3 D1 运维发现**：
     - Trigger.dev 本地 dev worker 读 `.env` from cwd（apps/jobs/）—— 需要 symlink `apps/jobs/.env.local → ../../.env.local` 才能拿到 DATABASE_URL / DEEPSEEK_API_KEY / TIKHUB_API_KEY
