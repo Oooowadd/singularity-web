@@ -456,6 +456,14 @@ End-of-day 1 交付：访问 `*.vercel.app` 域名能看到 Next.js 默认页 + 
 
 ### 2026-05-17
 
+41. **Pre-launch P0 — 删除按钮 + 脚本详情页 + 注释清理**：
+    - **3 个 delete mutation**：`clerk.deleteSop` / `poet.deleteBible`（active 拦截）/ `poet.deleteScript`（同时重置 `museIdeas.scripted=false` 或 `poetCustomTopics.status='analyzed'`，让用户可以重新生成）
+    - **UI 删除入口**：SOP 卡片头加垃圾桶；Bible 历史 accordion（只列非 active 版本）含「激活」+「删除」；脚本列表每项含删除按钮
+    - **Bible 历史 UI**：drift 触发后 inactive 版本不再丢失视野，用户可激活其中之一或全清；当前 active Bible 始终单独显示在主卡片
+    - **`/poet/[slug]/scripts/[scriptId]` 独立详情页**：3 列上下文卡（选题来源 / 引用圣经 / 引用 SOP）+ 全文 pre-wrap + 复制全文按钮（navigator.clipboard）+ 删除按钮（删完跳回 /poet/[slug]）；脚本列表项从 collapsible `<details>` 改成 Link 到详情页（性能更好、URL 可分享）
+    - **注释清理**：扫了整个 shared/jobs/web 包，把多行 docstring + WHAT-style 评论删光，只保留真正非 obvious 的 WHY 行（譬如 "3000-token floor: short sections returned empty when reasoning ate the budget"）
+    - **全栈 typecheck + smoke 重测全绿**：muse-services 5/5、asr-branch 3/3、custom-topic 7/7（包含 URL extractors 11 + analyze 5/5 + ref fetcher 2 graceful error case）
+
 40. **W5+ 收尾 — Custom Topic flow + Reference fetcher（archive 移植 100% 完成）**：
     - 用户核了一遍 archive 确认 Upload Critique 不是移植任务而是 greenfield，于是先完成 archive 收尾再开 W7
     - **TOPIC_ANALYSIS_PROMPT 移植**：`packages/shared/src/prompts/poet.ts` 加 `buildTopicAnalysisPrompt`，zh 模式追加"四个叙事字段中文 + verbatim_facts 保持源语言"的中文强化
