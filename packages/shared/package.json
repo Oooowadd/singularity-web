@@ -15,6 +15,8 @@
     "./services/poet/bible": "./src/services/poet/bible.ts",
     "./services/poet/script-writer": "./src/services/poet/scriptWriter.ts",
     "./services/poet/humanizer": "./src/services/poet/humanizer.ts",
+    "./services/poet/topic-analyzer": "./src/services/poet/topicAnalyzer.ts",
+    "./clients/references": "./src/clients/references.ts",
     "./clients/llm": "./src/clients/llm.ts",
     "./clients/tikhub": "./src/clients/tikhub.ts",
     "./clients/asr": "./src/clients/asr.ts"

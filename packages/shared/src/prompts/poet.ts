@@ -257,6 +257,67 @@ Sound like a real human talking. Follow the SOP voice precisely.
 `;
 }
 
+type TopicAnalysisArgs = {
+  channelBible: string;
+  sopReference: string;
+  topic: string;
+  referencesContext: string;
+  language: "en" | "zh";
+};
+
+export function buildTopicAnalysisPrompt(args: TopicAnalysisArgs): string {
+  const languageName = args.language === "zh" ? "Chinese (中文)" : "English";
+  const lengthUnit = args.language === "zh" ? "characters (字)" : "words";
+  const base = `You are an editorial strategist for a YouTube channel. Given a user-supplied topic and (optionally) reference materials, generate the structured idea fields that the scriptwriter will consume.
+
+## Channel Bible (the brand, niche, and rules)
+${args.channelBible}
+
+## SOP Reference (the channel's voice and viral mechanics)
+${args.sopReference}
+
+## User Topic
+${args.topic}
+
+## External References
+${args.referencesContext}
+
+## Your Task
+
+Output a JSON object with exactly these five keys:
+
+- "story_angle": One paragraph (~80–150 ${lengthUnit}) describing the specific narrative angle for this topic, framed for this channel's audience. Be concrete — name the specific story you'd tell, not the general subject.
+
+- "facts_and_data": Bullet list of concrete facts, statistics, examples, and data points the script should incorporate. **Do not artificially limit the count.** If the references contain twelve distinct camera models and forty data points, capture all of them; if they only contain three, capture three. Walk the references end-to-end and capture every concrete fact you find. Prefer facts grounded in the External References. If the references are thin or missing, you may add plausible, verifiable-by-the-user facts — but label any such addition with "(needs verification)" so the user can review.
+
+- "verbatim_facts": A flat newline-separated list of the most important factual atoms pulled **VERBATIM** from the references. Each line is one atom. Format: \`- <verbatim fact> [src: <reference title>]\`. Examples:
+  \`- M3 viewfinder magnification: 0.91x [src: Leica M Series Film Cameras Overview]\`
+  \`- M7 produced between 2002–2018 [src: Leica M Series Film Cameras Overview]\`
+  Rules for this field:
+    * Numbers (years, prices, magnifications, focal lengths, shutter speeds, ISOs, percentages, dates, durations) must be copied **character-for-character** from the source. Do not round, normalize, or convert units.
+    * Proper nouns (model names, person names, brand names, place names) must be copied verbatim.
+    * Direct quotes must be enclosed in straight double-quotes and unchanged.
+    * Walk every reference end-to-end and emit one line per discrete fact. A 12-camera overview should produce dozens of lines, not 5.
+    * If a reference contributes no extractable verbatim facts, omit it from this field rather than invent.
+    * **Never fabricate** a fact that isn't in the source. If you didn't see it in the references, don't include it here.
+
+- "why_similar": One short paragraph explaining why this topic fits the channel's niche per the Bible. Reference specific Bible rules or content pillars.
+
+- "viral_trigger": One short paragraph (~60–100 ${lengthUnit}) explaining the emotional/curiosity mechanism that would make this topic perform — what makes a viewer click and stay.
+
+## Output
+
+Output ONLY the JSON object. No markdown fences, no explanation, no prefix. The response must be parseable by json.loads().
+
+\`story_angle\`, \`facts_and_data\`, \`why_similar\`, and \`viral_trigger\` must be written in **${languageName}**. \`verbatim_facts\` stays in the **original language of the references** so numbers and proper nouns are not corrupted by translation.
+`;
+  if (args.language !== "zh") return base;
+  return (
+    base +
+    "\n\n【重要输出要求】story_angle、facts_and_data、why_similar、viral_trigger 字段必须用简体中文输出。verbatim_facts 保持原始语言（数字和专有名词不翻译）。仅返回有效 JSON，不使用代码块。"
+  );
+}
+
 export function buildChineseHumanizerPrompt(scriptText: string): string {
   return `你现在是这个视频的真实创作者，正在对着镜头说话。这个脚本是AI草稿，你的任务是把它改成你自己真实开口说出来的样子。
 
