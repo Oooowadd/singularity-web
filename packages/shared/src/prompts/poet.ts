@@ -148,6 +148,115 @@ Output the script as plain text. Include section markers [HOOK], [TEASE], [ITEM 
 `;
 }
 
+type OutlineArgs = {
+  sopReference: string;
+  referencesContext: string;
+  ideaText: string;
+  viralTrigger: string;
+  targetWordCount: number;
+  language: "en" | "zh";
+};
+
+export function buildLongFormOutlinePrompt(args: OutlineArgs): string {
+  const lengthUnit = args.language === "zh" ? "characters (字)" : "words";
+  const rate = args.language === "zh" ? 200 : 150;
+  const durationApprox = Math.round(args.targetWordCount / rate);
+  return `You are planning a long-form YouTube script for a specific niche channel.
+
+## SOP Reference (voice, structure, retention mechanics — follow this precisely)
+${args.sopReference}
+
+## References (research material — pull concrete facts from here)
+${args.referencesContext}
+
+## The Idea
+${args.ideaText}
+
+## Viral Trigger
+${args.viralTrigger}
+
+## Task: Generate a Beat-by-Beat Outline
+
+The final script targets approximately ${args.targetWordCount} ${lengthUnit} (~${durationApprox} minutes of speech).
+
+Produce a JSON object with this exact structure:
+{
+  "overall_arc": "One sentence: the emotional journey from hook to climax.",
+  "sections": [
+    {
+      "marker": "[HOOK]",
+      "key_points": ["specific fact or story beat from the references", "another specific beat"],
+      "target_count": 400,
+      "emotional_note": "the tone and energy level of this section"
+    }
+  ]
+}
+
+Rules:
+- Use ONLY these markers in this order: [HOOK], [TEASE], [ITEM 1], [ITEM 2], ... (as many ITEMs as the SOP demands), [CTA], [CLIMAX], [CLOSE]
+- key_points must be CONCRETE — pull real facts, names, numbers from the References. No generic placeholders.
+- target_count values must sum to approximately ${args.targetWordCount}
+- Suggested budget: HOOK 8%, TEASE 5%, CTA 3%, CLIMAX 18%, CLOSE 6%; divide the remaining 60% equally across ITEM sections
+- emotional_note: be specific (e.g. "calm and factual, building curiosity", "sharp revelation, audience feels cheated", "triumphant payoff")
+
+Output ONLY the JSON. No markdown fences, no explanation.
+`;
+}
+
+type SectionExpandArgs = {
+  language: "en" | "zh";
+  sopReference: string;
+  referencesContext: string;
+  verbatimFactsContext: string;
+  overallArc: string;
+  outlineSummary: string;
+  prevTail: string;
+  marker: string;
+  keyPoints: string;
+  targetCount: number;
+  emotionalNote: string;
+};
+
+export function buildSectionExpandPrompt(args: SectionExpandArgs): string {
+  const languageName = args.language === "zh" ? "Chinese (中文)" : "English";
+  const lengthUnit = args.language === "zh" ? "characters (字)" : "words";
+  const minCount = Math.round(args.targetCount * 0.85);
+  return `You are writing one section of a long-form YouTube script in **${languageName}**.
+
+## SOP Reference (this is your VOICE MODEL — follow the tone, rhythm, and retention devices exactly)
+${args.sopReference}
+
+## References (research material — extract facts and framing from here)
+${args.referencesContext}
+
+## Verbatim Facts (copy these character-for-character — numbers, names, prices, specs)
+${args.verbatimFactsContext}
+
+## Full Script Outline (maintain consistency with the overall arc)
+Overall arc: ${args.overallArc}
+
+All sections:
+${args.outlineSummary}
+
+## Previous Section Tail (maintain narrative flow — pick up naturally from here)
+${args.prevTail}
+
+## Your Section
+Marker: ${args.marker}
+Key points to cover:
+${args.keyPoints}
+Target length: ${args.targetCount} ${lengthUnit}
+Minimum length: ${minCount} ${lengthUnit} — you MUST reach this before stopping
+Tone/energy: ${args.emotionalNote}
+
+Write ONLY the content of this section. Do NOT include the section marker — it will be added automatically.
+Do NOT start the next section. End at a natural stopping point.
+Sound like a real human talking. Follow the SOP voice precisely.
+
+**LENGTH IS NON-NEGOTIABLE**: If you finish covering the key points but haven't reached ${minCount} ${lengthUnit}, keep going — add more specific examples, vivid detail, emotional depth, or a relevant story beat. Do not end early.
+`;
+}
+
 export function buildChineseHumanizerPrompt(scriptText: string): string {
   return `你现在是这个视频的真实创作者，正在对着镜头说话。这个脚本是AI草稿，你的任务是把它改成你自己真实开口说出来的样子。
 
