@@ -121,8 +121,7 @@ export const analyzeCustomTopic = task({
         language,
       });
 
-      // Store the fetched refs back (with .content) so the script generator
-      // can reuse them without re-fetching.
+      // Persist fetched .content so the downstream script run doesn't refetch.
       const persistedRefs: CustomTopicReference[] = userRefs.map((original, idx) => {
         const got = fetched[idx];
         return {

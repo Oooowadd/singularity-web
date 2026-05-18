@@ -68,11 +68,7 @@ export type AsrResult = {
 
 export type AsrPhase = "selecting" | "downloading" | "transcribing";
 
-/**
- * Transcribe a YouTube video's audio via Groq Whisper large-v3.
- * Returns null on any recoverable failure (no streams, oversize, expired URL,
- * Groq error) so the caller can leave the transcript empty without aborting.
- */
+// Returns null on any recoverable failure so the caller can skip without aborting.
 export async function transcribeYoutubeVideo(
   videoId: string,
   opts: {

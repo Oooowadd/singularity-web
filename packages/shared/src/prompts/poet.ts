@@ -1,6 +1,3 @@
-// 1:1 port of archive backend/app/prompts/poet_prompts.py — wording preserved.
-// LONG_FORM_OUTLINE / SECTION_EXPAND / TOPIC_ANALYSIS deferred to W6.
-
 import { CHINESE_WRAPPER } from "./clerk";
 
 type ChannelBibleArgs = {

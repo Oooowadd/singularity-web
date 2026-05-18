@@ -61,8 +61,7 @@ export const generateScript = task({
         .set({ status: "running" })
         .where(eq(pipelineRuns.id, payload.runId));
 
-      // total stays conservative until outline returns; we'll bump it once we
-      // know the section count.
+      // total is conservative until outline returns; bumped once section count is known.
       let total = willGoLong ? 4 : 3;
       let step = 0;
       const setProgress = async (phase: string, detail: string) => {

@@ -1,19 +1,6 @@
 import { createDeepSeek } from "@ai-sdk/deepseek";
 
-/**
- * Two-tier DeepSeek model strategy:
- *
- *   flash — V4 Flash. Cheap/fast: classification, gating, short critique.
- *   pro   — V4 Pro with reasoning. Deep work: analyzer, SOP gen, long-form.
- *
- * Both models are reasoning-enabled by default; response carries
- * `reasoning_content` alongside the answer.
- *
- * Client is lazy-initialized so module import does not require the env
- * variable to be set at bundle time (Trigger.dev evaluates module-level
- * code during deployment scan; we only want the throw to happen when
- * the model is actually called).
- */
+// Lazy-init: Trigger.dev scans modules at deploy time; defer env throw to first call.
 let _deepseek: ReturnType<typeof createDeepSeek> | null = null;
 
 function getDeepseek() {

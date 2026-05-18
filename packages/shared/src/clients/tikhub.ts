@@ -1,12 +1,4 @@
-/**
- * Thin TikHub client. All endpoints we use in Singularity, with the
- * exact param names that the API requires (some are non-obvious — e.g.
- * `channel_url` not `url`, `search_query` not `keyword`).
- *
- * Rate limit: 1 request/sec per route. Caller is responsible for pacing
- * across the same endpoint; cross-endpoint requests can run in parallel.
- */
-
+// TikHub rate limit: 1 req/sec per route — caller paces across same endpoint.
 const BASE = "https://api.tikhub.io";
 
 function key(): string {
@@ -98,12 +90,7 @@ export type YouTubeVideoInfo = {
   captions: CaptionTrack[];
 };
 
-/**
- * `/web_v2/get_video_info` returns a stable flat metadata shape AND the
- * captions list in one call — so for the analyze pipeline we don't need
- * a separate captions_v2 round-trip. (The `/web/get_video_info_v3` endpoint
- * returns raw YouTube InnerTube for some video IDs, so it's unsafe.)
- */
+// `/web_v2/get_video_info` returns flat metadata + captions inline; v3 returns raw InnerTube — avoid.
 export async function getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
   const d = await get<{
     video_id?: string;
@@ -144,11 +131,7 @@ export async function getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
   };
 }
 
-/**
- * Standalone captions manifest call. Use this only when you already have
- * a `video_id` and don't need the rest of the metadata; for the analyze
- * pipeline, `getVideoInfo()` already includes the captions array.
- */
+// Standalone captions call — getVideoInfo already includes them; use only when metadata isn't needed.
 export async function getCaptionsManifest(videoId: string): Promise<CaptionTrack[]> {
   const data = await get<{ captions?: CaptionTrack[] }>(
     "/api/v1/youtube/web_v2/get_video_captions_v2",
@@ -157,12 +140,7 @@ export async function getCaptionsManifest(videoId: string): Promise<CaptionTrack
   return data.captions ?? [];
 }
 
-/**
- * Fetch transcript text from YouTube's signed timedtext URL. The bare URL
- * returns the legacy `<text>` format; `&fmt=srv3` switches to the newer
- * `<p>` format with timing attributes. Some `base_url`s only honor one;
- * we parse both shapes and pick whichever yields non-empty text.
- */
+// fmt=srv3 → `<p>`; bare URL → `<text>`. Some base_urls only honor one — parse both, return first non-empty.
 export async function fetchTranscriptText(baseUrl: string): Promise<string> {
   const fetchOne = async (url: string): Promise<string> => {
     const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -197,12 +175,7 @@ export async function fetchTranscriptText(baseUrl: string): Promise<string> {
   return "";
 }
 
-/**
- * Pick the best caption track and fetch its transcript. Tries tracks in
- * preference order and falls through to the next one whenever a fetch
- * returns empty — some YouTube `base_url`s respond with 0-byte XML and we
- * don't want to declare success on those.
- */
+// Falls through tracks on empty fetch — some YouTube base_urls return 0-byte XML.
 export async function transcriptFromTracks(
   tracks: CaptionTrack[],
   preferLangs: string[] = ["en", "zh", "zh-CN", "zh-TW"],
@@ -227,10 +200,6 @@ export async function transcriptFromTracks(
   return null;
 }
 
-/**
- * Convenience: fetch video info + transcript in the minimum API calls.
- * Returns the metadata plus transcript text (or null if no captions).
- */
 export async function getVideoWithTranscript(
   videoId: string,
   preferLangs: string[] = ["en", "zh", "zh-CN", "zh-TW"],

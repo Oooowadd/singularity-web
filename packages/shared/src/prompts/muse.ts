@@ -1,5 +1,3 @@
-// 1:1 port of archive backend/app/prompts/muse_prompts.py — wording preserved.
-
 import { CHINESE_WRAPPER } from "./clerk";
 
 const NO_TRANSCRIPT_PLACEHOLDER = "[No transcript — classify based on title only]";

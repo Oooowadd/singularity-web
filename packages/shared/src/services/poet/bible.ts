@@ -1,6 +1,3 @@
-// 1:1 port of archive backend/app/services/bible_generator.py.
-// Drift heuristics: lexical overlap + AI bias marker substitution.
-
 import { generateText } from "ai";
 
 import { llm } from "../../clients/llm";
@@ -115,9 +112,7 @@ export async function generateChannelBible(args: GenerateBibleArgs): Promise<Bib
     channelDescription: args.channelDescription,
     language: args.language,
   });
-  // One retry if the LLM returns empty text (V4 Pro reasoning preamble can
-  // occasionally consume the full budget). After both attempts fail, caller
-  // throws — we don't want to save a blank Bible to the DB.
+  // Retry once on empty content — V4 Pro reasoning occasionally eats the full budget.
   let content = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await generateText({

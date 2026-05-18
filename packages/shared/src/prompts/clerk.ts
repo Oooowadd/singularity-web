@@ -1,10 +1,3 @@
-/**
- * Clerk prompts — 1:1 port from archive `backend/app/prompts/clerk_prompts.py`.
- * Preserves original wording. Core IP.
- *
- * Functions take typed args and return the fully-formatted prompt string.
- */
-
 export const XHS_IMAGE_PREAMBLE = `NOTE: This is a Xiaohongshu (小红书) IMAGE post, not a video. Adapt your analysis:
 - "thumbnail_description" → describe the cover image composition and visual hook
 - "opening_hook" → the title and first line of text that hooks the reader

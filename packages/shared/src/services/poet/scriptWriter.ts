@@ -1,6 +1,3 @@
-// Full port of archive backend/app/services/script_writer.py — short-form +
-// long-form (outline → section expand) routes.
-
 import { generateText } from "ai";
 
 import { llm } from "../../clients/llm";
@@ -191,7 +188,6 @@ async function writeScriptLong(
     Math.max(200, Math.round(targetWordCount / 5)),
   );
   if (!outline) {
-    // Diagnostic: surface why long-form fell back, but don't crash the caller.
     // eslint-disable-next-line no-console
     console.warn(
       "[poet:long-form] outline parse failed, falling back to short-form. Head:",
@@ -226,10 +222,7 @@ async function writeScriptLong(
         ? section.key_points.map((p) => `- ${p}`).join("\n")
         : "- (follow the outline arc)";
 
-    // 3000-token floor reserves room for DeepSeek's reasoning preamble.
-    // Without it, short sections (HOOK/CTA/CLOSE) routinely returned empty
-    // text because the entire budget was eaten by reasoning before any
-    // user-facing output started.
+    // 3000-token floor: short sections (HOOK/CTA/CLOSE) returned empty when reasoning ate the budget.
     const sectionMaxTokens = Math.max(
       3000,
       Math.min(Math.round((section.target_count / charsPerToken) * 2.0) + 500, 6144),

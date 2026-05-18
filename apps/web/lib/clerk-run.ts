@@ -13,11 +13,7 @@ export type ActiveClerkRun = {
   publicAccessToken: string;
 };
 
-/**
- * Find the most recent pending / running Clerk analysis for the given
- * channel (scoped to the current user) and mint a scoped public token so
- * the client can re-attach `useRealtimeRun` after a page refresh.
- */
+// Deprecated — prefer getActiveAgentRun(channelId, userId, "clerk") in agent-run.ts.
 export async function getActiveClerkRun(
   channelId: string,
   userId: string,

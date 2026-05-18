@@ -1,7 +1,3 @@
-// Muse pipeline services — 1:1 port from archive
-// (classifier.py / viral_analyzer.py / idea_generator.py).
-// Same temperatures and token caps as the archive.
-
 import { generateText } from "ai";
 
 import { llm } from "../clients/llm";
@@ -58,8 +54,7 @@ export async function classifyVideo(args: ClassifyArgs): Promise<Classification>
     transcriptPreview,
     language: args.language,
   });
-  // 1500-token budget reserves headroom for DeepSeek's reasoning preamble;
-  // 512 was getting starved on some Chinese prompts.
+  // 1500-token floor leaves room for V4 reasoning preamble; 512 starved Chinese prompts.
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await generateText({
       model: llm("flash"),
@@ -72,9 +67,7 @@ export async function classifyVideo(args: ClassifyArgs): Promise<Classification>
     const valid = classificationSchema.safeParse(parsed);
     if (valid.success) return valid.data;
   }
-  // Final fallback matches the archive's anti-false-negative bias: an
-  // unparseable response is much more likely "model was sloppy" than
-  // "video is actually irrelevant", so let it through.
+  // Default to relevant — sloppy model output is more likely than truly irrelevant content.
   return { relevant: true, topic_classification: "", rejection_reason: "" };
 }
 
@@ -90,8 +83,7 @@ export type ViralTriggerArgs = {
 
 export async function analyzeViralTrigger(args: ViralTriggerArgs): Promise<string> {
   const prompt = buildViralTriggerPrompt(args);
-  // 4096-token budget reserves room for V4 Pro reasoning; 2048 was borderline
-  // when the reasoning chain ran long and starved the answer.
+  // 4096 budget: 2048 was starving the answer when reasoning ran long.
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await generateText({
       model: llm("pro"),
