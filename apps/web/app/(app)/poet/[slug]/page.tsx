@@ -8,8 +8,10 @@ import {
   museIdeas,
   museMonitorVideos,
   poetBible,
+  poetCustomTopics,
   poetDriftEvents,
   poetScripts,
+  type CustomTopicReference,
 } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,8 @@ import { ensureCurrentUser } from "@/lib/users";
 
 import { BibleEditSheet } from "./_components/bible-edit-sheet";
 import { BibleGenerateSheet } from "./_components/bible-generate-sheet";
+import { CustomTopicActions } from "./_components/custom-topic-actions";
+import { CustomTopicCreateSheet } from "./_components/custom-topic-create-sheet";
 import { PoetRunProgress } from "./_components/poet-run-progress";
 import { WriteScriptButton } from "./_components/write-script-button";
 
@@ -45,7 +49,7 @@ export default async function PoetChannelPage({ params }: Props) {
     .limit(1);
   if (!channel || channel.userId !== user.id) notFound();
 
-  const [activeBibleRow, bibles, latestDrift, approvedIdeas, scripts, activeRun] =
+  const [activeBibleRow, bibles, latestDrift, approvedIdeas, customTopics, scripts, activeRun] =
     await Promise.all([
       db
         .select()
@@ -86,6 +90,11 @@ export default async function PoetChannelPage({ params }: Props) {
           ),
         )
         .orderBy(asc(museIdeas.generatedAt)),
+      db
+        .select()
+        .from(poetCustomTopics)
+        .where(eq(poetCustomTopics.channelId, channel.id))
+        .orderBy(desc(poetCustomTopics.updatedAt)),
       db
         .select()
         .from(poetScripts)
@@ -133,7 +142,11 @@ export default async function PoetChannelPage({ params }: Props) {
                   triggerRunId: activeRun.triggerRunId,
                   publicAccessToken: activeRun.publicAccessToken,
                   kind:
-                    activeRun.command === "poet-generate-bible" ? "bible" : "script",
+                    activeRun.command === "poet-generate-bible"
+                      ? "bible"
+                      : activeRun.command === "poet-analyze-custom-topic"
+                        ? "analyze"
+                        : "script",
                 }
               : null
           }
@@ -235,6 +248,123 @@ export default async function PoetChannelPage({ params }: Props) {
           </div>
         </section>
       ) : null}
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            自定义选题（跳过 Muse，直接喂主题）
+          </h2>
+          <CustomTopicCreateSheet channelId={channel.id} hasActiveBible={!!activeBible} />
+        </div>
+        {customTopics.length === 0 ? (
+          <div className="rounded-lg border border-dashed bg-card/40 p-6 text-center text-xs text-muted-foreground">
+            {activeBible
+              ? "想到什么写什么 — 新建一个自定义选题，AI 会根据当前圣经分析并写稿"
+              : "先生成圣经，才能新建自定义选题"}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {customTopics.map((t) => (
+              <article
+                key={t.id}
+                className="flex flex-col gap-3 rounded-lg border bg-card p-4"
+              >
+                <header className="flex items-start justify-between gap-3">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={t.status === "scripted" ? "secondary" : "outline"}
+                        className="text-[10px]"
+                      >
+                        {t.status === "draft"
+                          ? "草稿"
+                          : t.status === "analyzed"
+                            ? "已分析"
+                            : "已写稿"}
+                      </Badge>
+                      <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                        {t.language}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {t.updatedAt.toLocaleDateString("zh-CN")}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-medium whitespace-pre-wrap">{t.topic}</h3>
+                  </div>
+                  <CustomTopicActions
+                    channelId={channel.id}
+                    topicId={t.id}
+                    topicLabel={t.topic}
+                    status={t.status}
+                    hasActiveBible={!!activeBible}
+                  />
+                </header>
+
+                {((t.references as CustomTopicReference[] | null) ?? []).length > 0 ? (
+                  <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    {((t.references as CustomTopicReference[] | null) ?? []).map((r, i) => (
+                      <li key={i} className="truncate">
+                        <span className="font-mono uppercase">[{r.kind}]</span>{" "}
+                        {r.title ?? r.url ?? "未命名素材"}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {t.status !== "draft" && t.storyAngle ? (
+                  <details className="flex flex-col gap-2">
+                    <summary className="cursor-pointer text-xs font-medium text-muted-foreground list-none [&::-webkit-details-marker]:hidden">
+                      展开分析结果
+                    </summary>
+                    <div className="grid gap-3 border-t pt-3 text-xs">
+                      {t.storyAngle ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium uppercase text-muted-foreground">
+                            故事角度
+                          </span>
+                          <p className="whitespace-pre-wrap">{t.storyAngle}</p>
+                        </div>
+                      ) : null}
+                      {t.factsAndData ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium uppercase text-muted-foreground">
+                            事实与数据
+                          </span>
+                          <p className="whitespace-pre-wrap">{t.factsAndData}</p>
+                        </div>
+                      ) : null}
+                      {t.verbatimFacts ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium uppercase text-muted-foreground">
+                            原文事实
+                          </span>
+                          <p className="whitespace-pre-wrap font-mono">{t.verbatimFacts}</p>
+                        </div>
+                      ) : null}
+                      {t.whySimilar ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium uppercase text-muted-foreground">
+                            为什么对标
+                          </span>
+                          <p className="whitespace-pre-wrap">{t.whySimilar}</p>
+                        </div>
+                      ) : null}
+                      {t.viralTrigger ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium uppercase text-muted-foreground">
+                            爆款触发因素
+                          </span>
+                          <p className="whitespace-pre-wrap">{t.viralTrigger}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       {scripts.length > 0 ? (
         <section className="flex flex-col gap-3">

@@ -24,3 +24,41 @@ export const generateScriptInput = z.object({
   durationMinutes: z.number().int().min(1).max(60).default(5),
   language: z.enum(["en", "zh"]).default("zh"),
 });
+
+export const customTopicReferenceInput = z.object({
+  kind: z.enum(["youtube", "xhs", "text"]),
+  url: z.string().url().optional(),
+  text: z.string().max(20000).optional(),
+  title: z.string().max(200).optional(),
+});
+
+export const createCustomTopicInput = z.object({
+  channelId: z.string().uuid(),
+  topic: z.string().min(5).max(2000),
+  references: z.array(customTopicReferenceInput).max(10).default([]),
+  language: z.enum(["en", "zh"]).default("zh"),
+});
+
+export const updateCustomTopicInput = z.object({
+  topicId: z.string().uuid(),
+  topic: z.string().min(5).max(2000).optional(),
+  references: z.array(customTopicReferenceInput).max(10).optional(),
+  language: z.enum(["en", "zh"]).optional(),
+});
+
+export const deleteCustomTopicInput = z.object({
+  topicId: z.string().uuid(),
+});
+
+export const analyzeCustomTopicInput = z.object({
+  channelId: z.string().uuid(),
+  topicId: z.string().uuid(),
+  language: z.enum(["en", "zh"]).default("zh"),
+});
+
+export const generateScriptFromCustomTopicInput = z.object({
+  channelId: z.string().uuid(),
+  topicId: z.string().uuid(),
+  durationMinutes: z.number().int().min(1).max(60).default(5),
+  language: z.enum(["en", "zh"]).default("zh"),
+});

@@ -11,7 +11,7 @@ type ActiveRun = {
   runId: string;
   triggerRunId: string;
   publicAccessToken: string;
-  kind: "bible" | "script";
+  kind: "bible" | "script" | "analyze";
 };
 
 type Props = {
@@ -42,6 +42,8 @@ function translatePhase(phase: string | undefined): string {
     "writing outline": "AI 拆分长稿大纲",
     "humanizing script": "改写为真人口语",
     "saving script": "写入数据库",
+    "fetching references": "抓取外部素材",
+    "analyzing topic": "AI 拆解选题",
   };
   if (phase in map) return map[phase]!;
   const sectionMatch = phase.match(/^expanding section (\d+)\/(\d+)$/);
@@ -125,6 +127,14 @@ function ProgressCard({
         } else {
           onSettled(true, `圣经已生成${out?.topicClaimed ? ` · ${out.topicClaimed}` : ""}`);
         }
+      } else if (active.kind === "analyze") {
+        const out = run.output as
+          | { refsFetched?: number; refsFailed?: number }
+          | undefined;
+        const bits: string[] = ["选题已分析"];
+        if (out?.refsFetched != null) bits.push(`抓取 ${out.refsFetched} 个素材`);
+        if (out?.refsFailed) bits.push(`${out.refsFailed} 个失败`);
+        onSettled(true, bits.join(" · "));
       } else {
         const out = run.output as
           | {
@@ -159,7 +169,8 @@ function ProgressCard({
   const total = progress?.total ?? 0;
   const elapsed = formatElapsed(now - startedAt);
   const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-  const kindLabel = active.kind === "bible" ? "生成圣经" : "写稿";
+  const kindLabel =
+    active.kind === "bible" ? "生成圣经" : active.kind === "analyze" ? "分析选题" : "写稿";
 
   return (
     <div className="flex w-80 flex-col gap-2 rounded-lg border bg-card p-3">

@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { auth, tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 
-import { channels, museIdeas, pipelineRuns, poetBible } from "@singularity/db";
+import { channels, museIdeas, pipelineRuns, poetBible, poetCustomTopics } from "@singularity/db";
 
 import { db } from "@/lib/db";
 import { protectedProcedure, router } from "./init";
@@ -13,10 +13,15 @@ import { createChannelInput, deleteChannelInput, updateChannelInput } from "./sc
 import { runStatusInput, startAnalysisInput } from "./schemas/clerk";
 import { approveIdeaInput, startMonitorInput } from "./schemas/muse";
 import {
+  analyzeCustomTopicInput,
+  createCustomTopicInput,
+  deleteCustomTopicInput,
   generateBibleInput,
+  generateScriptFromCustomTopicInput,
   generateScriptInput,
   switchActiveBibleInput,
   updateBibleInput,
+  updateCustomTopicInput,
 } from "./schemas/poet";
 
 function slugify(name: string): string {
@@ -564,7 +569,253 @@ export const appRouter = router({
           kind:
             active.command === "poet-generate-bible"
               ? ("bible" as const)
-              : ("script" as const),
+              : active.command === "poet-analyze-custom-topic"
+                ? ("analyze" as const)
+                : ("script" as const),
+        };
+      }),
+
+    listCustomTopics: protectedProcedure
+      .input(z.object({ channelId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        const [channel] = await db
+          .select({ id: channels.id })
+          .from(channels)
+          .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!channel) throw new TRPCError({ code: "NOT_FOUND" });
+        return db
+          .select()
+          .from(poetCustomTopics)
+          .where(eq(poetCustomTopics.channelId, channel.id))
+          .orderBy(desc(poetCustomTopics.updatedAt));
+      }),
+
+    createCustomTopic: protectedProcedure
+      .input(createCustomTopicInput)
+      .mutation(async ({ ctx, input }) => {
+        const [channel] = await db
+          .select({ id: channels.id })
+          .from(channels)
+          .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!channel) throw new TRPCError({ code: "NOT_FOUND" });
+        const [created] = await db
+          .insert(poetCustomTopics)
+          .values({
+            channelId: channel.id,
+            topic: input.topic,
+            references: input.references.map((r) => ({
+              kind: r.kind,
+              url: r.url,
+              text: r.text,
+              title: r.title,
+            })),
+            language: input.language,
+            status: "draft",
+          })
+          .returning();
+        return created!;
+      }),
+
+    updateCustomTopic: protectedProcedure
+      .input(updateCustomTopicInput)
+      .mutation(async ({ ctx, input }) => {
+        const [updated] = await db
+          .update(poetCustomTopics)
+          .set({
+            topic: input.topic ?? undefined,
+            references: input.references
+              ? input.references.map((r) => ({
+                  kind: r.kind,
+                  url: r.url,
+                  text: r.text,
+                  title: r.title,
+                }))
+              : undefined,
+            language: input.language ?? undefined,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(poetCustomTopics.id, input.topicId),
+              inArray(
+                poetCustomTopics.channelId,
+                db
+                  .select({ id: channels.id })
+                  .from(channels)
+                  .where(eq(channels.userId, ctx.user.id)),
+              ),
+            ),
+          )
+          .returning();
+        if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+        return updated;
+      }),
+
+    deleteCustomTopic: protectedProcedure
+      .input(deleteCustomTopicInput)
+      .mutation(async ({ ctx, input }) => {
+        const [deleted] = await db
+          .delete(poetCustomTopics)
+          .where(
+            and(
+              eq(poetCustomTopics.id, input.topicId),
+              inArray(
+                poetCustomTopics.channelId,
+                db
+                  .select({ id: channels.id })
+                  .from(channels)
+                  .where(eq(channels.userId, ctx.user.id)),
+              ),
+            ),
+          )
+          .returning({ id: poetCustomTopics.id });
+        return { id: deleted?.id ?? null };
+      }),
+
+    analyzeCustomTopic: protectedProcedure
+      .input(analyzeCustomTopicInput)
+      .mutation(async ({ ctx, input }) => {
+        const [channel] = await db
+          .select({ id: channels.id })
+          .from(channels)
+          .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!channel) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const [activeBible] = await db
+          .select({ id: poetBible.id })
+          .from(poetBible)
+          .where(and(eq(poetBible.channelId, channel.id), eq(poetBible.isActive, true)))
+          .limit(1);
+        if (!activeBible) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "请先生成并激活一份频道圣经",
+          });
+        }
+
+        const [run] = await db
+          .insert(pipelineRuns)
+          .values({
+            channelId: channel.id,
+            agent: "poet",
+            command: "poet-analyze-custom-topic",
+            status: "pending",
+            configJson: { kind: "analyze", topicId: input.topicId, language: input.language },
+          })
+          .returning();
+        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const handle = await tasks.trigger("poet-analyze-custom-topic", {
+          channelId: channel.id,
+          runId: run.id,
+          topicId: input.topicId,
+          language: input.language,
+        });
+
+        await db
+          .update(pipelineRuns)
+          .set({
+            configJson: {
+              kind: "analyze",
+              topicId: input.topicId,
+              language: input.language,
+              triggerRunId: handle.id,
+            },
+          })
+          .where(eq(pipelineRuns.id, run.id));
+
+        return {
+          runId: run.id,
+          triggerRunId: handle.id,
+          publicAccessToken: handle.publicAccessToken,
+        };
+      }),
+
+    generateScriptFromCustomTopic: protectedProcedure
+      .input(generateScriptFromCustomTopicInput)
+      .mutation(async ({ ctx, input }) => {
+        const [channel] = await db
+          .select({ id: channels.id })
+          .from(channels)
+          .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!channel) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const [activeBible] = await db
+          .select({ id: poetBible.id })
+          .from(poetBible)
+          .where(and(eq(poetBible.channelId, channel.id), eq(poetBible.isActive, true)))
+          .limit(1);
+        if (!activeBible) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "请先生成并激活一份频道圣经",
+          });
+        }
+
+        const [topic] = await db
+          .select({ id: poetCustomTopics.id, status: poetCustomTopics.status })
+          .from(poetCustomTopics)
+          .where(
+            and(
+              eq(poetCustomTopics.id, input.topicId),
+              eq(poetCustomTopics.channelId, channel.id),
+            ),
+          )
+          .limit(1);
+        if (!topic) throw new TRPCError({ code: "NOT_FOUND", message: "自定义选题不存在" });
+        if (topic.status !== "analyzed" && topic.status !== "scripted") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "请先分析该自定义选题再开始写稿",
+          });
+        }
+
+        const [run] = await db
+          .insert(pipelineRuns)
+          .values({
+            channelId: channel.id,
+            agent: "poet",
+            command: "poet-generate-script",
+            status: "pending",
+            configJson: {
+              kind: "script",
+              customTopicId: input.topicId,
+              language: input.language,
+              durationMinutes: input.durationMinutes,
+            },
+          })
+          .returning();
+        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const handle = await tasks.trigger("poet-generate-script", {
+          channelId: channel.id,
+          runId: run.id,
+          customTopicId: input.topicId,
+          language: input.language,
+          durationMinutes: input.durationMinutes,
+        });
+
+        await db
+          .update(pipelineRuns)
+          .set({
+            configJson: {
+              kind: "script",
+              customTopicId: input.topicId,
+              language: input.language,
+              durationMinutes: input.durationMinutes,
+              triggerRunId: handle.id,
+            },
+          })
+          .where(eq(pipelineRuns.id, run.id));
+
+        return {
+          runId: run.id,
+          triggerRunId: handle.id,
+          publicAccessToken: handle.publicAccessToken,
         };
       }),
   }),
