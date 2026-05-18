@@ -11,7 +11,9 @@ import {
   museMonitorVideos,
   pipelineRuns,
   poetBible,
+  poetCustomTopics,
   poetScripts,
+  type CustomTopicReference,
 } from "@singularity/db";
 import { humanizeChinese } from "@singularity/shared/services/poet/humanizer";
 import {
@@ -23,7 +25,9 @@ import { computeTargetWordCount, isLongForm } from "@singularity/shared/schemas/
 type Payload = {
   channelId: string;
   runId: string;
-  ideaId: string;
+  // Exactly one of these two must be set.
+  ideaId?: string;
+  customTopicId?: string;
   language?: "en" | "zh";
   durationMinutes?: number;
 };
@@ -67,25 +71,121 @@ export const generateScript = task({
 
       await setProgress("loading context", "加载圣经、SOP 与选题");
 
-      const [ideaRow] = await db
-        .select({
-          id: museIdeas.id,
-          channelId: museIdeas.channelId,
-          storyAngle: museIdeas.storyAngle,
-          factsAndData: museIdeas.factsAndData,
-          whySimilar: museIdeas.whySimilar,
-          viralTrigger: museIdeas.viralTrigger,
-          scripted: museIdeas.scripted,
-          sourceTitle: museMonitorVideos.title,
-          sourceChannelName: museMonitorVideos.sourceChannelName,
-          sourceTranscript: museMonitorVideos.transcript,
-          sourceUrl: museMonitorVideos.url,
-        })
-        .from(museIdeas)
-        .leftJoin(museMonitorVideos, eq(museMonitorVideos.id, museIdeas.sourceVideoId))
-        .where(and(eq(museIdeas.id, payload.ideaId), eq(museIdeas.channelId, channel.id)))
-        .limit(1);
-      if (!ideaRow) throw new Error(`idea ${payload.ideaId} not found in this channel`);
+      if (!payload.ideaId === !payload.customTopicId) {
+        throw new Error("Exactly one of ideaId or customTopicId must be provided");
+      }
+
+      let idea: {
+        storyAngle: string;
+        factsAndData: string;
+        whySimilar: string;
+        viralTrigger: string;
+        sourceTitle: string;
+        sourceChannel: string;
+      };
+      let references: ScriptReference[] = [];
+      let verbatimFacts: string | null = null;
+      let museIdeaId: string | null = null;
+      let customTopicIdFinal: string | null = null;
+
+      if (payload.ideaId) {
+        const [ideaRow] = await db
+          .select({
+            id: museIdeas.id,
+            channelId: museIdeas.channelId,
+            storyAngle: museIdeas.storyAngle,
+            factsAndData: museIdeas.factsAndData,
+            whySimilar: museIdeas.whySimilar,
+            viralTrigger: museIdeas.viralTrigger,
+            sourceTitle: museMonitorVideos.title,
+            sourceChannelName: museMonitorVideos.sourceChannelName,
+            sourceTranscript: museMonitorVideos.transcript,
+            sourceUrl: museMonitorVideos.url,
+          })
+          .from(museIdeas)
+          .leftJoin(museMonitorVideos, eq(museMonitorVideos.id, museIdeas.sourceVideoId))
+          .where(and(eq(museIdeas.id, payload.ideaId), eq(museIdeas.channelId, channel.id)))
+          .limit(1);
+        if (!ideaRow) throw new Error(`idea ${payload.ideaId} not found in this channel`);
+        museIdeaId = ideaRow.id;
+        idea = {
+          storyAngle: ideaRow.storyAngle ?? "",
+          factsAndData: ideaRow.factsAndData ?? "",
+          whySimilar: ideaRow.whySimilar ?? "",
+          viralTrigger: ideaRow.viralTrigger ?? "",
+          sourceTitle: ideaRow.sourceTitle ?? "",
+          sourceChannel: ideaRow.sourceChannelName ?? "",
+        };
+        if (ideaRow.sourceTranscript) {
+          references = [
+            {
+              type: "youtube",
+              title: ideaRow.sourceTitle ?? "Source video",
+              url: ideaRow.sourceUrl ?? undefined,
+              content: ideaRow.sourceTranscript,
+            },
+          ];
+        } else {
+          const topVideos = await db
+            .select({
+              title: clerkVideos.title,
+              url: clerkVideos.url,
+              transcript: clerkVideos.transcript,
+            })
+            .from(clerkVideos)
+            .where(eq(clerkVideos.channelId, channel.id))
+            .orderBy(desc(clerkVideos.views))
+            .limit(2);
+          references = topVideos
+            .filter((v) => v.transcript && v.transcript.length > 0)
+            .map((v) => ({
+              type: "youtube",
+              title: v.title,
+              url: v.url,
+              content: v.transcript!,
+            }));
+        }
+      } else {
+        const [topicRow] = await db
+          .select()
+          .from(poetCustomTopics)
+          .where(
+            and(
+              eq(poetCustomTopics.id, payload.customTopicId!),
+              eq(poetCustomTopics.channelId, channel.id),
+            ),
+          )
+          .limit(1);
+        if (!topicRow) {
+          throw new Error(`custom topic ${payload.customTopicId} not found in this channel`);
+        }
+        if (topicRow.status !== "analyzed" && topicRow.status !== "scripted") {
+          throw new Error("请先分析该自定义选题再开始写稿");
+        }
+        customTopicIdFinal = topicRow.id;
+        idea = {
+          storyAngle: topicRow.storyAngle ?? "",
+          factsAndData: topicRow.factsAndData ?? "",
+          whySimilar: topicRow.whySimilar ?? "",
+          viralTrigger: topicRow.viralTrigger ?? "",
+          sourceTitle: topicRow.topic,
+          sourceChannel: "Custom topic",
+        };
+        verbatimFacts = topicRow.verbatimFacts;
+        const stored = (topicRow.references as CustomTopicReference[] | null) ?? [];
+        references = stored
+          .map((r): ScriptReference | null => {
+            const content = r.text ?? "";
+            if (!content.trim()) return null;
+            return {
+              type: r.kind,
+              title: r.title ?? "Reference",
+              url: r.url,
+              content,
+            };
+          })
+          .filter((r): r is ScriptReference => r !== null);
+      }
 
       const [bible] = await db
         .select()
@@ -107,46 +207,6 @@ export const generateScript = task({
         );
       }
 
-      let references: ScriptReference[] = [];
-      if (ideaRow.sourceTranscript) {
-        references = [
-          {
-            type: "youtube",
-            title: ideaRow.sourceTitle ?? "Source video",
-            url: ideaRow.sourceUrl ?? undefined,
-            content: ideaRow.sourceTranscript,
-          },
-        ];
-      } else {
-        const topVideos = await db
-          .select({
-            title: clerkVideos.title,
-            url: clerkVideos.url,
-            transcript: clerkVideos.transcript,
-          })
-          .from(clerkVideos)
-          .where(eq(clerkVideos.channelId, channel.id))
-          .orderBy(desc(clerkVideos.views))
-          .limit(2);
-        references = topVideos
-          .filter((v) => v.transcript && v.transcript.length > 0)
-          .map((v) => ({
-            type: "youtube",
-            title: v.title,
-            url: v.url,
-            content: v.transcript!,
-          }));
-      }
-
-      const idea = {
-        storyAngle: ideaRow.storyAngle ?? "",
-        factsAndData: ideaRow.factsAndData ?? "",
-        whySimilar: ideaRow.whySimilar ?? "",
-        viralTrigger: ideaRow.viralTrigger ?? "",
-        sourceTitle: ideaRow.sourceTitle ?? "",
-        sourceChannel: ideaRow.sourceChannelName ?? "",
-      };
-
       const lengthUnit = language === "zh" ? "字" : "词";
       step = 1;
       await setProgress(
@@ -164,6 +224,7 @@ export const generateScript = task({
           language,
           references,
           targetWordCount,
+          verbatimFacts,
         },
         {
           onOutlineDone: async (outline) => {
@@ -208,7 +269,8 @@ export const generateScript = task({
         .insert(poetScripts)
         .values({
           channelId: channel.id,
-          ideaId: ideaRow.id,
+          ideaId: museIdeaId,
+          customTopicId: customTopicIdFinal,
           bibleId: bible.id,
           sopId: sop?.id ?? null,
           scriptText: safeText(scriptText) ?? "",
@@ -219,11 +281,17 @@ export const generateScript = task({
         })
         .returning();
 
-      if (scriptRow) {
+      if (scriptRow && museIdeaId) {
         await db
           .update(museIdeas)
           .set({ scripted: true })
-          .where(eq(museIdeas.id, ideaRow.id));
+          .where(eq(museIdeas.id, museIdeaId));
+      }
+      if (scriptRow && customTopicIdFinal) {
+        await db
+          .update(poetCustomTopics)
+          .set({ status: "scripted", updatedAt: new Date() })
+          .where(eq(poetCustomTopics.id, customTopicIdFinal));
       }
 
       await db
