@@ -22,6 +22,8 @@ import { ensureCurrentUser } from "@/lib/users";
 
 import { BibleEditSheet } from "./_components/bible-edit-sheet";
 import { BibleGenerateSheet } from "./_components/bible-generate-sheet";
+import { BibleHistory } from "./_components/bible-history";
+import { DeleteScriptButton } from "./_components/delete-script-button";
 import { CustomTopicActions } from "./_components/custom-topic-actions";
 import { CustomTopicCreateSheet } from "./_components/custom-topic-create-sheet";
 import { PoetRunProgress } from "./_components/poet-run-progress";
@@ -213,6 +215,7 @@ export default async function PoetChannelPage({ params }: Props) {
             <span className="text-xs">先生成一份，再来选题写稿</span>
           </div>
         )}
+        <BibleHistory bibles={bibles} />
       </section>
 
       {approvedIdeas.length > 0 ? (
@@ -371,11 +374,14 @@ export default async function PoetChannelPage({ params }: Props) {
           <h2 className="text-sm font-medium text-muted-foreground">已生成脚本</h2>
           <div className="flex flex-col gap-3">
             {scripts.map((s) => (
-              <details
+              <article
                 key={s.id}
-                className="flex flex-col gap-3 rounded-lg border bg-card p-4"
+                className="flex items-start justify-between gap-3 rounded-lg border bg-card p-4 hover:bg-muted/30"
               >
-                <summary className="flex cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
+                <Link
+                  href={`/poet/${encodeURIComponent(slug)}/scripts/${s.id}`}
+                  className="flex flex-1 flex-col gap-2 min-w-0"
+                >
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary" className="font-mono text-[10px] uppercase">
                       {s.language}
@@ -388,15 +394,16 @@ export default async function PoetChannelPage({ params }: Props) {
                         约 {s.durationMinutes} 分钟
                       </span>
                     ) : null}
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">
+                      {s.generatedAt.toLocaleDateString("zh-CN")}
+                    </span>
                   </div>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {s.generatedAt.toLocaleDateString("zh-CN")}
-                  </span>
-                </summary>
-                <pre className="max-h-[480px] overflow-y-auto whitespace-pre-wrap border-t pt-3 font-sans text-sm leading-relaxed">
-                  {s.scriptText}
-                </pre>
-              </details>
+                  <p className="line-clamp-2 text-xs text-muted-foreground whitespace-pre-wrap">
+                    {s.scriptText.slice(0, 240)}
+                  </p>
+                </Link>
+                <DeleteScriptButton scriptId={s.id} />
+              </article>
             ))}
           </div>
         </section>

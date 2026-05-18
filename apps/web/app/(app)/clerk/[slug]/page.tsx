@@ -20,6 +20,7 @@ import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
 import { ClerkRunButton } from "./_components/clerk-run-button";
+import { DeleteSopButton } from "./_components/delete-sop-button";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -188,21 +189,25 @@ function TranscriptSourceBadge({
 }
 
 function SopCard({ sop }: { sop: typeof clerkSops.$inferSelect }) {
+  const label = sop.sopType.replace(/_/g, " ");
   return (
     <details className="flex flex-col gap-3 rounded-lg border bg-card p-5">
       <summary className="flex cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-3">
           <Badge variant="secondary" className="font-mono text-[10px] uppercase">
-            {sop.sopType.replace(/_/g, " ")}
+            {label}
           </Badge>
           <span className="font-mono text-xs text-muted-foreground uppercase">{sop.language}</span>
           <span className="font-mono text-xs text-muted-foreground">
             {(sop.contentMd?.length ?? 0).toLocaleString("en-US")} chars
           </span>
         </div>
-        <span className="font-mono text-xs text-muted-foreground">
-          {sop.generatedAt.toLocaleDateString("zh-CN")}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            {sop.generatedAt.toLocaleDateString("zh-CN")}
+          </span>
+          <DeleteSopButton sopId={sop.id} sopLabel={label} />
+        </div>
       </summary>
       <SopContent text={sop.contentMd} />
     </details>
