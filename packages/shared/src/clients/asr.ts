@@ -165,37 +165,46 @@ export type AsrPhase = "selecting" | "downloading" | "transcribing";
 // CN+EN code-switching audio). Real speech is 5-15 chars/sec for both langs.
 const MIN_CHARS_PER_SEC = 1;
 
-// Returns null on any recoverable failure so the caller can skip without aborting.
-// Tries Deepgram Nova-3 first (no size limit, ~2.5s typical). Falls back to Groq
-// Whisper if Deepgram fails, returns empty, returns garbled output, AND the audio
-// fits Groq's 25 MB cap.
-export async function transcribeYoutubeVideo(
-  videoId: string,
-  opts: {
-    onPhase?: (phase: AsrPhase, info?: { bytes?: number; provider?: string }) => void;
-    logger?: { info: (msg: string) => void; warn: (msg: string) => void };
-    durationSec?: number;
-  } = {},
+export type StreamCandidate = {
+  url: string;
+  mimeType?: string;
+  sizeHint?: number;
+  label?: string;
+};
+
+export type TranscribeOpts = {
+  onPhase?: (phase: AsrPhase, info?: { bytes?: number; provider?: string }) => void;
+  logger?: { info: (msg: string) => void; warn: (msg: string) => void };
+  durationSec?: number;
+  tag?: string;
+};
+
+// Platform-agnostic core: try each candidate URL in order, download (with
+// per-URL retry + auto-fallback to next URL), then run Deepgram → Groq.
+// Used by both YouTube (TikHub audio streams) and XHS (TikHub video master_urls).
+export async function transcribeFromStreams(
+  streams: StreamCandidate[],
+  opts: TranscribeOpts = {},
 ): Promise<AsrResult | null> {
-  const { onPhase, logger, durationSec } = opts;
+  const { onPhase, logger, durationSec, tag = "ASR" } = opts;
   let tempPath: string | null = null;
   try {
-    onPhase?.("selecting");
-    const streams = await getAudioStreams(videoId);
-    const sorted = sortStreamsBySize(streams);
+    const sorted = [...streams]
+      .filter((s) => s.url)
+      .sort((a, b) => (a.sizeHint ?? Infinity) - (b.sizeHint ?? Infinity));
     if (sorted.length === 0) {
-      logger?.warn(`ASR ${videoId}: no audio streams with URLs`);
+      logger?.warn(`${tag}: no streams with URLs`);
       return null;
     }
 
     onPhase?.("downloading");
-    let chosen: AudioStream | null = null;
+    let chosen: StreamCandidate | null = null;
     for (let s = 0; s < sorted.length; s++) {
       const stream = sorted[s]!;
       try {
         tempPath = await downloadToTemp(
           stream.url,
-          extensionForMime(stream.mime_type),
+          extensionForMime(stream.mimeType),
           2,
           logger,
         );
@@ -203,18 +212,20 @@ export async function transcribeYoutubeVideo(
         break;
       } catch (err) {
         logger?.warn(
-          `ASR ${videoId}: stream ${s + 1}/${sorted.length} (itag=${stream.itag}) failed after retries: ${(err as Error).message?.slice(0, 120)}`,
+          `${tag}: stream ${s + 1}/${sorted.length}${stream.label ? ` (${stream.label})` : ""} failed after retries: ${(err as Error).message?.slice(0, 120)}`,
         );
       }
     }
     if (!tempPath || !chosen) {
-      logger?.warn(`ASR ${videoId}: all ${sorted.length} streams failed to download`);
+      logger?.warn(`${tag}: all ${sorted.length} streams failed to download`);
       return null;
     }
     const actualSize = statSync(tempPath).size;
-    logger?.info(`ASR ${videoId}: downloaded ${actualSize} bytes (itag=${chosen.itag})`);
+    logger?.info(
+      `${tag}: downloaded ${actualSize} bytes${chosen.label ? ` (${chosen.label})` : ""}`,
+    );
 
-    const mime = (chosen.mime_type ?? "audio/mp4").split(";")[0] ?? "audio/mp4";
+    const mime = (chosen.mimeType ?? "audio/mp4").split(";")[0] ?? "audio/mp4";
 
     // Try Deepgram first.
     onPhase?.("transcribing", { bytes: actualSize, provider: "deepgram" });
@@ -226,25 +237,25 @@ export async function transcribeYoutubeVideo(
         const ratio = effectiveDur && effectiveDur > 0 ? dg.text.length / effectiveDur : Infinity;
         if (effectiveDur && effectiveDur > 30 && ratio < MIN_CHARS_PER_SEC) {
           logger?.warn(
-            `ASR ${videoId}: Deepgram returned ${dg.text.length} chars for ${effectiveDur}s audio (${ratio.toFixed(2)} chars/sec, likely garbled), trying Groq`,
+            `${tag}: Deepgram returned ${dg.text.length} chars for ${effectiveDur}s audio (${ratio.toFixed(2)} chars/sec, likely garbled), trying Groq`,
           );
         } else {
-          logger?.info(`ASR ${videoId}: Deepgram OK (${dg.text.length} chars)`);
+          logger?.info(`${tag}: Deepgram OK (${dg.text.length} chars)`);
           return { ...dg, provider: "deepgram" };
         }
       } else {
-        logger?.warn(`ASR ${videoId}: Deepgram returned empty, trying Groq`);
+        logger?.warn(`${tag}: Deepgram returned empty, trying Groq`);
       }
     } catch (err) {
       logger?.warn(
-        `ASR ${videoId}: Deepgram failed (${(err as Error).message?.slice(0, 120)}), trying Groq`,
+        `${tag}: Deepgram failed (${(err as Error).message?.slice(0, 120)}), trying Groq`,
       );
     }
 
     // Groq fallback (only if file fits its 25 MB cap).
     if (actualSize > GROQ_FILE_LIMIT_BYTES) {
       logger?.warn(
-        `ASR ${videoId}: Deepgram failed and file ${actualSize}B exceeds Groq 25MB cap`,
+        `${tag}: Deepgram failed and file ${actualSize}B exceeds Groq 25MB cap`,
       );
       return null;
     }
@@ -252,18 +263,18 @@ export async function transcribeYoutubeVideo(
     try {
       const groq = await transcribeWithGroq(tempPath);
       if (groq) {
-        logger?.info(`ASR ${videoId}: Groq OK (${groq.text.length} chars)`);
+        logger?.info(`${tag}: Groq OK (${groq.text.length} chars)`);
         return { ...groq, provider: "groq" };
       }
-      logger?.warn(`ASR ${videoId}: Groq returned empty`);
+      logger?.warn(`${tag}: Groq returned empty`);
     } catch (err) {
       logger?.warn(
-        `ASR ${videoId}: Groq failed (${(err as Error).message?.slice(0, 120)})`,
+        `${tag}: Groq failed (${(err as Error).message?.slice(0, 120)})`,
       );
     }
     return null;
   } catch (err) {
-    logger?.warn(`ASR ${videoId} failed: ${(err as Error).message?.slice(0, 200) ?? err}`);
+    logger?.warn(`${tag} failed: ${(err as Error).message?.slice(0, 200) ?? err}`);
     return null;
   } finally {
     if (tempPath) {
@@ -274,4 +285,28 @@ export async function transcribeYoutubeVideo(
       }
     }
   }
+}
+
+// YouTube wrapper: resolves audio streams via TikHub then delegates to the core.
+export async function transcribeYoutubeVideo(
+  videoId: string,
+  opts: TranscribeOpts = {},
+): Promise<AsrResult | null> {
+  opts.onPhase?.("selecting");
+  const streams = await getAudioStreams(videoId);
+  if (streams.length === 0) {
+    opts.logger?.warn(`ASR ${videoId}: no audio streams`);
+    return null;
+  }
+  return transcribeFromStreams(
+    streams
+      .filter((s) => s.url)
+      .map((s) => ({
+        url: s.url,
+        mimeType: s.mime_type,
+        sizeHint: s.content_length ? Number(s.content_length) : undefined,
+        label: `itag=${s.itag}`,
+      })),
+    { ...opts, tag: `ASR ${videoId}` },
+  );
 }

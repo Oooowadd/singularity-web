@@ -1,0 +1,1 @@
+ALTER TABLE "clerk_videos" ADD COLUMN "content_type" text DEFAULT 'video' NOT NULL;

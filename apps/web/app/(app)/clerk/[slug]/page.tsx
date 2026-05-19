@@ -56,6 +56,8 @@ export default async function ClerkChannelPage({ params }: Props) {
     notFound();
   }
 
+  const isXhs = channel.platform === "xhs";
+
   const [videos, sops, activeRun] = await Promise.all([
     db
       .select()
@@ -97,7 +99,7 @@ export default async function ClerkChannelPage({ params }: Props) {
           <span className="size-2 rounded-full bg-clerk" />
           <h1 className="text-2xl font-semibold tracking-tight">{channel.name}</h1>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {videos.length} 个视频
+            {videos.length} {isXhs ? "篇笔记" : "个视频"}
           </Badge>
         </div>
         <ClerkRunButton
@@ -111,9 +113,10 @@ export default async function ClerkChannelPage({ params }: Props) {
         <TableHeader>
           <TableRow>
             <TableHead>标题</TableHead>
-            <TableHead className="w-24">字幕来源</TableHead>
+            <TableHead className="w-20">类型</TableHead>
+            <TableHead className="w-24">{isXhs ? "文本来源" : "字幕来源"}</TableHead>
             <TableHead className="w-28">开场钩子</TableHead>
-            <TableHead className="w-20">播放量</TableHead>
+            <TableHead className="w-20">{isXhs ? "互动分" : "播放量"}</TableHead>
             <TableHead className="w-20">时长</TableHead>
             <TableHead className="w-28">分析时间</TableHead>
           </TableRow>
@@ -130,6 +133,9 @@ export default async function ClerkChannelPage({ params }: Props) {
                 </Link>
               </TableCell>
               <TableCell>
+                <ContentTypeBadge contentType={v.contentType} />
+              </TableCell>
+              <TableCell>
                 <TranscriptSourceBadge source={v.transcriptSource} hasTranscript={!!v.transcript} />
               </TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">
@@ -139,7 +145,7 @@ export default async function ClerkChannelPage({ params }: Props) {
                 {formatViews(v.views)}
               </TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">
-                {formatDuration(v.durationSec)}
+                {v.contentType === "xhs_image" ? "图文" : formatDuration(v.durationSec)}
               </TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">
                 {formatDateTime(v.analyzedAt)}
@@ -170,23 +176,29 @@ function TranscriptSourceBadge({
   source: string | null;
   hasTranscript: boolean;
 }) {
-  if (source === "caption" && hasTranscript) {
-    return (
-      <Badge variant="secondary" className="text-[10px]">
-        字幕
-      </Badge>
-    );
+  if (!hasTranscript) {
+    return <span className="font-mono text-[10px] text-muted-foreground">无</span>;
   }
-  if (source === "asr" && hasTranscript) {
-    return (
-      <Badge variant="outline" className="text-[10px]">
-        AI 转写
-      </Badge>
-    );
+  if (source === "caption") {
+    return <Badge variant="secondary" className="text-[10px]">字幕</Badge>;
   }
-  return (
-    <span className="font-mono text-[10px] text-muted-foreground">无</span>
-  );
+  if (source === "asr" || source === "xhs_asr") {
+    return <Badge variant="outline" className="text-[10px]">AI 转写</Badge>;
+  }
+  if (source === "xhs_text") {
+    return <Badge variant="secondary" className="text-[10px]">正文</Badge>;
+  }
+  return <span className="font-mono text-[10px] text-muted-foreground">无</span>;
+}
+
+function ContentTypeBadge({ contentType }: { contentType: string }) {
+  if (contentType === "xhs_image") {
+    return <Badge variant="outline" className="text-[10px]">图文</Badge>;
+  }
+  if (contentType === "xhs_video") {
+    return <Badge variant="outline" className="text-[10px]">短视频</Badge>;
+  }
+  return <Badge variant="secondary" className="text-[10px]">视频</Badge>;
 }
 
 function SopCard({ sop }: { sop: typeof clerkSops.$inferSelect }) {

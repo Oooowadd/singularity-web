@@ -188,13 +188,6 @@ export const appRouter = router({
           .limit(1);
         if (!channel) throw new TRPCError({ code: "NOT_FOUND", message: "Channel not found" });
 
-        if (channel.platform === "xhs") {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "小红书频道分析开发中，当前仅支持 YouTube。",
-          });
-        }
-
         await assertNoActiveRun(channel.id, "clerk");
 
         const [run] = await db
