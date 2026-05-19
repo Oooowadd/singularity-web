@@ -21,7 +21,8 @@
     "./clients/tikhub": "./src/clients/tikhub.ts",
     "./clients/asr": "./src/clients/asr.ts",
     "./clients/vision": "./src/clients/vision.ts",
-    "./clients/youtube-data": "./src/clients/youtube-data.ts"
+    "./clients/youtube-data": "./src/clients/youtube-data.ts",
+    "./clients/xhs": "./src/clients/xhs.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

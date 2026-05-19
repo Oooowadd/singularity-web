@@ -24,7 +24,9 @@
     "poet-services-smoke": "tsx scripts/poet-services-smoke.ts",
     "poet-long-form-smoke": "tsx scripts/poet-long-form-smoke.ts",
     "custom-topic-smoke": "tsx scripts/custom-topic-smoke.ts",
-    "test-clerk-pipeline": "tsx scripts/test-clerk-pipeline.ts"
+    "test-clerk-pipeline": "tsx scripts/test-clerk-pipeline.ts",
+    "xhs-discovery-smoke": "tsx scripts/xhs-discovery-smoke.ts",
+    "xhs-client-smoke": "tsx scripts/xhs-client-smoke.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",

@@ -3,9 +3,11 @@ import {
   type CaptionTrack,
 } from "./tikhub";
 import { transcribeYoutubeVideo } from "./asr";
+import { extractXhsNoteId, getXhsNoteDetail } from "./xhs";
+
+export { extractXhsNoteId };
 
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
-const XHS_ID_RE = /^[a-f0-9]{16,32}$/i;
 
 export function extractYoutubeVideoId(url: string): string | null {
   const s = url.trim();
@@ -26,19 +28,6 @@ export function extractYoutubeVideoId(url: string): string | null {
       const m = parsed.pathname.match(/\/(?:shorts|live|embed|v)\/([A-Za-z0-9_-]{11})/);
       if (m) return m[1]!;
     }
-  } catch {
-    /* fall through */
-  }
-  return null;
-}
-
-export function extractXhsNoteId(url: string): string | null {
-  const s = url.trim();
-  if (XHS_ID_RE.test(s)) return s;
-  try {
-    const parsed = new URL(s);
-    const m = parsed.pathname.match(/\/(?:explore|discovery\/item)\/([a-f0-9]{16,32})/i);
-    if (m) return m[1]!;
   } catch {
     /* fall through */
   }
@@ -117,15 +106,6 @@ async function fetchYoutubeReference(ref: ReferenceInput): Promise<FetchedRefere
   }
 }
 
-type XhsNoteFields = {
-  title?: string;
-  desc?: string;
-  content?: string;
-};
-type XhsNoteDetail = {
-  data?: XhsNoteFields & { note?: XhsNoteFields };
-};
-
 async function fetchXhsReference(ref: ReferenceInput): Promise<FetchedReference> {
   const url = ref.url ?? "";
   const noteId = extractXhsNoteId(url);
@@ -141,26 +121,25 @@ async function fetchXhsReference(ref: ReferenceInput): Promise<FetchedReference>
     };
   }
   try {
-    const key = process.env.TIKHUB_API_KEY;
-    if (!key) throw new Error("TIKHUB_API_KEY not set in env");
-    const res = await fetch(
-      `https://api.tikhub.io/api/v1/xiaohongshu/web_v3/fetch_note_detail?note_id=${encodeURIComponent(noteId)}`,
-      { headers: { Authorization: `Bearer ${key}`, accept: "application/json" } },
-    );
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`TikHub fetch_note_detail HTTP ${res.status}: ${body.slice(0, 200)}`);
+    const note = await getXhsNoteDetail(noteId);
+    if (!note) {
+      return {
+        type: "xhs",
+        url,
+        title: ref.title || `XHS · ${noteId}`,
+        content: "",
+        error: `XHS note ${noteId} not found`,
+        fetchedAt,
+      };
     }
-    const json = (await res.json()) as XhsNoteDetail;
-    const note = json.data?.note ?? json.data ?? {};
-    const title = (note.title as string | undefined) ?? "";
-    const desc = (note.desc as string | undefined) ?? "";
-    const content = (note.content as string | undefined) ?? "";
-    const combined = [title, desc, content].filter((s) => s.trim().length > 0).join("\n\n").trim();
+    const combined = [note.title, note.desc]
+      .filter((s) => s.trim().length > 0)
+      .join("\n\n")
+      .trim();
     return {
       type: "xhs",
       url,
-      title: ref.title || title || `XHS · ${noteId}`,
+      title: ref.title || note.title || `XHS · ${noteId}`,
       content: combined,
       source: combined ? "text" : "none",
       fetchedAt,
