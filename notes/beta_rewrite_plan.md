@@ -167,6 +167,54 @@ W7 上线后实测真实流量再校准。
 
 ## 7. 决策日志（按时间倒序）
 
+### 2026-05-19
+
+**#44 — XHS Clerk + Muse 全栈支持（archive 1:1 港，TikHub-only 路径）**
+
+archive 港丢的部分补完。**Clerk + Muse 现在端到端支持小红书频道**，YouTube 路径无回归。
+
+**关键 TikHub endpoint 选型**（Phase 0 实测）：
+- `get_user_info(user_id)` ✓ — 频道资料（nickname 在 `share_info_v2.title`，含 `@/的个人主页` wrapper 需 strip；fans/interactions 在 `interactions[]`）
+- `get_user_notes_v2(user_id)` ✓ — **一次拿全所有需要的字段**：likes / collected_count / comments_count / share_count / nice_count / type ("video"|"normal") / 完整 video_info_v2.media.stream.{h264,h265}[0].master_url（直接 .mp4，可喂 ASR）/ images_list[] / desc
+- `get_note_info_v4(note_id)` ✓ — 单 note 兜底，**不需要 xsec_token**（field 名 `liked_count`/`shared_count` 跟 v2 的 `likes`/`share_count` 不同，xhs.ts normalizeNote 统一处理）
+- `web_v3/fetch_note_detail` ✗ — **强制要 xsec_token，没传报 422**；旧 `references.ts` 一直在踩这个雷（同时修复）
+
+**`packages/shared/src/clients/xhs.ts` 新增**：
+- URL 解析器：`extractXhsUserId` (24 hex regex) / `extractXhsNoteId` (16-32 hex) / `extractXsecToken`
+- `resolveXhsUser` / `getXhsUserNotes` / `getXhsNoteDetail` / `computeXhsEngagement = likes + collected*2 + comments*3 + shares*5`（archive 公式）
+- `effectiveTitle`: XHS 偶尔返回 "无标题" 字面量，fallback 到 desc 第一行
+- 3x retry + 800ms backoff（504 Cloudflare 在 exploration 账号实测会出现，重试就好）
+
+**Clerk `analyze-channel.ts`**:
+- 顶层 `if (channel.platform === "xhs") { ... } else { /* YouTube */ }`，YouTube 路径未触
+- XHS 分支：video note 走 `transcribeFromStreams(master_urls, ...)`（asr.ts 抽出的 platform-agnostic 内核，YouTube wrapper 复用），image note 用 `title + desc` 作 transcript
+- content_type 列加到 `clerk_videos`（migration 0003），UI 据此区分 视频 / 短视频 / 图文
+- engagement score 落 `views` 列（archive 约定），UI 自动标 "互动分"
+
+**Muse `monitor-competitors.ts`**:
+- 不再 `filter(c => c.platform === "youtube")`，每个 competitor 按 platform 路由
+- XHS competitor 用 `getXhsUserNotes` 一次拿全，note 直接喂 classifier；视频 note 触发 ASR，图文 note 用 desc
+
+**Phase 8 — 图文多图 vision**（archive 只用首图，我们改进）：
+- `analyzeImageStack(urls[], lang)` 一次塞 ≤9 张图给 Claude Sonnet 综合分析；image note 自动走多图，video note 走单图（thumbnail）
+
+**UI 适配**：
+- `/clerk/[slug]` 表头根据 platform 切换"播放量↔互动分""字幕↔正文"，新增 ContentTypeBadge（图文/短视频/视频），图文 note 不显示时长
+- `/clerk/[slug]/[id]` 详情页 transcript section 标题 platform 化
+- `/muse/[slug]` competitor 计数 = youtube + xhs
+- `ClerkStartSheet` 接 `platform` prop，source mode 文案根据平台切换（"最新发布↔最新笔记"、"近期热门↔互动最高"）
+- 频道编辑 + 创建表单的 URL placeholder 已 platform-aware
+
+**Smokes**（全过 = 0 fail）：
+- `xhs-discovery-smoke` Phase 0 endpoint dump
+- `xhs-client-smoke` 47/47（URL extractors + resolveXhsUser + getXhsUserNotes 真实账号 + getXhsNoteDetail + references.ts e2e + engagement 公式）
+- `asr-branch-smoke` 3/3（YouTube path 无回归）
+- `muse-services-smoke` 5/5（Muse 服务层无回归）
+
+**未做项**：Phase 7 Poet 无需改（消费 Muse ideas / Custom Topic refs，已通过 references.ts 间接支持 XHS）。后续可做：评论分析 / 多图按视觉聚焦分组。
+
+---
+
 ### 2026-05-18
 
 **#43 — YouTube Data API 可选扩展（不做但记下来）**

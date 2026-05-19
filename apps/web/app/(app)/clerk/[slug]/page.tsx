@@ -105,6 +105,7 @@ export default async function ClerkChannelPage({ params }: Props) {
         <ClerkRunButton
           channelId={channel.id}
           channelName={channel.name}
+          platform={channel.platform}
           initialActive={activeRun}
         />
       </header>

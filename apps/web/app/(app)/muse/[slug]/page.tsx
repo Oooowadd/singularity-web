@@ -47,7 +47,9 @@ export default async function MuseChannelPage({ params }: Props) {
   if (!channel || channel.userId !== user.id) notFound();
 
   const competitors = (channel.competitors ?? []) as CompetitorRef[];
-  const youtubeCompetitors = competitors.filter((c) => c.platform === "youtube");
+  const activeCompetitors = competitors.filter(
+    (c) => c.platform === "youtube" || c.platform === "xhs",
+  );
 
   const [monitored, ideas, activeRun] = await Promise.all([
     db
@@ -96,13 +98,13 @@ export default async function MuseChannelPage({ params }: Props) {
             {ideas.length} 个选题
           </Badge>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {youtubeCompetitors.length} 个对标频道
+            {activeCompetitors.length} 个对标频道
           </Badge>
         </div>
         <MuseRunButton
           channelId={channel.id}
           channelName={channel.name}
-          competitorCount={youtubeCompetitors.length}
+          competitorCount={activeCompetitors.length}
           initialActive={activeRun}
         />
       </header>
@@ -240,7 +242,7 @@ export default async function MuseChannelPage({ params }: Props) {
       ) : monitored.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
           <span>还没有选题</span>
-          {youtubeCompetitors.length > 0 ? (
+          {activeCompetitors.length > 0 ? (
             <span className="text-xs">点击右上角"开始巡视"，分析对标频道的爆款并生成选题</span>
           ) : (
             <span className="text-xs">先在频道设置中添加对标账号</span>

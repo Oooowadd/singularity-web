@@ -51,10 +51,11 @@ type ActiveRun = {
 type Props = {
   channelId: string;
   channelName: string;
+  platform: "youtube" | "xhs";
   initialActive?: (ActiveRun & { startedAt?: Date | string }) | null;
 };
 
-export function ClerkRunButton({ channelId, channelName, initialActive }: Props) {
+export function ClerkRunButton({ channelId, channelName, platform, initialActive }: Props) {
   const router = useRouter();
   const utils = trpc.useUtils();
   const [active, setActive] = useState<ActiveRun | null>(initialActive ?? null);
@@ -77,6 +78,7 @@ export function ClerkRunButton({ channelId, channelName, initialActive }: Props)
         <ClerkStartSheet
           channelId={channelId}
           channelName={channelName}
+          platform={platform}
           disabled={!!active}
           onStarted={(run) => {
             setActive(run);

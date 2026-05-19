@@ -88,22 +88,29 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
           >
             {video.url} <ExternalLink className="size-3" />
           </a>
-          <span className="font-mono text-xs">{formatViews(video.views)} 播放</span>
-          <span className="font-mono text-xs">{formatDuration(video.durationSec)}</span>
+          <Badge variant="outline" className="text-[10px]">
+            {video.contentType === "xhs_image"
+              ? "图文"
+              : video.contentType === "xhs_video"
+                ? "短视频"
+                : "视频"}
+          </Badge>
+          <span className="font-mono text-xs">
+            {formatViews(video.views)}{" "}
+            {video.contentType.startsWith("xhs_") ? "互动" : "播放"}
+          </span>
+          {video.contentType !== "xhs_image" ? (
+            <span className="font-mono text-xs">{formatDuration(video.durationSec)}</span>
+          ) : null}
           {video.openingHookType ? (
             <Badge variant="secondary" className="font-mono text-[10px]">
               {video.openingHookType}
             </Badge>
           ) : null}
-          {video.transcriptSource === "caption" ? (
-            <Badge variant="secondary" className="text-[10px]">
-              字幕
-            </Badge>
-          ) : video.transcriptSource === "asr" ? (
-            <Badge variant="outline" className="text-[10px]">
-              AI 转写
-            </Badge>
-          ) : null}
+          <TranscriptSourceBadge
+            source={video.transcriptSource}
+            hasTranscript={!!video.transcript}
+          />
           {video.analyzedAt ? (
             <span className="font-mono text-xs">
               {formatDateTime(video.analyzedAt)} 分析
@@ -135,8 +142,32 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
       </div>
 
       {video.transcript && video.transcript !== "None" ? (
-        <Section title="字幕 / 转写文本" body={video.transcript} />
+        <Section
+          title={
+            video.contentType === "xhs_image"
+              ? "正文"
+              : video.contentType === "xhs_video"
+                ? "标题 / 描述 / 转写文本"
+                : "字幕 / 转写文本"
+          }
+          body={video.transcript}
+        />
       ) : null}
     </div>
   );
+}
+
+function TranscriptSourceBadge({
+  source,
+  hasTranscript,
+}: {
+  source: string | null;
+  hasTranscript: boolean;
+}) {
+  if (!hasTranscript) return null;
+  if (source === "caption") return <Badge variant="secondary" className="text-[10px]">字幕</Badge>;
+  if (source === "asr" || source === "xhs_asr")
+    return <Badge variant="outline" className="text-[10px]">AI 转写</Badge>;
+  if (source === "xhs_text") return <Badge variant="secondary" className="text-[10px]">正文</Badge>;
+  return null;
 }

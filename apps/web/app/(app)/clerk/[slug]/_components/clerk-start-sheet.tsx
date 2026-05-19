@@ -31,14 +31,21 @@ type ActiveRun = {
 type Props = {
   channelId: string;
   channelName: string;
+  platform: "youtube" | "xhs";
   disabled: boolean;
   onStarted: (run: ActiveRun) => void;
 };
 
-const SOURCE_OPTIONS: Array<{ value: Source; label: string; hint: string }> = [
+const SOURCE_OPTIONS_YT: Array<{ value: Source; label: string; hint: string }> = [
   { value: "newest", label: "最新发布", hint: "频道最新发布的 N 个视频" },
   { value: "popular", label: "近期热门", hint: "近期发布里播放量最高的 N 个（看不到老爆款）" },
   { value: "urls", label: "指定链接", hint: "粘 YouTube 视频 URL，每行一个" },
+];
+
+const SOURCE_OPTIONS_XHS: Array<{ value: Source; label: string; hint: string }> = [
+  { value: "newest", label: "最新笔记", hint: "频道最新发布的 N 篇笔记" },
+  { value: "popular", label: "互动最高", hint: "近期笔记里互动分（点赞+收藏+评论+转发加权）最高的 N 篇" },
+  { value: "urls", label: "指定链接", hint: "粘小红书笔记 URL，每行一个" },
 ];
 
 const MODE_OPTIONS: Array<{ value: Mode; label: string; hint: string }> = [
@@ -46,12 +53,20 @@ const MODE_OPTIONS: Array<{ value: Mode; label: string; hint: string }> = [
   { value: "incremental", label: "仅新视频", hint: "跳过已经分析过的视频" },
 ];
 
-export function ClerkStartSheet({ channelId, channelName, disabled, onStarted }: Props) {
+export function ClerkStartSheet({
+  channelId,
+  channelName,
+  platform,
+  disabled,
+  onStarted,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<Source>("newest");
   const [mode, setMode] = useState<Mode>("overwrite");
   const [limit, setLimit] = useState("5");
   const [urls, setUrls] = useState("");
+  const SOURCE_OPTIONS = platform === "xhs" ? SOURCE_OPTIONS_XHS : SOURCE_OPTIONS_YT;
+  const itemLabel = platform === "xhs" ? "笔记" : "视频";
   const [error, setError] = useState<string | null>(null);
 
   const startMutation = trpc.clerk.startAnalysis.useMutation({
@@ -80,7 +95,7 @@ export function ClerkStartSheet({ channelId, channelName, disabled, onStarted }:
             .filter((s) => s.length > 0)
         : [];
     if (source === "urls" && videoIds.length === 0) {
-      setError("请粘贴至少 1 个视频 URL");
+      setError(platform === "xhs" ? "请粘贴至少 1 个小红书笔记 URL" : "请粘贴至少 1 个视频 URL");
       return;
     }
     startMutation.mutate({
@@ -101,14 +116,14 @@ export function ClerkStartSheet({ channelId, channelName, disabled, onStarted }:
       </SheetTrigger>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>分析视频</SheetTitle>
-          <SheetDescription>选择视频范围和模式，然后开始分析</SheetDescription>
+          <SheetTitle>分析{itemLabel}</SheetTitle>
+          <SheetDescription>选择{itemLabel}范围和模式，然后开始分析</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
           <FieldGroup>
             <Field>
-              <FieldLabel>视频来源</FieldLabel>
+              <FieldLabel>{itemLabel}来源</FieldLabel>
               <div className="flex gap-2">
                 {SOURCE_OPTIONS.map((opt) => (
                   <button
@@ -146,17 +161,23 @@ export function ClerkStartSheet({ channelId, channelName, disabled, onStarted }:
               </Field>
             ) : (
               <Field>
-                <FieldLabel htmlFor="urls">视频链接（每行一个，最多 5 个）</FieldLabel>
+                <FieldLabel htmlFor="urls">{itemLabel}链接（每行一个，最多 5 个）</FieldLabel>
                 <Textarea
                   id="urls"
                   value={urls}
                   onChange={(e) => setUrls(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/abc123def45&#10;…"
+                  placeholder={
+                    platform === "xhs"
+                      ? "https://www.xiaohongshu.com/explore/...&#10;…"
+                      : "https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/abc123def45&#10;…"
+                  }
                   rows={6}
                   className="font-mono text-xs"
                 />
                 <p className="text-xs text-muted-foreground">
-                  支持 youtube.com/watch · youtu.be · /shorts · /embed
+                  {platform === "xhs"
+                    ? "支持 xiaohongshu.com/explore · /discovery/item"
+                    : "支持 youtube.com/watch · youtu.be · /shorts · /embed"}
                 </p>
               </Field>
             )}

@@ -182,6 +182,11 @@ export function EditChannelSheet({ channel }: Props) {
                 type="url"
                 value={platformUrl}
                 onChange={(e) => setPlatformUrl(e.target.value)}
+                placeholder={
+                  platform === "xhs"
+                    ? "https://www.xiaohongshu.com/user/profile/{user_id}"
+                    : "https://www.youtube.com/@handle"
+                }
                 required
               />
             </Field>
@@ -203,7 +208,7 @@ export function EditChannelSheet({ channel }: Props) {
                 id="edit-competitors"
                 value={competitorsText}
                 onChange={(e) => setCompetitorsText(e.target.value)}
-                placeholder="每行一个频道主页 URL&#10;例如 https://www.youtube.com/@mkbhd"
+                placeholder="每行一个频道主页 URL&#10;YouTube 例如 https://www.youtube.com/@mkbhd&#10;XHS 例如 https://www.xiaohongshu.com/user/profile/..."
                 rows={5}
               />
               <p className="text-xs text-muted-foreground">
