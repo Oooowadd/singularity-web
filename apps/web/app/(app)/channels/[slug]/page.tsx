@@ -113,13 +113,14 @@ export default async function ChannelDetailPage({ params }: Props) {
   ]);
 
   const encodedSlug = encodeURIComponent(channel.slug);
+  const itemNoun = channel.platform === "xhs" ? "篇笔记" : "个视频";
   const stats = [
     {
       label: "Clerk · 分析师",
       href: `/clerk/${encodedSlug}`,
       hasData: (clerkVideoCount?.c ?? 0) > 0,
       lines: [
-        `${clerkVideoCount?.c ?? 0} 个视频`,
+        `${clerkVideoCount?.c ?? 0} ${itemNoun}`,
         `${clerkSopCount?.c ?? 0} 份 SOP`,
       ],
     },
@@ -128,7 +129,7 @@ export default async function ChannelDetailPage({ params }: Props) {
       href: `/muse/${encodedSlug}`,
       hasData: (museIdeaCount?.c ?? 0) > 0 || (museVideoCount?.c ?? 0) > 0,
       lines: [
-        `${museVideoCount?.c ?? 0} 个监控视频`,
+        `${museVideoCount?.c ?? 0} ${channel.platform === "xhs" ? "篇监控笔记" : "个监控视频"}`,
         `${museIdeaCount?.c ?? 0} 个选题`,
       ],
     },

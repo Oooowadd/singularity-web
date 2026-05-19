@@ -58,7 +58,7 @@ export default async function ClerkLandingPage() {
             <TableRow>
               <TableHead>频道</TableHead>
               <TableHead className="w-24">平台</TableHead>
-              <TableHead className="w-24">已分析视频</TableHead>
+              <TableHead className="w-24">已分析</TableHead>
               <TableHead className="w-40">最近分析</TableHead>
             </TableRow>
           </TableHeader>
