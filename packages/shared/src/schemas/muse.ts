@@ -20,7 +20,13 @@ export const ideasResponseSchema = z.object({
 
 export type Idea = z.infer<typeof ideaSchema>;
 
+// Gate exists to keep viral_trigger from running on empty/fake transcripts
+// (the LLM otherwise fabricates). YouTube transcripts ≥200 chars are
+// reasonable; XHS image-post "transcripts" are title+desc (real authored
+// content, typically 80-300 chars) — a 50-char floor still catches empty
+// posts without rejecting legitimate short captions.
 export const MIN_REAL_TRANSCRIPT_CHARS = 200;
+export const MIN_REAL_TRANSCRIPT_CHARS_XHS_IMAGE = 50;
 
 const WARNING_MARKERS = [
   "[WARNING: Video transcription failed",
@@ -28,8 +34,15 @@ const WARNING_MARKERS = [
   "[WARNING: Video transcription",
 ];
 
-export function isRealTranscript(text: string | null | undefined): boolean {
+export function isRealTranscript(
+  text: string | null | undefined,
+  contentType: "video" | "xhs_video" | "xhs_image" = "video",
+): boolean {
   if (!text) return false;
   if (WARNING_MARKERS.some((m) => text.includes(m))) return false;
-  return text.trim().length >= MIN_REAL_TRANSCRIPT_CHARS;
+  const floor =
+    contentType === "xhs_image"
+      ? MIN_REAL_TRANSCRIPT_CHARS_XHS_IMAGE
+      : MIN_REAL_TRANSCRIPT_CHARS;
+  return text.trim().length >= floor;
 }
