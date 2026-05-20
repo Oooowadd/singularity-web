@@ -132,7 +132,7 @@ export function CustomTopicActions({
               {DURATIONS.map((d) => (
                 <DropdownMenuItem
                   key={d.minutes}
-                  onSelect={() => handleGenerate(d.minutes)}
+                  onClick={() => handleGenerate(d.minutes)}
                   disabled={pending !== null}
                   className="flex flex-col items-start gap-0.5"
                 >

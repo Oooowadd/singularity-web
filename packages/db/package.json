@@ -26,7 +26,8 @@
     "custom-topic-smoke": "tsx scripts/custom-topic-smoke.ts",
     "test-clerk-pipeline": "tsx scripts/test-clerk-pipeline.ts",
     "xhs-discovery-smoke": "tsx scripts/xhs-discovery-smoke.ts",
-    "xhs-client-smoke": "tsx scripts/xhs-client-smoke.ts"
+    "xhs-client-smoke": "tsx scripts/xhs-client-smoke.ts",
+    "vision-and-verify-smoke": "tsx scripts/vision-and-verify-smoke.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",

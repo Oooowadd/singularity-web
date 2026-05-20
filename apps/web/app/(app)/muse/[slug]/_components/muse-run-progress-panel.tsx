@@ -119,8 +119,7 @@ export function MuseRunProgressPanel({
   const elapsed = formatElapsed(now - startedMs);
   const phaseLabel = translatePhase(phase);
 
-  // Refresh server data on EITHER phase or count change, plus a 5s safety net
-  // (YouTube can sit in 'transcribing audio' for 90+s per video).
+  // Refresh on phase OR count change; 5s timer covers long ASR sits (90s+).
   const lastPhaseRef = useRef<string | undefined>(undefined);
   const lastCurrentRef = useRef<number>(0);
   useEffect(() => {
@@ -142,7 +141,6 @@ export function MuseRunProgressPanel({
     return () => clearInterval(id);
   }, [utils, router]);
 
-  // Handle completion / failure
   useEffect(() => {
     if (error) {
       toast.error(`错误：${error.message}`);
@@ -264,8 +262,7 @@ function CurrentItemCard({
   detail: string | null;
   fallbackPhase: string;
 }) {
-  // Trigger task formats `detail` as "[3/10] My Take on The New Apple · 该视频..."
-  // Split to surface title and sub-phase cleanly.
+  // detail format: "[3/10] My Take on The New Apple · 该视频..." — split title/sub-phase.
   let title = detail ?? "等待中…";
   let sub = fallbackPhase;
   const m = title.match(/^\[\d+\/\d+\]\s*(.+?)\s*·\s*(.+)$/);

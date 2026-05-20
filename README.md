@@ -1,11 +1,5 @@
 # Singularity Web
 
-AI 内容教练 — Chinese-native creators 上传任意稿件（视频 / 图 / 文 / 标题），获取流式 LLM 批改 + 改写建议，背靠 XHS + YouTube 头部创作者实时知识库。
-
-## 状态
-
-🚧 开发中。Closed beta 目标：Q3 2026。
-
 ## 架构
 
 - 总览：[`notes/architecture_final.md`](./notes/architecture_final.md)

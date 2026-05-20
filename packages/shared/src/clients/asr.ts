@@ -293,7 +293,14 @@ export async function transcribeYoutubeVideo(
   opts: TranscribeOpts = {},
 ): Promise<AsrResult | null> {
   opts.onPhase?.("selecting");
-  const streams = await getAudioStreams(videoId);
+  // TikHub 400s on bogus / removed video IDs; treat as "no audio" instead of throwing.
+  let streams: Awaited<ReturnType<typeof getAudioStreams>>;
+  try {
+    streams = await getAudioStreams(videoId);
+  } catch (err) {
+    opts.logger?.warn(`ASR ${videoId}: stream fetch failed (${(err as Error).message.slice(0, 120)})`);
+    return null;
+  }
   if (streams.length === 0) {
     opts.logger?.warn(`ASR ${videoId}: no audio streams`);
     return null;

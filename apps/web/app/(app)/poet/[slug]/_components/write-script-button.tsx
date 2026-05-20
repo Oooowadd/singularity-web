@@ -52,9 +52,7 @@ export function WriteScriptButton({
     onSettled: () => setPending(false),
   });
 
-  // base-nova's DropdownMenuTrigger render prop doesn't reliably forward
-  // `disabled` to the menu open state; bypass the dropdown entirely when
-  // disabled so users can't open a menu whose items do nothing.
+  // base-nova's DropdownMenuTrigger doesn't propagate `disabled` to the menu open state.
   if (disabled) {
     return (
       <Button
@@ -91,7 +89,7 @@ export function WriteScriptButton({
           {DURATIONS.map((d) => (
             <DropdownMenuItem
               key={d.minutes}
-              onSelect={() => handlePick(d.minutes)}
+              onClick={() => handlePick(d.minutes)}
               disabled={pending}
               className="flex flex-col items-start gap-0.5"
             >

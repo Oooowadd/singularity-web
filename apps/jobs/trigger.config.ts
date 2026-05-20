@@ -4,7 +4,7 @@ export default defineConfig({
   project: "proj_lfwtogxhtvfemlfqeooh",
   runtime: "node",
   logLevel: "log",
-  maxDuration: 3600,
+  maxDuration: 14400,
   dirs: ["./trigger"],
   retries: {
     enabledInDev: true,

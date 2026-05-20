@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { auth, tasks } from "@trigger.dev/sdk";
+import { auth, runs, tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 
 import {
@@ -514,6 +514,52 @@ export const appRouter = router({
           expirationTime: "1h",
         });
         return { runId: active.id, triggerRunId, publicAccessToken: token };
+      }),
+
+    cancelRun: protectedProcedure
+      .input(z.object({ channelId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        const [active] = await db
+          .select({
+            id: pipelineRuns.id,
+            configJson: pipelineRuns.configJson,
+          })
+          .from(pipelineRuns)
+          .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .where(
+            and(
+              eq(pipelineRuns.channelId, input.channelId),
+              eq(channels.userId, ctx.user.id),
+              eq(pipelineRuns.agent, "muse"),
+              inArray(pipelineRuns.status, ["pending", "running"]),
+            ),
+          )
+          .orderBy(desc(pipelineRuns.startedAt))
+          .limit(1);
+        if (!active) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "没有正在运行的巡视" });
+        }
+
+        const triggerRunId = (active.configJson as { triggerRunId?: string } | null)?.triggerRunId;
+        // Trigger.dev side may already be terminal (MAX_DURATION_EXCEEDED, CRASHED); swallow.
+        if (triggerRunId) {
+          try {
+            await runs.cancel(triggerRunId);
+          } catch {
+            /* ignored */
+          }
+        }
+
+        await db
+          .update(pipelineRuns)
+          .set({
+            status: "failed",
+            errorMessage: "用户取消（或运行卡死）",
+            completedAt: new Date(),
+          })
+          .where(eq(pipelineRuns.id, active.id));
+
+        return { runId: active.id, cancelled: true };
       }),
 
     approveIdea: protectedProcedure
