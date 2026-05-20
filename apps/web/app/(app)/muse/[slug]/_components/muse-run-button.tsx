@@ -139,15 +139,32 @@ function MuseRunProgress({
     return () => clearInterval(t);
   }, []);
 
-  const phase = (run?.metadata?.progress as ProgressPayload | undefined)?.phase;
+  const progressData = run?.metadata?.progress as ProgressPayload | undefined;
+  const phase = progressData?.phase;
+  const current = progressData?.current;
   const lastPhaseRef = useRef<string | undefined>(undefined);
+  const lastCurrentRef = useRef<number | undefined>(undefined);
   const tickRef = useRef(onProgressTick);
   tickRef.current = onProgressTick;
+  // Refresh on EITHER phase change OR current-count change. YouTube sits in
+  // `transcribing audio` for 90+s while CDN drips bytes; without listening to
+  // `current` the monitored-videos table would stay frozen across multiple
+  // processed videos.
   useEffect(() => {
-    if (phase && phase !== lastPhaseRef.current) {
+    const phaseChanged = phase && phase !== lastPhaseRef.current;
+    const currentChanged = current !== undefined && current !== lastCurrentRef.current;
+    if (phaseChanged || currentChanged) {
       lastPhaseRef.current = phase;
+      lastCurrentRef.current = current;
       tickRef.current(phase);
     }
+  }, [phase, current]);
+
+  // Safety net: while the run is active, refresh every 5s even if neither
+  // phase nor current changed (e.g. long-running classifier or LLM call).
+  useEffect(() => {
+    const id = setInterval(() => tickRef.current(phase), 5000);
+    return () => clearInterval(id);
   }, [phase]);
 
   useEffect(() => {
@@ -182,13 +199,12 @@ function MuseRunProgress({
     }
   }, [run, error, onSettled]);
 
-  const progress = run?.metadata?.progress as ProgressPayload | undefined;
-  const phaseLabel = translatePhase(progress?.phase) ?? "准备中…";
-  const detail = progress?.detail;
-  const current = progress?.current ?? 0;
-  const total = progress?.total ?? 0;
+  const phaseLabel = translatePhase(progressData?.phase) ?? "准备中…";
+  const detail = progressData?.detail;
+  const currentValue = current ?? 0;
+  const total = progressData?.total ?? 0;
   const elapsed = formatElapsed(now - startedAt);
-  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+  const pct = total > 0 ? Math.round((currentValue / total) * 100) : 0;
 
   return (
     <div className="flex w-72 flex-col gap-3 rounded-lg border bg-card p-3">
@@ -198,7 +214,7 @@ function MuseRunProgress({
       </div>
       <AgentTimeline
         stages={MUSE_STAGES}
-        currentPhase={progress?.phase}
+        currentPhase={progressData?.phase}
         accentClass="text-muse"
       />
       {total > 0 ? (
@@ -211,7 +227,7 @@ function MuseRunProgress({
           </div>
           <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
             <span>
-              {current}/{total}
+              {currentValue}/{total}
             </span>
             <span>{pct}%</span>
           </div>

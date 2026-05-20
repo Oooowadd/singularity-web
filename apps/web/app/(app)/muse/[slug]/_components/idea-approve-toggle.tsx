@@ -17,16 +17,22 @@ type Props = {
 export function IdeaApproveToggle({ ideaId, approved, scripted }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  // Optimistic local state — flip immediately on click so the user gets visual
+  // feedback before router.refresh() completes its server round-trip.
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const effective = optimistic ?? approved;
 
   const mutation = trpc.muse.approveIdea.useMutation({
-    onSuccess: () => {
-      router.refresh();
+    onSuccess: () => router.refresh(),
+    onError: (err) => {
+      setOptimistic(null);
+      toast.error(`保存失败：${err.message}`);
     },
-    onError: (err) => toast.error(`保存失败：${err.message}`),
     onSettled: () => setPending(false),
   });
 
   const toggle = (next: boolean) => {
+    setOptimistic(next);
     setPending(true);
     mutation.mutate({ ideaId, approved: next });
   };
@@ -35,7 +41,7 @@ export function IdeaApproveToggle({ ideaId, approved, scripted }: Props) {
     return <span className="text-[10px] text-muted-foreground">已写稿</span>;
   }
 
-  if (approved) {
+  if (effective) {
     return (
       <Button
         size="sm"
