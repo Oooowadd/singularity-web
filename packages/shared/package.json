@@ -32,6 +32,7 @@
     "@ai-sdk/deepseek": "^2.0.35",
     "ai": "^6.0.184",
     "groq-sdk": "^1.2.0",
+    "jsonrepair": "^3.14.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

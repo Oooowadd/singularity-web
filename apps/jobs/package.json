@@ -16,6 +16,7 @@
     "@trigger.dev/sdk": "^4.4.4",
     "ai": "^6.0.184",
     "drizzle-orm": "^0.45.2",
+    "jsonrepair": "^3.14.0",
     "postgres": "^3.4.9"
   },
   "devDependencies": {

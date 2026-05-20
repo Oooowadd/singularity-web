@@ -3,6 +3,7 @@
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
+import { jsonrepair } from "jsonrepair";
 
 let _anthropic: ReturnType<typeof createAnthropic> | null = null;
 
@@ -37,6 +38,19 @@ const EN_INSTRUCTION = `You are a YouTube thumbnail visual analyst. Observe this
 
 Return JSON only, no markdown fences. All descriptions must be based on what you actually see, not inferred from the title.`;
 
+// AI SDK's URL-mode fetcher honors robots.txt; some CDNs (XHS rednotecdn) block
+// it. Downloading the bytes locally and passing Uint8Array bypasses that
+// fetcher entirely and works for any CDN our own fetch can reach.
+async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) return null;
+    return new Uint8Array(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 function parseLenient(raw: string): { description?: unknown; why_it_works?: unknown } | null {
   const cleaned = raw
     .trim()
@@ -46,18 +60,26 @@ function parseLenient(raw: string): { description?: unknown; why_it_works?: unkn
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1) return null;
+  const slice = cleaned.slice(start, end + 1);
   try {
-    return JSON.parse(cleaned.slice(start, end + 1));
+    return JSON.parse(slice);
   } catch {
-    return null;
+    // Claude occasionally emits unescaped " inside Chinese descriptions
+    // (e.g. 白色"Johnson"字样); jsonrepair fixes it without losing content.
+    try {
+      return JSON.parse(jsonrepair(slice));
+    } catch {
+      return null;
+    }
   }
 }
 
 export async function analyzeThumbnail(
   thumbnailUrl: string,
   language: "en" | "zh" = "zh",
+  logger?: { warn: (msg: string) => void },
 ): Promise<ThumbnailAnalysis | null> {
-  return analyzeImageStack([thumbnailUrl], language);
+  return analyzeImageStack([thumbnailUrl], language, logger);
 }
 
 const ZH_STACK_INSTRUCTION = `你是小红书图文笔记视觉分析师。下面是该笔记的多张图片（按顺序），请综合所有图片，输出严格的 JSON：
@@ -84,11 +106,23 @@ Return JSON only, no markdown fences. All descriptions must be based on what you
 export async function analyzeImageStack(
   urls: string[],
   language: "en" | "zh" = "zh",
+  logger?: { warn: (msg: string) => void },
 ): Promise<ThumbnailAnalysis | null> {
   try {
     const clipped = urls.filter(Boolean).slice(0, 9);
     if (clipped.length === 0) return null;
-    const single = clipped.length === 1;
+    const bytesArr = await Promise.all(clipped.map(fetchImageBytes));
+    const valid = bytesArr.filter((b): b is Uint8Array => b !== null);
+    if (valid.length === 0) {
+      logger?.warn(`vision: all ${clipped.length} image downloads failed`);
+      return null;
+    }
+    if (valid.length < clipped.length) {
+      logger?.warn(
+        `vision: ${clipped.length - valid.length}/${clipped.length} images failed download, proceeding with ${valid.length}`,
+      );
+    }
+    const single = valid.length === 1;
     const instruction = single
       ? language === "zh"
         ? ZH_INSTRUCTION
@@ -98,26 +132,38 @@ export async function analyzeImageStack(
         : EN_STACK_INSTRUCTION;
     const result = await generateText({
       model: getAnthropic()("claude-sonnet-4-6"),
-      maxOutputTokens: single ? 800 : 1200,
+      // Chinese 1 char ≈ 1.5-2 tokens; 2 fields × 4 sentences × ~80 chars
+      // each easily hits 1000-2000 tokens per field. 2.5× headroom prevents
+      // mid-JSON truncation that defeats parseLenient.
+      maxOutputTokens: single ? 4000 : 8000,
       maxRetries: 2,
       messages: [
         {
           role: "user",
           content: [
             { type: "text", text: instruction },
-            ...clipped.map((u) => ({ type: "image" as const, image: new URL(u) })),
+            ...valid.map((b) => ({ type: "image" as const, image: b })),
           ],
         },
       ],
     });
     const parsed = parseLenient(result.text);
-    if (!parsed) return null;
+    if (!parsed) {
+      logger?.warn(`vision parse failed (${clipped.length} imgs): ${result.text.slice(0, 200)}`);
+      return null;
+    }
     const description = typeof parsed.description === "string" ? parsed.description.trim() : "";
     const whyItWorks =
       typeof parsed.why_it_works === "string" ? parsed.why_it_works.trim() : "";
-    if (!description && !whyItWorks) return null;
+    if (!description && !whyItWorks) {
+      logger?.warn(`vision returned empty fields (${clipped.length} imgs)`);
+      return null;
+    }
     return { description, whyItWorks };
-  } catch {
+  } catch (err) {
+    logger?.warn(
+      `vision threw (${urls.length} imgs): ${(err as Error).message?.slice(0, 200)}`,
+    );
     return null;
   }
 }

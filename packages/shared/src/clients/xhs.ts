@@ -240,6 +240,17 @@ export function computeXhsEngagement(n: {
   return n.likes + n.collectedCount * 2 + n.commentsCount * 3 + n.shareCount * 5;
 }
 
+// XHS CDN serves images as HEIF by default (see imageView2/.../format/heif).
+// Claude vision only accepts JPEG/PNG/GIF/WebP AND requires https — rewrite
+// both. The image-object signature isn't tied to the imageView2 params so the
+// JPG swap stays valid.
+export function normalizeXhsImageUrl(url: string): string {
+  if (!url) return url;
+  return url
+    .replace(/^http:\/\//i, "https://")
+    .replace(/\bformat\/heif\b/gi, "format/jpg");
+}
+
 function normalizeNote(raw: RawNote, parentUser?: { nickname?: string; userid?: string }): XhsNote {
   const noteId = raw.cursor ?? raw.id ?? "";
   const type: XhsNote["type"] = raw.type === "video" ? "video" : "image";
@@ -272,16 +283,17 @@ function normalizeNote(raw: RawNote, parentUser?: { nickname?: string; userid?: 
       ? raw.video_info_v2.capa.duration
       : null;
 
-  const thumbnailUrl =
-    raw.video_info_v2?.image?.first_frame ??
-    raw.images_list?.[0]?.url ??
-    null;
+  const rawThumb =
+    raw.video_info_v2?.image?.first_frame ?? raw.images_list?.[0]?.url ?? null;
+  const thumbnailUrl = rawThumb ? normalizeXhsImageUrl(rawThumb) : null;
 
   const images: XhsImage[] = (raw.images_list ?? [])
     .filter((i) => i.url)
     .map<XhsImage>((i) => ({
-      url: String(i.url),
-      originalUrl: String(i.original || i.url_size_large || i.url || ""),
+      url: normalizeXhsImageUrl(String(i.url)),
+      originalUrl: normalizeXhsImageUrl(
+        String(i.original || i.url_size_large || i.url || ""),
+      ),
       width: Number(i.width ?? 0),
       height: Number(i.height ?? 0),
     }));
