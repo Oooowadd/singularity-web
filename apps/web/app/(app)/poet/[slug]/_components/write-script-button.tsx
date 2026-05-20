@@ -52,11 +52,25 @@ export function WriteScriptButton({
     onSettled: () => setPending(false),
   });
 
+  // base-nova's DropdownMenuTrigger render prop doesn't reliably forward
+  // `disabled` to the menu open state; bypass the dropdown entirely when
+  // disabled so users can't open a menu whose items do nothing.
+  if (disabled) {
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        disabled
+        title={disabledReason}
+        onClick={() => disabledReason && toast.error(disabledReason)}
+      >
+        <PenLine className="size-3" />
+        写稿
+      </Button>
+    );
+  }
+
   const handlePick = (minutes: number) => {
-    if (disabled && disabledReason) {
-      toast.error(disabledReason);
-      return;
-    }
     setPending(true);
     mutation.mutate({ channelId, ideaId, durationMinutes: minutes, language: "zh" });
   };
@@ -65,7 +79,7 @@ export function WriteScriptButton({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button size="sm" variant="outline" disabled={disabled || pending}>
+          <Button size="sm" variant="outline" disabled={pending}>
             {pending ? <Loader2 className="size-3 animate-spin" /> : <PenLine className="size-3" />}
             写稿
           </Button>
@@ -78,7 +92,7 @@ export function WriteScriptButton({
             <DropdownMenuItem
               key={d.minutes}
               onSelect={() => handlePick(d.minutes)}
-              disabled={disabled || pending}
+              disabled={pending}
               className="flex flex-col items-start gap-0.5"
             >
               <span className="text-sm">{d.label}</span>

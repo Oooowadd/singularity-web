@@ -89,14 +89,17 @@ function runStatusLabel(status: string): string {
 export function PoetRunProgress({ initialActive }: Props) {
   const router = useRouter();
   const utils = trpc.useUtils();
-  const [active, setActive] = useState<ActiveRun | null>(initialActive ?? null);
-  const [startedAt, setStartedAt] = useState<number | null>(
-    initialActive?.startedAt
-      ? new Date(initialActive.startedAt).getTime()
-      : initialActive
-        ? Date.now()
-        : null,
-  );
+  // Remember IDs we've already seen settle so a stale server prop (briefly
+  // present right after onSettled before the next router.refresh round-trip)
+  // doesn't re-render the card.
+  const [settledIds, setSettledIds] = useState<Set<string>>(new Set());
+  const active =
+    initialActive && !settledIds.has(initialActive.triggerRunId) ? initialActive : null;
+  const startedAt = active
+    ? active.startedAt
+      ? new Date(active.startedAt).getTime()
+      : Date.now()
+    : null;
 
   if (!active || !startedAt) return null;
 
@@ -109,8 +112,7 @@ export function PoetRunProgress({ initialActive }: Props) {
         router.refresh();
       }}
       onSettled={(ok, message) => {
-        setActive(null);
-        setStartedAt(null);
+        setSettledIds((prev) => new Set(prev).add(active.triggerRunId));
         if (ok) {
           toast.success(message ?? (active.kind === "bible" ? "圣经已生成" : "脚本已生成"));
           utils.invalidate();
@@ -223,7 +225,7 @@ function ProgressCard({
         : POET_SCRIPT_STAGES;
 
   return (
-    <div className="flex w-80 flex-col gap-3 rounded-lg border bg-card p-3">
+    <div className="flex w-full flex-col gap-3 rounded-lg border bg-card p-4">
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium text-foreground">
           {kindLabel} · {phaseLabel}

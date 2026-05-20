@@ -1,7 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import {
   channels,
@@ -27,6 +27,7 @@ import { BibleHistory } from "./_components/bible-history";
 import { DeleteScriptButton } from "./_components/delete-script-button";
 import { CustomTopicActions } from "./_components/custom-topic-actions";
 import { CustomTopicCreateSheet } from "./_components/custom-topic-create-sheet";
+import { DriftBanner } from "./_components/drift-banner";
 import { PoetRunProgress } from "./_components/poet-run-progress";
 import { WriteScriptButton } from "./_components/write-script-button";
 
@@ -137,35 +138,32 @@ export default async function PoetChannelPage({ params }: Props) {
             {approvedIdeas.length} 个待写选题
           </Badge>
         </div>
-        <PoetRunProgress
-          initialActive={
-            activeRun
-              ? {
-                  runId: activeRun.runId,
-                  triggerRunId: activeRun.triggerRunId,
-                  publicAccessToken: activeRun.publicAccessToken,
-                  startedAt: activeRun.startedAt,
-                  kind:
-                    activeRun.command === "poet-generate-bible"
-                      ? "bible"
-                      : activeRun.command === "poet-analyze-custom-topic"
-                        ? "analyze"
-                        : "script",
-                }
-              : null
-          }
-        />
       </header>
 
+      <PoetRunProgress
+        initialActive={
+          activeRun
+            ? {
+                runId: activeRun.runId,
+                triggerRunId: activeRun.triggerRunId,
+                publicAccessToken: activeRun.publicAccessToken,
+                startedAt: activeRun.startedAt,
+                kind:
+                  activeRun.command === "poet-generate-bible"
+                    ? "bible"
+                    : activeRun.command === "poet-analyze-custom-topic"
+                      ? "analyze"
+                      : "script",
+              }
+            : null
+        }
+      />
+
       {showDriftBanner && recentDrift ? (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-          <div className="flex flex-col gap-1 text-sm">
-            <strong className="font-medium">上次生成的圣经被标记为偏题</strong>
-            <span>{recentDrift.humanMessage ?? DRIFT_REASON_LABEL[recentDrift.reason]}</span>
-            <span className="text-xs">建议重新填写更具体的频道想法后再生成</span>
-          </div>
-        </div>
+        <DriftBanner
+          driftEventId={recentDrift.id}
+          humanMessage={recentDrift.humanMessage ?? DRIFT_REASON_LABEL[recentDrift.reason]}
+        />
       ) : null}
 
       <section className="flex flex-col gap-3">

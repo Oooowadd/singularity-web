@@ -1,6 +1,6 @@
 # Singularity Web — 8-Week Beta Plan
 
-**Initial**: 2026-05-15 · **Last revised**: 2026-05-18
+**Initial**: 2026-05-15 · **Last revised**: 2026-05-20
 
 ---
 
@@ -9,8 +9,8 @@
 **TS-only 单语言栈**：Next.js 16 + Vercel AI SDK + Trigger.dev v3 + Supabase + Logto Cloud + TikHub。
 
 - 主代码 TypeScript（D5=A 锁定 TikHub-only，无 Python sidecar）
-- 8 周到 closed beta：**W1-W6 ✓ 完成**，W7 in progress
-- MVP 月度成本 < $150
+- 8 周到 closed beta：**W1-W6 ✓ 完成**（Clerk/Muse/Poet 全栈 YouTube + XHS 都端到端通），W7 in progress
+- MVP 月度成本 < $150 + Trigger.dev Hobby $10/mo
 
 ---
 
@@ -76,18 +76,23 @@ Monorepo + Next.js 16 + Supabase 11 张表 + Logto branded sign-in + splash → 
 - 10 archive channels + 218+31+10+50+7+18 行 xlsx import
 - Channel CRUD + 3 agent landing pages（`/clerk` `/muse` `/poet`）+ 编辑抽屉
 
-### Week 3 — ✓ 2026-05-18（含 polish）
-- 6 prompts 1:1 移植到 `packages/shared/prompts/clerk.ts`
-- Trigger task `clerk-analyze-channel` + tRPC `clerk.*` + `/clerk/[slug]` UI（含 ASR fallback / 进度卡 / 刷新续断 / 全栈中文化 / 供应商隐藏）
+### Week 3 — ✓ 2026-05-20（含 XHS + UX polish）
+- 6 prompts 1:1 移植到 `packages/shared/prompts/clerk.ts`（含 XHS_VIDEO/IMAGE_PREAMBLE）
+- Trigger task `clerk-analyze-channel` + tRPC `clerk.*` + `/clerk/[slug]` UI
 - 3 种 SOP（human / ai_reference / hottest）+ Markdown 渲染 + 删除按钮
-- YouTube Data API v3 批量 metadata fetch（`fetchVideoMetadataBatch`）
-- **W3+ optional**：`channels.list` 频道量级 + `commentThreads.list` 评论分析，详见 §7 #43
+- 平台路由：YouTube + XHS 共用 task，content_type 列（migration 0003）区分 视频/短视频/图文
+- YouTube Data API v3 批量 metadata（`fetchVideoMetadataBatch`）+ 频道 metadata（`channels.list`）
+- ASR：Deepgram Nova-3 主 / Groq Whisper 备；URL-mode retry + 4-stream fallback + chars/sec garble guard
+- 多图 vision（`analyzeImageStack` ≤9 张图）— XHS 图文综合分析，不只看首图
+- `clerk-asr-diagnose` smoke 工具
 
-### Week 4 — ✓ 2026-05-18
+### Week 4 — ✓ 2026-05-20（含 XHS + UX polish）
 - 3 prompts + 3 services（`classifyVideo` flash / `analyzeViralTrigger` pro / `generateIdeas` pro）
-- Imagination gate：transcript null / 含 WARNING marker / trim < 200 char → 拒
+- Imagination gate `isRealTranscript(text, contentType)`：YouTube 200 字 floor / **XHS image 50 字 floor**（title+desc 即合法）
 - Trigger task `muse-monitor-competitors` + tRPC `muse.{startMonitor,activeRun,approveIdea}`
-- UI `/muse/[slug]` 含 IdeaApproveToggle 三态 + 对标频道 textarea + PRECONDITION 拦截
+- 平台路由：每个 competitor 独立分支（YouTube / XHS），用 `getXhsUserNotes` 一次拿全 XHS 笔记
+- **孤儿恢复**：idea gen 阶段从 DB 找 relevant-但-无-idea 的行，注入 relevantRows（避免 MAX_DURATION 中途挂导致 9 个分类全废）
+- UI `/muse/[slug]`：A+D 双栏进度面板（左 timeline + 实时小计 / 右 当前+上一条预览）；optimistic IdeaApproveToggle；router.refresh on phase OR current change + 5s 兜底定时器
 
 ### Week 5 — ✓ 2026-05-18
 - 3 prompts（CHANNEL_BIBLE / SCRIPT_WRITING / CHINESE_HUMANIZER），含 section markers HOOK/TEASE/ITEM/CTA/CLIMAX/CLOSE
@@ -128,6 +133,8 @@ Monorepo + Next.js 16 + Supabase 11 张表 + Logto branded sign-in + splash → 
 | R7 | WeChat 网站应用审批被拒 | 中 | 中 | Day 1 不依赖；M3+ 通过 Logto 加 |
 | R8 | 8 周时间表偏紧 | 已松（W1-W6 done） | — | W7 起灵活，必要时 Upload Critique 视频形态后置先做文本 |
 | R9 | YouTube CDN 对生产 IP 限速 | 中 → 高（用户多了） | 高（ASR 阻塞） | 不预先做；监控 HTTP 403/429 + 单视频 >20min；触发后接 BrightData/Smartproxy 残留 IP 代理（`asr.ts downloadToTemp()` 加 HTTP agent + `PROXY_URL` env）。详见 §7 #42 |
+| R10 | Trigger.dev Free plan 硬限 1h/task | **已踩中** 2026-05-20 Muse 10 个 YouTube 竞品视频 62 min 后被 kill | 高（partial run，需孤儿恢复） | ✓ 已升级 Hobby ($10/mo)，解锁 7 天 maxDuration；代码 maxDuration 改 14400s；Muse 加孤儿恢复 — partial 仍可救 |
+| R11 | XHS 主页/笔记链接桌面端跳转 App-wall | 中（XHS 平台政策，反爬/引导 App） | 中（仅 UX，数据已抓 OK） | 无解；UI 已经把 channel 验证 + 预览前置，用户在 add 时就看到名字/粉丝数，不依赖之后点链接 |
 
 R1（yt-dlp）/ R2（XHS sign.js）— D5=A 后 TikHub 托管掉了，不再相关。
 
@@ -162,10 +169,52 @@ W7 上线后实测真实流量再校准。
 | D4 | ICP 备案 + WeChat 开放平台启动 | ⏳ 仍待 Justin；备案 3-6 月，启动越晚 WeChat 上线越晚 |
 | D5 | XHS / YouTube 数据层 | ✓ 2026-05-17（TikHub-only） |
 | D6 | Deploy host | ✓ 2026-05-17（Vercel） |
+| D7 | Trigger.dev plan tier | ✓ 2026-05-20（Hobby $10/mo — 1h Free cap 不够 Muse 长 ASR 跑）|
 
 ---
 
 ## 7. 决策日志（按时间倒序）
+
+### 2026-05-20
+
+**#45 — Pre-launch UX polish：URL verify + 频道预览 + Muse panel 重做 + 孤儿恢复**
+
+集中一轮 UX/可靠性打磨，跨 Muse/Clerk/Channel 三个模块。
+
+**Muse UX**：
+- `IdeaApproveToggle` optimistic update — 之前 click → 等 router.refresh server 圈一圈 → 状态翻转有 1-3s 延迟，user 以为 click 没响应。修：本地 optimistic state 立刻翻，错误时 revert
+- `MuseRunProgressPanel` 重做成 A+D 双栏（左 timeline + 实时小计 + 进度条 / 右 当前正在分析 + 上一条已分类的预览卡）— 之前是塞在按钮旁的 w-72 小卡，信息密度低 10x
+- progress refresh on phase OR current change + 5s 兜底定时器 — YouTube `transcribing audio` 卡 90+s/视频时 phase 不变，旧逻辑 monitor 表格静止，新逻辑流式刷
+- `muse-state.ts` 调试 dump 脚本（CLI 看 channel 的 muse 全状态）
+
+**XHS Muse 衍生 bug 修**：
+- Imagination gate per content_type — XHS image post transcript 是 title+desc（80-300 字真实创作内容），200 字 YouTube floor 拒了 8/9 相关行。新 floor xhs_image 50 字
+- 孤儿恢复 — Trigger.dev MAX_DURATION_EXCEEDED 中途挂掉时 9 个分类已落库但 idea gen 没跑。重跑（任意模式）会查 DB 找 relevant-但-无-idea 的行注入 relevantRows，补齐选题
+
+**Channel URL 验证 + 预览**（防输错最大化）：
+- `isValidYoutubeChannelUrl` / `isValidXhsProfileUrl` / `isValidXhsNoteUrl` 验证器（共享在 `xhs.ts` / `tikhub.ts`）
+- Zod schema 加 refine：platform 与 URL 必须匹配；client-side fail-fast 给中文友好错误（不暴露 Zod 通用文案）
+- **`channels.verifyUrl` tRPC mutation**：YT Data API `channels.list?forHandle|id` 优先（官方 1 quota/call），TikHub `get_channel_info` 兜底（`/c/` `/user/` 老格式 + quota 满）
+- `ChannelUrlPreview` — 「验证 / 预览」按钮，1-2s 拉到名字/订阅/视频数/简介，user 验证后再保存
+- `CompetitorListPreview` — 批量「验证全部」按钮，逐行串行 verify（避免 TikHub 1 req/sec 限流）+ inline 每行预览
+- 主页链接字段下方双示例 hint（YouTube + XHS 同时展示，不依赖 platform select）
+
+**TikHub `getChannelInfo` 类型 bug**：
+- 旧类型 `channel_name` / `thumbnail_url` / `subscriber_count: number` 全错。实际 TikHub 返回 `title` / `avatar[]` array / `subscriber_count: "320K subscribers"` 字符串。修：用 `RawChannelInfo` 内部类型 + `parseDisplayCount` 解析 K/M/B/万/千 后缀
+
+**vision.ts 鲁棒化**：
+- bytes-mode：自己 `fetch` 图片字节传 Uint8Array，绕过 Claude SDK URL fetcher（XHS rednotecdn 的 robots.txt 拒它）
+- XHS URL normalize：`format/heif` → `format/jpg`（Claude 不支持 HEIF）；`http://` → `https://`（Claude 拒 http）
+- jsonrepair fallback：Claude/DeepSeek 中文输出偶尔包含未转义 `"`（`白色"Johnson"字样`），`JSON.parse` fail，`jsonrepair` 自动修
+- token budget 全栈上调：single image 800→4000、stack 1200→8000、analyzer 4096→8192。规则：Chinese 1 char ≈ 2 tokens，按 2.5× headroom
+
+**Trigger.dev 配置**：
+- `maxDuration: 3600 → 14400`（Muse + Clerk task），Free 1h cap 命中后升 Hobby $10/mo
+- 监控 dashboard 看具体 phase 卡哪里（应对 R9 限速）
+
+**Smokes / typecheck 全过**。生成内容质量已实测：Hottest SOP 深度拆解结构化 5 Part 中文输出；vision 18 图综合描述「强生品牌红 + Nintendo 工牌套 + 离职鲜花」等多张图细节。
+
+---
 
 ### 2026-05-19
 
@@ -217,14 +266,10 @@ archive 港丢的部分补完。**Clerk + Muse 现在端到端支持小红书频
 
 ### 2026-05-18
 
-**#43 — YouTube Data API 可选扩展（不做但记下来）**
+**#43 — YouTube Data API `channels.list`（部分 done 2026-05-20）+ `commentThreads.list`（仍 future）**
 
-oEmbed 移除 + 切到批量 `videos.list`（10 视频 run 从 10 次 HTTP 降为 1 次）后，还有两项 TikHub 没法做的能力：
-
-- **`channels.list`** — 拿精确订阅数 / 累积总播放 / 视频总数 / topic categories 塞进 SOP prompt。1 unit / run，投入 ~1h。落点：`youtube-data.ts` 新增 `fetchChannelInfo` + `analyze-channel.ts` SOP 阶段前调 + `clerk.ts` 两个 SOP builder 加 channel-stats 字段
-- **`commentThreads.list`** — 每视频 top 20 评论喂 Clerk analyzer / Muse viral_trigger。1 unit / 视频，投入 ~2-3h。**风险**：评论含 spam / 引战要 prefilter 或 top-by-likes 截断；多语言要 prompt 容忍
-
-两者都改 SOP 输出，W7 用户感受当前 SOP 质量后再回头决定优先级。
+- ✓ **`channels.list`** — 已用作 channel URL verify（`fetchChannelMetaById` / `fetchChannelMetaByHandle`），1 quota/call。**未做的**：SOP 阶段调用，把订阅数/视频数/累积播放塞进 prompt — 这块 W7 感受后再决定
+- **`commentThreads.list`** 评论分析 — 仍未做。每视频 1 unit，需 prefilter spam/引战 + 多语言容忍；2-3h 投入
 
 **#42 — YouTube CDN 限速根因 + Deepgram ASR 改造（R9 预防）**
 
@@ -278,7 +323,7 @@ V4 Pro reasoning preamble 吃光短段 token 预算，全栈 9 处 `generateText
 **#36 — W4 Muse 管线骨架**
 
 - 3 prompts + 3 services（classifier flash temp 0.2 / viral_trigger pro temp 0.4 / ideas pro temp 0.7）
-- Imagination gate `isRealTranscript`：null / 含 WARNING marker / trim < 200 char → 拒
+- Imagination gate `isRealTranscript`：null / 含 WARNING marker / trim < 200 char → 拒（**update 2026-05-20**：xhs_image floor 改 50 char，详见 #45）
 - Trigger task `muse-monitor-competitors` + 共享 `lib/agent-run.ts getActiveAgentRun(channelId, userId, agent)`（Clerk/Muse/Poet 共用）
 
 **#35 — W3 D3 ASR fallback 上线**
@@ -343,6 +388,7 @@ MVP→beta 用云托管；月费 > $200 时迁自部署 v3（开源 MIT）。代
 
 ## 8. 运维注意事项 / Ops gotchas
 
+- **Trigger.dev Free plan 硬限 1h/task** — Hobby ($10/mo) 解锁 7 天。Muse 10 个 YouTube 竞品（含 ASR）跑 60+ min 会撞这个上限。**已升 Hobby**。
 - **Supabase ap-southeast-1**：本地 IPv4 只能走 Supavisor pooler `aws-1-ap-southeast-1.pooler.supabase.com:6543`（不是 aws-0）；`postgres-js` 必须 `prepare: false`
 - **Next.js 16 cookies**：修改只能在 Route Handler 或 Server Action，不能 Page Component。`/callback` 必须 `route.ts` → redirect `/welcome`，不能合并为单一 page
 - **Next.js 16**：`middleware.ts` → `proxy.ts`
@@ -353,6 +399,10 @@ MVP→beta 用云托管；月费 > $200 时迁自部署 v3（开源 MIT）。代
 - **drizzle-kit push** 有 CHECK constraint introspection bug → 用 `apply-pending-migration.ts` 直接执行 SQL
 - **NULL run_id 的原子 swap**：旧 SOPs `run_id IS NULL`，用 `or(ne(runId, X), isNull(runId))` 而非 `ne` 单条件（NULL != X 是 NULL 不是 true）
 - **xlsx archive import 长文本截到 ~301 字符** → Bible / SOP / Custom Topic 大量字段被截。重跑 pipeline 即可重建全文
+- **TikHub field 名易错**：YouTube `get_channel_info` 返回 `title` 不是 `channel_name`，`avatar[]` 数组不是 `thumbnail_url`，`subscriber_count` 是 display string `"320K subscribers"` 不是数字 — 见 `parseDisplayCount`
+- **XHS CDN 反爬**：图片 URL 默认 `format/heif`（Claude vision 不支持），需 normalize 成 `format/jpg`；XHS 图片域名拒 Claude SDK 的 URL fetcher（robots.txt） — 必须自己 fetch bytes 传 Uint8Array
+- **LLM JSON 内嵌 `"` 未转义**（中文上下文常见 `白色"品牌名"字样`）→ `JSON.parse` fail → `jsonrepair` 兜底
+- **LLM token budget 规则**：V4 Pro reasoning preamble 吃 token，`maxOutputTokens ≥ 期望输出 × 2.5 + 1500`；Claude vision 中文输出按 2 tokens/char 估，single 4000 / multi-image stack 8000
 
 ---
 
@@ -368,4 +418,4 @@ MVP→beta 用云托管；月费 > $200 时迁自部署 v3（开源 MIT）。代
 
 ---
 
-**Initial**: 2026-05-15 · **Last revised**: 2026-05-18 · **Next review**: W7 完成后
+**Initial**: 2026-05-15 · **Last revised**: 2026-05-20 · **Next review**: W7 完成后

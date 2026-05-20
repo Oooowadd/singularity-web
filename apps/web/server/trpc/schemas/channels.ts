@@ -1,20 +1,43 @@
 import { z } from "zod";
 
+import { isValidYoutubeChannelUrl } from "@singularity/shared/clients/tikhub";
+import { isValidXhsProfileUrl } from "@singularity/shared/clients/xhs";
+
 export const platformSchema = z.enum(["youtube", "xhs"]);
 
-export const competitorRefSchema = z.object({
-  platform: platformSchema,
-  url: z.string().url(),
-});
+function validateChannelUrl(platform: "youtube" | "xhs", url: string): boolean {
+  return platform === "youtube" ? isValidYoutubeChannelUrl(url) : isValidXhsProfileUrl(url);
+}
+
+const PLATFORM_URL_HINT: Record<"youtube" | "xhs", string> = {
+  youtube:
+    "YouTube 频道 URL 必须是 /@handle、/channel/UCxxx、/c/name 或 /user/name 形式",
+  xhs: "小红书主页 URL 必须是 https://www.xiaohongshu.com/user/profile/{24位hex}",
+};
+
+export const competitorRefSchema = z
+  .object({
+    platform: platformSchema,
+    url: z.string().url(),
+  })
+  .refine((v) => validateChannelUrl(v.platform, v.url), {
+    message: "URL 格式不匹配所选平台",
+    path: ["url"],
+  });
 
 export type CompetitorRefInput = z.infer<typeof competitorRefSchema>;
 
-export const createChannelInput = z.object({
-  name: z.string().min(1, "Required").max(80),
-  platform: platformSchema,
-  platformUrl: z.string().url("Must be a valid URL"),
-  description: z.string().max(500).optional().nullable(),
-});
+export const createChannelInput = z
+  .object({
+    name: z.string().min(1, "Required").max(80),
+    platform: platformSchema,
+    platformUrl: z.string().url("Must be a valid URL"),
+    description: z.string().max(500).optional().nullable(),
+  })
+  .refine((v) => validateChannelUrl(v.platform, v.platformUrl), {
+    message: PLATFORM_URL_HINT.youtube,
+    path: ["platformUrl"],
+  });
 
 export type CreateChannelInput = z.infer<typeof createChannelInput>;
 
@@ -28,13 +51,22 @@ export const regenerateSlugInput = z.object({
 
 export type DeleteChannelInput = z.infer<typeof deleteChannelInput>;
 
-export const updateChannelInput = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1, "Required").max(80),
-  platform: platformSchema,
-  platformUrl: z.string().url("Must be a valid URL"),
-  description: z.string().max(500).nullable().optional(),
-  competitors: z.array(competitorRefSchema).max(20).optional(),
-});
+export const updateChannelInput = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().min(1, "Required").max(80),
+    platform: platformSchema,
+    platformUrl: z.string().url("Must be a valid URL"),
+    description: z.string().max(500).nullable().optional(),
+    competitors: z.array(competitorRefSchema).max(20).optional(),
+  })
+  .refine((v) => validateChannelUrl(v.platform, v.platformUrl), {
+    message: PLATFORM_URL_HINT.youtube,
+    path: ["platformUrl"],
+  });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInput>;
+
+// Client-side helpers (also exported from the URL utility but re-exported here
+// so the forms can validate without pulling in the full shared/clients path).
+export { isValidYoutubeChannelUrl, isValidXhsProfileUrl };

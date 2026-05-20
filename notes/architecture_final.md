@@ -1,6 +1,6 @@
 # Singularity Web — 最终架构
 
-**Initial**: 2026-05-15 · **Last revised**: 2026-05-18
+**Initial**: 2026-05-15 · **Last revised**: 2026-05-20
 
 ---
 
@@ -108,14 +108,14 @@
 
 ---
 
-## 8 周 Beta 路线（截至 2026-05-18）
+## 8 周 Beta 路线（截至 2026-05-20）
 
 | 周 | 里程碑 | 状态 |
 |---|---|---|
 | W1 | 地基：monorepo + Next.js + Supabase + Logto + 端到端通 | ✓ |
 | W2 | Channel CRUD + TikHub 数据层 + xlsx import | ✓ |
-| W3 | Clerk 管线：频道分析 + 3 种 SOP + ASR fallback | ✓ |
-| W4 | Muse 管线：竞品监控 + ideas 审批三态 | ✓ |
+| W3 | Clerk 管线：频道分析（YouTube + XHS）+ 3 种 SOP + ASR fallback + 多图 vision | ✓ |
+| W4 | Muse 管线：竞品监控（YouTube + XHS）+ A+D 进度面板 + ideas 审批 + 孤儿恢复 | ✓ |
 | W5 | Poet 短稿：Bible + drift + script writer + humanizer | ✓ |
 | W6 | Poet 长稿：outline → section expand + Custom Topic flow | ✓ |
 | W7 | Upload Critique + Browse + Link Analysis | in progress |

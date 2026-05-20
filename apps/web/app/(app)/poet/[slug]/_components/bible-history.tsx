@@ -43,14 +43,23 @@ export function BibleHistory({ bibles }: Props) {
 
   const inactive = bibles.filter((b) => !b.isActive);
   if (inactive.length === 0) return null;
+  const hasActive = bibles.some((b) => b.isActive);
+  // Auto-open when no active bible — user just drifted and needs to choose
+  // whether to reactivate one of these or regenerate.
+  const defaultOpen = !hasActive;
 
   return (
-    <details className="flex flex-col gap-3 rounded-lg border bg-card/40 p-4">
+    <details
+      open={defaultOpen}
+      className="flex flex-col gap-3 rounded-lg border bg-card/40 p-4"
+    >
       <summary className="flex cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
         <span className="text-xs font-medium uppercase text-muted-foreground">
           圣经历史版本（{inactive.length}）
         </span>
-        <span className="text-xs text-muted-foreground">点击展开</span>
+        <span className="text-xs text-muted-foreground">
+          {defaultOpen ? "可点击折叠" : "点击展开"}
+        </span>
       </summary>
       <div className="flex flex-col gap-2 border-t pt-3">
         {inactive.map((b) => (

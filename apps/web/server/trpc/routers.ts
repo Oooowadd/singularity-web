@@ -14,6 +14,20 @@ import {
   poetCustomTopics,
   poetScripts,
 } from "@singularity/db";
+import {
+  getChannelInfo,
+  isValidYoutubeChannelUrl,
+  resolveChannelId,
+} from "@singularity/shared/clients/tikhub";
+import {
+  isValidXhsProfileUrl,
+  resolveXhsUser,
+} from "@singularity/shared/clients/xhs";
+import {
+  fetchChannelMetaById,
+  fetchChannelMetaByHandle,
+  parseYoutubeChannelUrl,
+} from "@singularity/shared/clients/youtube-data";
 
 import { db } from "@/lib/db";
 import { protectedProcedure, router } from "./init";
@@ -155,6 +169,98 @@ export const appRouter = router({
           .where(and(eq(channels.id, input.id), eq(channels.userId, ctx.user.id)))
           .returning({ id: channels.id });
         return { id: deleted?.id ?? null };
+      }),
+
+    verifyUrl: protectedProcedure
+      .input(
+        z.object({
+          platform: z.enum(["youtube", "xhs"]),
+          url: z.string().url(),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        if (input.platform === "xhs") {
+          if (!isValidXhsProfileUrl(input.url)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "URL 不是小红书主页格式（应为 /user/profile/{24位hex}）",
+            });
+          }
+          try {
+            const user = await resolveXhsUser(input.url);
+            return {
+              platform: "xhs" as const,
+              name: user.nickname || "(未命名)",
+              avatarUrl: user.avatarUrl || null,
+              redId: user.redId,
+              fansCount: user.fansCount,
+              interactionsCount: user.interactionsCount,
+              description: user.desc.slice(0, 300),
+              ipLocation: user.ipLocation,
+            };
+          } catch (err) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `XHS 验证失败：${(err as Error).message.slice(0, 200)}`,
+            });
+          }
+        }
+        if (!isValidYoutubeChannelUrl(input.url)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "URL 不是 YouTube 频道格式（应为 /@handle、/channel/UCxxx、/c/name 或 /user/name）",
+          });
+        }
+        try {
+          const parsed = parseYoutubeChannelUrl(input.url);
+          let yt =
+            parsed?.type === "id"
+              ? await fetchChannelMetaById(parsed.channelId)
+              : parsed?.type === "handle"
+                ? await fetchChannelMetaByHandle(parsed.handle)
+                : null;
+
+          // Legacy /c/ and /user/ need TikHub to resolve channel id first.
+          if (!yt && parsed?.type === "legacy") {
+            try {
+              const cid = await resolveChannelId(input.url);
+              yt = await fetchChannelMetaById(cid);
+            } catch {
+              /* fall through to TikHub */
+            }
+          }
+
+          if (yt) {
+            return {
+              platform: "youtube" as const,
+              name: yt.title || "(未命名)",
+              channelId: yt.channelId,
+              subscriberCount: yt.subscriberCount,
+              videoCount: yt.videoCount,
+              description: yt.description.slice(0, 300),
+              source: "youtube-data" as const,
+            };
+          }
+
+          // Fallback: TikHub when YT Data API rejected or quota exhausted.
+          const channelId = await resolveChannelId(input.url);
+          const meta = await getChannelInfo(channelId);
+          return {
+            platform: "youtube" as const,
+            name: meta.channel_name || "(未命名)",
+            channelId: meta.channel_id,
+            subscriberCount: meta.subscriberCount,
+            videoCount: meta.videoCount,
+            description: meta.description.slice(0, 300),
+            source: "tikhub" as const,
+          };
+        } catch (err) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `YouTube 验证失败：${(err as Error).message.slice(0, 200)}`,
+          });
+        }
       }),
 
     regenerateSlug: protectedProcedure

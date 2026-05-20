@@ -1,8 +1,4 @@
-// Official YouTube Data API v3 client — used as the primary metadata source.
-// TikHub provides audio stream URLs and XHS; YouTube Data API gives clean metadata
-// (title, view_count, duration, description, thumbnails) for any public video.
-//
-// Quota: 10,000 units/day free. videos.list = 1 unit per call.
+// YouTube Data API v3 — primary metadata source. Quota 10K units/day, 1 unit per videos.list.
 
 const BASE = "https://www.googleapis.com/youtube/v3";
 
@@ -12,7 +8,6 @@ function key(): string {
   return k;
 }
 
-// Parse ISO 8601 duration (PT13M18S → 798 seconds).
 export function parseIsoDuration(iso: string | undefined | null): number | null {
   if (!iso) return null;
   const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -79,6 +74,104 @@ function mapItem(item: ApiVideoItem): YoutubeVideoMeta {
     likeCount: asPositiveNumber(item.statistics?.likeCount),
     thumbnailUrl: pickBiggestThumbnail(item.snippet?.thumbnails),
   };
+}
+
+export type YoutubeChannelMeta = {
+  channelId: string;
+  title: string;
+  description: string;
+  customUrl: string;
+  publishedAt: string;
+  thumbnailUrl: string | null;
+  subscriberCount: number | null;
+  videoCount: number | null;
+  viewCount: number | null;
+  country: string;
+};
+
+type ApiChannelItem = {
+  id?: string;
+  snippet?: {
+    title?: string;
+    description?: string;
+    customUrl?: string;
+    publishedAt?: string;
+    country?: string;
+    thumbnails?: Record<string, { url: string; width: number }>;
+  };
+  statistics?: {
+    subscriberCount?: string;
+    videoCount?: string;
+    viewCount?: string;
+  };
+};
+
+function mapChannel(item: ApiChannelItem): YoutubeChannelMeta {
+  return {
+    channelId: item.id ?? "",
+    title: item.snippet?.title ?? "",
+    description: item.snippet?.description ?? "",
+    customUrl: item.snippet?.customUrl ?? "",
+    publishedAt: item.snippet?.publishedAt ?? "",
+    thumbnailUrl: pickBiggestThumbnail(item.snippet?.thumbnails),
+    subscriberCount: asPositiveNumber(item.statistics?.subscriberCount),
+    videoCount: asPositiveNumber(item.statistics?.videoCount),
+    viewCount: asPositiveNumber(item.statistics?.viewCount),
+    country: item.snippet?.country ?? "",
+  };
+}
+
+async function fetchChannelMetaRaw(
+  query: { id?: string; forHandle?: string },
+): Promise<YoutubeChannelMeta | null> {
+  try {
+    const params = new URLSearchParams({
+      part: "snippet,statistics",
+      ...(query.id ? { id: query.id } : {}),
+      ...(query.forHandle ? { forHandle: query.forHandle } : {}),
+      key: key(),
+    });
+    const res = await fetch(`${BASE}/channels?${params.toString()}`);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { items?: ApiChannelItem[] };
+    const item = json.items?.[0];
+    if (!item) return null;
+    return mapChannel(item);
+  } catch {
+    return null;
+  }
+}
+
+export function fetchChannelMetaById(channelId: string): Promise<YoutubeChannelMeta | null> {
+  return fetchChannelMetaRaw({ id: channelId });
+}
+
+// `@handle` form (with or without the leading @). 1 quota unit.
+export function fetchChannelMetaByHandle(
+  handle: string,
+): Promise<YoutubeChannelMeta | null> {
+  const h = handle.startsWith("@") ? handle : `@${handle}`;
+  return fetchChannelMetaRaw({ forHandle: h });
+}
+
+// Parse a YouTube channel URL into the right input form for channels.list.
+// /channel/UCxxx → { type: 'id' }; /@handle → { type: 'handle' };
+// /c/name or /user/name → legacy paths the API can't resolve cheaply.
+export function parseYoutubeChannelUrl(
+  url: string,
+): { type: "id"; channelId: string } | { type: "handle"; handle: string } | { type: "legacy" } | null {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.endsWith("youtube.com") && !u.hostname.endsWith("youtu.be")) return null;
+    const id = u.pathname.match(/^\/channel\/(UC[\w-]+)/);
+    if (id) return { type: "id", channelId: id[1]! };
+    const handle = u.pathname.match(/^\/@([\w.-]+)/);
+    if (handle) return { type: "handle", handle: handle[1]! };
+    if (/^\/(?:c|user)\//.test(u.pathname)) return { type: "legacy" };
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // Single-video fetch (1 quota unit). Returns null on any failure so callers can fall back.

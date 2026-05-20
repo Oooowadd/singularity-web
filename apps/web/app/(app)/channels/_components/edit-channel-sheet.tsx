@@ -29,7 +29,14 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { updateChannelInput } from "@/server/trpc/schemas/channels";
+import {
+  isValidXhsProfileUrl,
+  isValidYoutubeChannelUrl,
+  updateChannelInput,
+} from "@/server/trpc/schemas/channels";
+
+import { ChannelUrlPreview } from "./channel-url-preview";
+import { CompetitorListPreview } from "./competitor-list-preview";
 
 type Props = {
   channel: Channel;
@@ -63,14 +70,38 @@ export function EditChannelSheet({ channel }: Props) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const competitors = competitorsText
+
+    const ownUrlOk =
+      platform === "youtube"
+        ? isValidYoutubeChannelUrl(platformUrl)
+        : isValidXhsProfileUrl(platformUrl);
+    if (!ownUrlOk) {
+      setError(
+        platform === "youtube"
+          ? "URL 不符合 YouTube 频道格式（应为 /@handle、/channel/UCxxx、/c/name 或 /user/name）"
+          : "URL 不符合小红书主页格式（应为 https://www.xiaohongshu.com/user/profile/{24位hex}）",
+      );
+      return;
+    }
+
+    const compLines = competitorsText
       .split(/\r?\n/)
       .map((s) => s.trim())
-      .filter((s) => s.length > 0)
-      .map((url) => ({
-        platform: (url.includes("xiaohongshu") ? "xhs" : "youtube") as "youtube" | "xhs",
-        url,
-      }));
+      .filter((s) => s.length > 0);
+    const competitors: Array<{ platform: "youtube" | "xhs"; url: string }> = [];
+    for (let i = 0; i < compLines.length; i++) {
+      const url = compLines[i]!;
+      const inferred: "youtube" | "xhs" = url.includes("xiaohongshu") ? "xhs" : "youtube";
+      const valid = inferred === "xhs" ? isValidXhsProfileUrl(url) : isValidYoutubeChannelUrl(url);
+      if (!valid) {
+        setError(
+          `对标频道第 ${i + 1} 行 URL 格式不对（${inferred === "xhs" ? "应为小红书 /user/profile/{24位hex}" : "应为 YouTube /@handle 或 /channel/UCxxx"}）：${url.slice(0, 60)}`,
+        );
+        return;
+      }
+      competitors.push({ platform: inferred, url });
+    }
+
     const result = updateChannelInput.safeParse({
       id: channel.id,
       name,
@@ -189,6 +220,7 @@ export function EditChannelSheet({ channel }: Props) {
                 }
                 required
               />
+              <ChannelUrlPreview platform={platform} url={platformUrl} />
             </Field>
 
             <Field>
@@ -214,6 +246,7 @@ export function EditChannelSheet({ channel }: Props) {
               <p className="text-xs text-muted-foreground">
                 Muse 会定期巡视这些频道，提取爆款机制并生成选题
               </p>
+              <CompetitorListPreview competitorsText={competitorsText} />
             </Field>
           </FieldGroup>
 

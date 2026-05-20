@@ -24,15 +24,63 @@ async function get<T>(endpoint: string, params: Record<string, string> = {}): Pr
   return (json.data ?? json) as T;
 }
 
-// ── YouTube ─────────────────────────────────────────────────────────
+// Validates a YouTube channel landing URL (not a video URL). Accepts:
+//   /@handle  /channel/UCxxx  /c/customname  /user/legacyname
+export function isValidYoutubeChannelUrl(input: string): boolean {
+  const s = input.trim();
+  if (!s) return false;
+  try {
+    const u = new URL(s);
+    if (!u.hostname.endsWith("youtube.com") && !u.hostname.endsWith("youtu.be")) {
+      return false;
+    }
+    const p = u.pathname;
+    return (
+      /^\/@[\w.-]+/.test(p) ||
+      /^\/channel\/UC[\w-]+/.test(p) ||
+      /^\/c\/[\w.-]+/.test(p) ||
+      /^\/user\/[\w.-]+/.test(p)
+    );
+  } catch {
+    return false;
+  }
+}
 
 export type YouTubeChannelMeta = {
   channel_id: string;
-  channel_name?: string;
-  description?: string;
-  subscriber_count?: number;
-  thumbnail_url?: string;
+  channel_name: string;
+  description: string;
+  subscriberCount: number | null;
+  videoCount: number | null;
+  thumbnail_url: string | null;
 };
+
+// TikHub returns counts as display strings like "320K subscribers" or "81 videos".
+// Parse to integer; null on garbage.
+function parseDisplayCount(input: string | number | undefined | null): number | null {
+  if (typeof input === "number") return Number.isFinite(input) ? input : null;
+  if (!input) return null;
+  const m = String(input)
+    .replace(/,/g, "")
+    .match(/(\d+(?:\.\d+)?)\s*([KMBkmb万千]?)/);
+  if (!m) return null;
+  const base = parseFloat(m[1]!);
+  if (!Number.isFinite(base)) return null;
+  const suffix = m[2] ?? "";
+  const mult =
+    suffix === "K" || suffix === "k"
+      ? 1000
+      : suffix === "M" || suffix === "m"
+        ? 1_000_000
+        : suffix === "B" || suffix === "b"
+          ? 1_000_000_000
+          : suffix === "万"
+            ? 10_000
+            : suffix === "千"
+              ? 1_000
+              : 1;
+  return Math.round(base * mult);
+}
 
 export async function resolveChannelId(channelUrl: string): Promise<string> {
   const data = await get<{ channel_id: string }>(
@@ -42,10 +90,35 @@ export async function resolveChannelId(channelUrl: string): Promise<string> {
   return data.channel_id;
 }
 
+// Real TikHub response shape (probed): `title`, `description`, `subscriber_count`
+// (display string), `video_count` (display string), `avatar[]` (array of sized
+// variants). We normalize to flat clean fields.
+type RawChannelInfo = {
+  channel_id?: string;
+  title?: string;
+  description?: string;
+  subscriber_count?: string | number;
+  video_count?: string | number;
+  avatar?: Array<{ url?: string; width?: number; height?: number }>;
+};
+
 export async function getChannelInfo(channelId: string): Promise<YouTubeChannelMeta> {
-  return get<YouTubeChannelMeta>("/api/v1/youtube/web/get_channel_info", {
+  const raw = await get<RawChannelInfo>("/api/v1/youtube/web/get_channel_info", {
     channel_id: channelId,
   });
+  // Largest avatar variant (lowest priority for now; UI may not render it).
+  const avatars = (raw.avatar ?? []).filter((a) => a.url);
+  const biggest = avatars.length
+    ? [...avatars].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]
+    : null;
+  return {
+    channel_id: raw.channel_id ?? channelId,
+    channel_name: raw.title ?? "",
+    description: raw.description ?? "",
+    subscriberCount: parseDisplayCount(raw.subscriber_count),
+    videoCount: parseDisplayCount(raw.video_count),
+    thumbnail_url: biggest?.url ?? null,
+  };
 }
 
 export type YouTubeVideoRef = {
@@ -228,8 +301,6 @@ export async function getAudioStreams(videoId: string): Promise<AudioStream[]> {
   const all = [...(data.adaptive_formats ?? []), ...(data.streams ?? [])];
   return all.filter((s) => s.mime_type?.startsWith("audio/"));
 }
-
-// ── Xiaohongshu ─────────────────────────────────────────────────────
 
 export type XhsNoteRef = {
   id: string;

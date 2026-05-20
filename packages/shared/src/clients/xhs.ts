@@ -1,8 +1,5 @@
-// TikHub XHS client. Endpoints verified working without xsec_token (Phase 0 smoke):
-//   - web/get_user_info          channel profile
-//   - web/get_user_notes_v2      list with full metadata + video stream URLs
-//   - web/get_note_info_v4       single note detail (engagement field names differ from v2)
-// The web_v3/fetch_note_detail endpoint requires xsec_token (422 without it).
+// TikHub XHS client. web_v3/fetch_note_detail needs xsec_token (422 without),
+// the web/* endpoints used here don't.
 
 const BASE = "https://api.tikhub.io";
 
@@ -57,8 +54,6 @@ async function get<T>(
   throw lastErr ?? new Error(`TikHub ${endpoint} unreachable`);
 }
 
-// ── URL / ID extractors ─────────────────────────────────────────────
-
 export function extractXhsUserId(input: string): string | null {
   const s = input.trim();
   if (XHS_USER_ID_RE.test(s)) return s;
@@ -85,6 +80,32 @@ export function extractXhsNoteId(input: string): string | null {
   return null;
 }
 
+export function isValidXhsProfileUrl(input: string): boolean {
+  const s = input.trim();
+  if (!s) return false;
+  if (XHS_USER_ID_RE.test(s)) return true;
+  try {
+    const u = new URL(s);
+    if (!u.hostname.endsWith("xiaohongshu.com")) return false;
+    return /\/user\/profile\/[a-f0-9]{24}/i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
+export function isValidXhsNoteUrl(input: string): boolean {
+  const s = input.trim();
+  if (!s) return false;
+  if (XHS_NOTE_ID_RE.test(s)) return true;
+  try {
+    const u = new URL(s);
+    if (!u.hostname.endsWith("xiaohongshu.com")) return false;
+    return /\/(?:explore|discovery\/item)\/[a-f0-9]{16,32}/i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export function extractXsecToken(input: string): string | null {
   try {
     const parsed = new URL(input);
@@ -93,8 +114,6 @@ export function extractXsecToken(input: string): string | null {
     return null;
   }
 }
-
-// ── Public types ────────────────────────────────────────────────────
 
 export type XhsUser = {
   userId: string;
@@ -143,8 +162,6 @@ export type XhsNote = {
   noteUrl: string;
 };
 
-// ── Raw API shapes ─────────────────────────────────────────────────
-
 type RawUserInfo = {
   data?: {
     data?: {
@@ -183,14 +200,11 @@ type RawNote = {
   desc?: string;
   type?: string;
   create_time?: number;
-  // v2 list field names:
-  likes?: number;
+likes?: number;
   share_count?: number;
-  // v4 detail field names (different from v2):
-  liked_count?: number;
+liked_count?: number;
   shared_count?: number;
-  // shared:
-  collected_count?: number;
+collected_count?: number;
   comments_count?: number;
   nice_count?: number;
   user?: { nickname?: string; userid?: string };
@@ -211,8 +225,6 @@ type RawNoteDetailResp = {
     }>;
   };
 };
-
-// ── Helpers ─────────────────────────────────────────────────────────
 
 // XHS share_info_v2.title comes as "@昵称的个人主页"; strip wrapper.
 function cleanNickname(raw: string | undefined): string {
@@ -321,8 +333,6 @@ function normalizeNote(raw: RawNote, parentUser?: { nickname?: string; userid?: 
     noteUrl: `https://www.xiaohongshu.com/explore/${noteId}`,
   };
 }
-
-// ── Public API ──────────────────────────────────────────────────────
 
 export async function resolveXhsUser(profileUrlOrId: string): Promise<XhsUser> {
   const userId = extractXhsUserId(profileUrlOrId);

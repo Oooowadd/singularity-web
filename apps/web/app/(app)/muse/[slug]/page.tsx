@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ExternalLink } from "lucide-react";
@@ -21,6 +21,11 @@ import { ensureCurrentUser } from "@/lib/users";
 
 import { IdeaApproveToggle } from "./_components/idea-approve-toggle";
 import { MuseRunButton } from "./_components/muse-run-button";
+import {
+  MuseRunProgressPanel,
+  type LastProcessed,
+  type LiveStats,
+} from "./_components/muse-run-progress-panel";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -78,6 +83,84 @@ export default async function MuseChannelPage({ params }: Props) {
     getActiveAgentRun(channel.id, user.id, "muse"),
   ]);
 
+  let liveStats: LiveStats | null = null;
+  let lastProcessed: LastProcessed = null;
+  if (activeRun) {
+    const [allMon, relMon, irrMon, runIdeas, lastRow] = await Promise.all([
+      db
+        .select({ c: count() })
+        .from(museMonitorVideos)
+        .where(
+          and(
+            eq(museMonitorVideos.channelId, channel.id),
+            eq(museMonitorVideos.runId, activeRun.runId),
+          ),
+        ),
+      db
+        .select({ c: count() })
+        .from(museMonitorVideos)
+        .where(
+          and(
+            eq(museMonitorVideos.channelId, channel.id),
+            eq(museMonitorVideos.runId, activeRun.runId),
+            eq(museMonitorVideos.relevant, true),
+          ),
+        ),
+      db
+        .select({ c: count() })
+        .from(museMonitorVideos)
+        .where(
+          and(
+            eq(museMonitorVideos.channelId, channel.id),
+            eq(museMonitorVideos.runId, activeRun.runId),
+            eq(museMonitorVideos.relevant, false),
+          ),
+        ),
+      db
+        .select({ c: count() })
+        .from(museIdeas)
+        .where(
+          and(
+            eq(museIdeas.channelId, channel.id),
+            eq(museIdeas.runId, activeRun.runId),
+          ),
+        ),
+      db
+        .select({
+          title: museMonitorVideos.title,
+          sourceChannelName: museMonitorVideos.sourceChannelName,
+          relevant: museMonitorVideos.relevant,
+          topicClassification: museMonitorVideos.topicClassification,
+          transcript: museMonitorVideos.transcript,
+        })
+        .from(museMonitorVideos)
+        .where(
+          and(
+            eq(museMonitorVideos.channelId, channel.id),
+            eq(museMonitorVideos.runId, activeRun.runId),
+          ),
+        )
+        .orderBy(desc(museMonitorVideos.processedAt))
+        .limit(1),
+    ]);
+    liveStats = {
+      monitored: allMon[0]?.c ?? 0,
+      relevant: relMon[0]?.c ?? 0,
+      irrelevant: irrMon[0]?.c ?? 0,
+      ideas: runIdeas[0]?.c ?? 0,
+    };
+    const r = lastRow[0];
+    if (r) {
+      lastProcessed = {
+        title: r.title,
+        sourceChannelName: r.sourceChannelName,
+        relevant: r.relevant,
+        topicClassification: r.topicClassification,
+        transcriptLength: r.transcript?.length ?? 0,
+      };
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-8 p-8">
       <Button
@@ -105,9 +188,19 @@ export default async function MuseChannelPage({ params }: Props) {
           channelId={channel.id}
           channelName={channel.name}
           competitorCount={activeCompetitors.length}
-          initialActive={activeRun}
+          isActive={!!activeRun}
         />
       </header>
+
+      {activeRun && liveStats ? (
+        <MuseRunProgressPanel
+          triggerRunId={activeRun.triggerRunId}
+          accessToken={activeRun.publicAccessToken}
+          startedAt={activeRun.startedAt ?? null}
+          liveStats={liveStats}
+          lastProcessed={lastProcessed}
+        />
+      ) : null}
 
       {monitored.length > 0 ? (
         <section className="flex flex-col gap-3">

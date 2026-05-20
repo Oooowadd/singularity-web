@@ -17,7 +17,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { createChannelInput } from "@/server/trpc/schemas/channels";
+import {
+  createChannelInput,
+  isValidXhsProfileUrl,
+  isValidYoutubeChannelUrl,
+} from "@/server/trpc/schemas/channels";
+
+import { ChannelUrlPreview } from "./channel-url-preview";
 
 export function CreateChannelForm() {
   const router = useRouter();
@@ -43,6 +49,21 @@ export function CreateChannelForm() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Front-load the URL-shape check with a friendly platform-specific message
+    // before letting Zod reject with a generic one.
+    const isValidUrl =
+      platform === "youtube"
+        ? isValidYoutubeChannelUrl(platformUrl)
+        : isValidXhsProfileUrl(platformUrl);
+    if (!isValidUrl) {
+      setError(
+        platform === "youtube"
+          ? "URL 不符合 YouTube 频道格式（应为 /@handle、/channel/UCxxx、/c/name 或 /user/name）"
+          : "URL 不符合小红书主页格式（应为 https://www.xiaohongshu.com/user/profile/{24位hex}）",
+      );
+      return;
+    }
 
     const result = createChannelInput.safeParse({
       name,
@@ -101,6 +122,16 @@ export function CreateChannelForm() {
             }
             required
           />
+          <p className="text-[10px] leading-snug text-muted-foreground">
+            示例 · YouTube:{" "}
+            <code className="font-mono">https://www.youtube.com/@mkbhd</code>
+            <br />
+            示例 · 小红书:{" "}
+            <code className="font-mono">
+              https://www.xiaohongshu.com/user/profile/{"{24位hex}"}
+            </code>
+          </p>
+          <ChannelUrlPreview platform={platform} url={platformUrl} />
         </Field>
 
         <Field>
