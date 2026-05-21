@@ -166,44 +166,51 @@ export type YouTubeVideoInfo = {
   captions: CaptionTrack[];
 };
 
-// `/web_v2/get_video_info` returns flat metadata + captions inline; v3 returns raw InnerTube — avoid.
+// Switched 2026-05-20 from `web_v2/get_video_info` (returned empty data for
+// Chinese YouTubers like 林亦LYi) to `web_v2/get_video_streams_v2` which works
+// across both English and Chinese coverage. Captions fetched separately via
+// `get_video_captions_v2` since streams_v2 doesn't include caption tracks.
 export async function getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
-  const d = await get<{
-    video_id?: string;
-    title?: string;
-    video_url?: string;
-    view_count?: number | string;
-    length_seconds?: number | string;
-    thumbnails?: Array<{ url: string; width?: number; height?: number }>;
-    channel_id?: string;
-    author?: string;
-    description?: string;
-    upload_date?: string;
-    publish_date?: string;
-    captions?: CaptionTrack[];
-  }>("/api/v1/youtube/web_v2/get_video_info", { video_id: videoId });
+  const [meta, captionsData] = await Promise.all([
+    get<{
+      video_id?: string;
+      title?: string;
+      author?: string;
+      channel_id?: string | null;
+      length_seconds?: number | string;
+      view_count?: number | string;
+      short_description?: string;
+      thumbnail?: Array<{ url: string; width?: number; height?: number }>;
+    }>("/api/v1/youtube/web_v2/get_video_streams_v2", { video_id: videoId }),
+    get<{ captions?: CaptionTrack[] }>(
+      "/api/v1/youtube/web_v2/get_video_captions_v2",
+      { video_id: videoId },
+    ).catch(() => ({ captions: [] as CaptionTrack[] })),
+  ]);
 
   const largestThumb =
-    d.thumbnails && d.thumbnails.length > 0
-      ? [...d.thumbnails].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]
+    meta.thumbnail && meta.thumbnail.length > 0
+      ? [...meta.thumbnail].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]
       : undefined;
 
-  const viewsNum = typeof d.view_count === "number" ? d.view_count : Number(d.view_count) || 0;
+  const viewsNum =
+    typeof meta.view_count === "number" ? meta.view_count : Number(meta.view_count) || 0;
   const lenNum =
-    typeof d.length_seconds === "number" ? d.length_seconds : Number(d.length_seconds) || 0;
+    typeof meta.length_seconds === "number"
+      ? meta.length_seconds
+      : Number(meta.length_seconds) || 0;
 
   return {
-    video_id: d.video_id ?? videoId,
-    title: d.title ?? "",
-    url: d.video_url ?? `https://www.youtube.com/watch?v=${videoId}`,
+    video_id: meta.video_id ?? videoId,
+    title: meta.title ?? "",
+    url: `https://www.youtube.com/watch?v=${videoId}`,
     views: viewsNum,
     duration_sec: lenNum,
     thumbnail_url: largestThumb?.url ?? "",
-    channel_id: d.channel_id ?? "",
-    channel_name: d.author ?? "",
-    description: d.description,
-    published_at: d.publish_date ?? d.upload_date,
-    captions: d.captions ?? [],
+    channel_id: meta.channel_id ?? "",
+    channel_name: meta.author ?? "",
+    description: meta.short_description,
+    captions: captionsData.captions ?? [],
   };
 }
 
