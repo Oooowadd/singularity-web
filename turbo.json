@@ -1,5 +1,32 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "ANTHROPIC_API_KEY",
+    "DATABASE_URL",
+    "DEEPGRAM_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "GROQ_API_KEY",
+    "LOGTO_APP_ID",
+    "LOGTO_APP_SECRET",
+    "LOGTO_BASE_URL",
+    "LOGTO_COOKIE_SECRET",
+    "LOGTO_ENDPOINT",
+    "LOGTO_ISSUER",
+    "LOGTO_JWKS_URI",
+    "LOGTO_M2M_APP_ID",
+    "LOGTO_M2M_APP_SECRET",
+    "SUPABASE_ACCESS_TOKEN",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_DB_PASSWORD",
+    "SUPABASE_ORG_ID",
+    "SUPABASE_PROJECT_REF",
+    "SUPABASE_PROJECT_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "TIKHUB_API_KEY",
+    "TRIGGER_PROJECT_REF",
+    "TRIGGER_SECRET_KEY",
+    "YOUTUBE_API_KEY"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
