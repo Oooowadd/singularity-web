@@ -1,8 +1,10 @@
+import { ProxyPool } from "../proxy";
+import { type CaptionTrack } from "./tikhub";
 import {
-  getVideoWithTranscript,
-  type CaptionTrack,
-} from "./tikhub";
-import { transcribeYoutubeVideo } from "./asr";
+  renderTranscriptWithTimestamps,
+  transcribeYoutubeVideo,
+} from "./asr";
+import { getVideoMetadataYtdlp } from "./ytdlp";
 import { extractXhsNoteId, getXhsNoteDetail } from "./xhs";
 
 export { extractXhsNoteId };
@@ -51,7 +53,10 @@ export type FetchedReference = {
   fetchedAt: string;
 };
 
-async function fetchYoutubeReference(ref: ReferenceInput): Promise<FetchedReference> {
+async function fetchYoutubeReference(
+  ref: ReferenceInput,
+  pool?: ProxyPool,
+): Promise<FetchedReference> {
   const url = ref.url ?? "";
   const videoId = extractYoutubeVideoId(url);
   const fetchedAt = new Date().toISOString();
@@ -65,31 +70,44 @@ async function fetchYoutubeReference(ref: ReferenceInput): Promise<FetchedRefere
       fetchedAt,
     };
   }
+  if (!pool) {
+    return {
+      type: "youtube",
+      url,
+      title: ref.title || `YouTube · ${videoId}`,
+      content: "",
+      error: "YouTube reference requires a proxy pool — caller did not provide one",
+      fetchedAt,
+    };
+  }
   try {
-    const { info, transcript } = await getVideoWithTranscript(videoId);
-    let text = transcript?.text ?? "";
-    let source = text ? "caption" : "none";
-    if (!text) {
-      const asr = await transcribeYoutubeVideo(videoId);
-      if (asr) {
-        text = asr.text;
-        source = "asr";
-      }
+    const metaSession = pool.checkout();
+    let info: Awaited<ReturnType<typeof getVideoMetadataYtdlp>> | null = null;
+    try {
+      info = await getVideoMetadataYtdlp(videoId, metaSession.url);
+      pool.reportOk(metaSession, 10_000);
+    } catch (err) {
+      pool.reportErr(metaSession, (err as Error).message, "other");
     }
-    if (!text) {
+    const asr = await transcribeYoutubeVideo(videoId, pool, {
+      durationSec: info?.duration_sec,
+    });
+    if (!asr) {
       return {
         type: "youtube",
         url,
-        title: ref.title || info.title || `YouTube · ${videoId}`,
+        title: ref.title || info?.title || `YouTube · ${videoId}`,
         content: "",
         error: `No transcript available for ${videoId} (no captions, ASR failed)`,
         fetchedAt,
       };
     }
+    const text = renderTranscriptWithTimestamps(asr.text, asr.words);
+    const source = asr.provider === "youtube_auto" ? "caption" : "asr";
     return {
       type: "youtube",
       url,
-      title: ref.title || info.title || `YouTube · ${videoId}`,
+      title: ref.title || info?.title || `YouTube · ${videoId}`,
       content: text,
       source,
       fetchedAt,
@@ -156,7 +174,10 @@ async function fetchXhsReference(ref: ReferenceInput): Promise<FetchedReference>
   }
 }
 
-export async function fetchReference(ref: ReferenceInput): Promise<FetchedReference> {
+export async function fetchReference(
+  ref: ReferenceInput,
+  opts: { pool?: ProxyPool } = {},
+): Promise<FetchedReference> {
   const fetchedAt = new Date().toISOString();
   if (ref.kind === "text") {
     return {
@@ -166,7 +187,7 @@ export async function fetchReference(ref: ReferenceInput): Promise<FetchedRefere
       fetchedAt,
     };
   }
-  if (ref.kind === "youtube") return fetchYoutubeReference(ref);
+  if (ref.kind === "youtube") return fetchYoutubeReference(ref, opts.pool);
   if (ref.kind === "xhs") return fetchXhsReference(ref);
   return {
     type: ref.kind,
@@ -178,10 +199,13 @@ export async function fetchReference(ref: ReferenceInput): Promise<FetchedRefere
   };
 }
 
-export async function fetchReferences(refs: ReferenceInput[]): Promise<FetchedReference[]> {
+export async function fetchReferences(
+  refs: ReferenceInput[],
+  opts: { pool?: ProxyPool } = {},
+): Promise<FetchedReference[]> {
   const out: FetchedReference[] = [];
   for (const ref of refs) {
-    out.push(await fetchReference(ref));
+    out.push(await fetchReference(ref, opts));
   }
   return out;
 }

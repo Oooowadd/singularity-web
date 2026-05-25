@@ -38,9 +38,15 @@ importers:
       jsonrepair:
         specifier: ^3.14.0
         version: 3.14.0
+      p-limit:
+        specifier: ^6.2.0
+        version: 6.2.0
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
+      undici:
+        specifier: ^7.16.0
+        version: 7.25.0
     devDependencies:
       trigger.dev:
         specifier: ^4.4.4
@@ -233,9 +239,6 @@ importers:
       jsonrepair:
         specifier: ^3.14.0
         version: 3.14.0
-      undici:
-        specifier: ^7.0.0
-        version: 7.25.0
       zod:
         specifier: ^4.0.0
         version: 4.4.3

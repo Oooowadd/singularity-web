@@ -6,6 +6,8 @@
   "description": "Shared prompt templates and Zod schemas (core IP, 1:1 archive port).",
   "exports": {
     "./prompts/clerk": "./src/prompts/clerk.ts",
+    "./prompts/clerk-series": "./src/prompts/clerk-series.ts",
+    "./prompts/clerk-comments": "./src/prompts/clerk-comments.ts",
     "./prompts/muse": "./src/prompts/muse.ts",
     "./prompts/poet": "./src/prompts/poet.ts",
     "./schemas/clerk": "./src/schemas/clerk.ts",
@@ -22,7 +24,9 @@
     "./clients/asr": "./src/clients/asr.ts",
     "./clients/vision": "./src/clients/vision.ts",
     "./clients/youtube-data": "./src/clients/youtube-data.ts",
-    "./clients/xhs": "./src/clients/xhs.ts"
+    "./clients/xhs": "./src/clients/xhs.ts",
+    "./clients/ytdlp": "./src/clients/ytdlp.ts",
+    "./proxy": "./src/proxy/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
@@ -33,7 +37,6 @@
     "ai": "^6.0.184",
     "groq-sdk": "^1.2.0",
     "jsonrepair": "^3.14.0",
-    "undici": "^7.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

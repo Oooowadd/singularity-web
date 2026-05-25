@@ -18,22 +18,28 @@ function getAnthropic() {
 export type ThumbnailAnalysis = {
   description: string;
   whyItWorks: string;
+  diagnosis: string | null;
+  titleSuggestions: string[];
 };
 
-const ZH_INSTRUCTION = `你是 YouTube 封面视觉分析师。请观察这张封面图，输出严格的 JSON：
+const ZH_INSTRUCTION = `你是 YouTube 封面（缩略图）视觉分析师。请观察这张封面，输出严格的 JSON：
 
 {
   "description": "用 2-3 句中文描述封面实际看到的内容（颜色、元素布局、文字、人物表情、视觉钩子）",
-  "why_it_works": "用 2-3 句中文说明这张封面为什么有效（点击诱因、情绪触发、对比手法）"
+  "why_it_works": "用 2-3 句中文说明这张封面为什么有效（点击诱因、情绪触发、对比手法）",
+  "diagnosis": "用 1-2 句中文诊断这张封面的薄弱处或可改进点（例如：文字过多、对比度低、主体不清、信息密度问题等）。如果封面已经非常优秀无明显问题，写 null",
+  "title_suggestions": ["3 个备选中文标题，每个不超过 25 字，与封面视觉强匹配，并包含具体数字/对比/反差/情绪点之一"]
 }
 
 只返回 JSON，不要 markdown 代码块。所有描述基于你真实看到的画面，不要根据标题猜测。`;
 
-const EN_INSTRUCTION = `You are a YouTube thumbnail visual analyst. Observe this thumbnail and output strict JSON:
+const EN_INSTRUCTION = `You are a YouTube cover (thumbnail) visual analyst. Observe this cover and output strict JSON:
 
 {
   "description": "2-3 sentences describing what's actually visible (colors, layout, text, expressions, visual hooks)",
-  "why_it_works": "2-3 sentences explaining why this thumbnail works (click triggers, emotional cues, contrast)"
+  "why_it_works": "2-3 sentences explaining why this cover works (click triggers, emotional cues, contrast)",
+  "diagnosis": "1-2 sentences diagnosing the weakest aspect of this cover or what could be improved (e.g. too much text, low contrast, unclear subject, info density). If the cover is already excellent with no clear issue, write null.",
+  "title_suggestions": ["3 alternative title candidates, each ≤ 70 chars, tightly matching the visual, each leveraging concrete numbers / contrast / surprise / emotion"]
 }
 
 Return JSON only, no markdown fences. All descriptions must be based on what you actually see, not inferred from the title.`;
@@ -51,7 +57,12 @@ async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
   }
 }
 
-function parseLenient(raw: string): { description?: unknown; why_it_works?: unknown } | null {
+function parseLenient(raw: string): {
+  description?: unknown;
+  why_it_works?: unknown;
+  diagnosis?: unknown;
+  title_suggestions?: unknown;
+} | null {
   const cleaned = raw
     .trim()
     .replace(/^```(?:json)?\s*\n?/i, "")
@@ -159,7 +170,19 @@ export async function analyzeImageStack(
       logger?.warn(`vision returned empty fields (${clipped.length} imgs)`);
       return null;
     }
-    return { description, whyItWorks };
+    const rawDiagnosis = parsed.diagnosis;
+    const diagnosis =
+      typeof rawDiagnosis === "string" && rawDiagnosis.trim().length > 0 && rawDiagnosis.trim() !== "null"
+        ? rawDiagnosis.trim()
+        : null;
+    const titleSuggestions = Array.isArray(parsed.title_suggestions)
+      ? parsed.title_suggestions
+          .filter((t): t is string => typeof t === "string")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
+          .slice(0, 5)
+      : [];
+    return { description, whyItWorks, diagnosis, titleSuggestions };
   } catch (err) {
     logger?.warn(
       `vision threw (${urls.length} imgs): ${(err as Error).message?.slice(0, 200)}`,

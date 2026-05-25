@@ -5,24 +5,28 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 import Groq from "groq-sdk";
-import { ProxyAgent, type Dispatcher } from "undici";
 
-import { getAudioStreams, type AudioStream } from "./tikhub";
+import { classifyError, ProxyPool, type ProxySession } from "../proxy";
+import {
+  downloadAudioWithYtdlp,
+  ensureYtdlpBinary,
+  getAutoCaptionsYtdlp,
+} from "./ytdlp";
+
+// Keep this list short — every language is a separate YouTube subtitle endpoint
+// request and they rate-limit aggressively (429) past ~3 langs per video.
+const CAPTION_PREFER_LANGS = ["en", "zh-Hans"];
+
+// Minimum char count from auto-captions before we trust them — anything below
+// is treated as "no captions, fall through to audio ASR".
+const CAPTION_MIN_CHARS = 80;
+
+// Cap audio ASR fallback: above this duration the audio file usually exceeds
+// Groq's 25MB limit and Deepgram billing becomes unhappy.
+const MAX_AUDIO_DURATION_SEC = 3600;
 
 const GROQ_FILE_LIMIT_BYTES = 25 * 1024 * 1024;
-// YouTube CDN serves audio at roughly real-time playback speed (~12 KB/s
-// observed) for non-browser origins. A 13-min audio file can take 6-7 minutes.
 const DOWNLOAD_TIMEOUT_MS = 900_000;
-
-// PROXY_URL routes the YouTube CDN audio download through a residential IP
-// to bypass googlevideo.com 403s on data-center egress (Trigger.dev us-east).
-// Only the audio download hop uses this — TikHub, Deepgram, Groq stay direct.
-let _proxyAgent: ProxyAgent | null = null;
-function getProxyDispatcher(): Dispatcher | undefined {
-  if (!process.env.PROXY_URL) return undefined;
-  if (!_proxyAgent) _proxyAgent = new ProxyAgent(process.env.PROXY_URL);
-  return _proxyAgent;
-}
 
 let _groq: Groq | null = null;
 
@@ -32,15 +36,6 @@ function getGroq(): Groq {
     _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   }
   return _groq;
-}
-
-function sortStreamsBySize(streams: AudioStream[]): AudioStream[] {
-  return [...streams]
-    .filter((s) => s.url)
-    .sort(
-      (a, b) =>
-        Number(a.content_length ?? Infinity) - Number(b.content_length ?? Infinity),
-    );
 }
 
 function extensionForMime(mime?: string): string {
@@ -61,12 +56,10 @@ async function downloadOnce(url: string, ext: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
   try {
-    const dispatcher = getProxyDispatcher();
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
       signal: controller.signal,
-      ...(dispatcher ? { dispatcher } : {}),
-    } as RequestInit);
+    });
     if (!res.ok || !res.body) throw new Error(`audio download HTTP ${res.status}`);
     // pipeline() vs pipe()+finished() so AbortError can't escape as unhandled 'error'
     await pipeline(Readable.fromWeb(res.body as never), createWriteStream(dest));
@@ -83,8 +76,6 @@ async function downloadOnce(url: string, ext: string): Promise<string> {
   }
 }
 
-// YouTube CDN randomly terminates mid-stream for non-browser origins. Same URL
-// retried often succeeds on the next attempt.
 async function downloadToTemp(
   url: string,
   ext: string,
@@ -108,11 +99,12 @@ async function downloadToTemp(
   throw lastErr ?? new Error("download failed after retries");
 }
 
+type DgWord = { word?: string; start?: number; end?: number };
 type DgResponse = {
   metadata?: { duration?: number };
   results?: {
     channels?: Array<{
-      alternatives?: Array<{ transcript?: string }>;
+      alternatives?: Array<{ transcript?: string; words?: DgWord[] }>;
       detected_language?: string;
     }>;
   };
@@ -123,10 +115,15 @@ type DgResponse = {
 async function transcribeWithDeepgram(
   bytes: Uint8Array,
   mime: string,
-): Promise<{ text: string; durationSec?: number; detectedLanguage?: string } | null> {
+): Promise<{
+  text: string;
+  durationSec?: number;
+  detectedLanguage?: string;
+  words: Array<{ w: string; t: number }>;
+} | null> {
   if (!process.env.DEEPGRAM_API_KEY) return null;
   const res = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-3&language=multi&smart_format=true&punctuate=true",
+    "https://api.deepgram.com/v1/listen?model=nova-3&language=multi&smart_format=true&punctuate=true&utterances=true",
     {
       method: "POST",
       headers: {
@@ -142,35 +139,100 @@ async function transcribeWithDeepgram(
   }
   const dg = (await res.json()) as DgResponse;
   if (dg.err_code) throw new Error(`Deepgram ${dg.err_code}: ${dg.err_msg}`);
-  const transcript = dg.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
+  const alt = dg.results?.channels?.[0]?.alternatives?.[0];
+  const transcript = alt?.transcript?.trim() ?? "";
   if (!transcript) return null;
+  const words = (alt?.words ?? [])
+    .filter((w) => w.word && typeof w.start === "number")
+    .map((w) => ({ w: (w.word ?? "").trim(), t: Math.floor(w.start ?? 0) }));
   return {
     text: transcript,
     durationSec: dg.metadata?.duration,
     detectedLanguage: dg.results?.channels?.[0]?.detected_language,
+    words,
   };
 }
 
 async function transcribeWithGroq(
   tempPath: string,
-): Promise<{ text: string; durationSec?: number; detectedLanguage?: string } | null> {
+): Promise<{
+  text: string;
+  durationSec?: number;
+  detectedLanguage?: string;
+  words: Array<{ w: string; t: number }>;
+} | null> {
   const result = await getGroq().audio.transcriptions.create({
     file: createReadStream(tempPath),
     model: "whisper-large-v3",
     response_format: "verbose_json",
+    timestamp_granularities: ["word"],
   });
-  const v = result as unknown as { text?: string; language?: string; duration?: number };
+  const v = result as unknown as {
+    text?: string;
+    language?: string;
+    duration?: number;
+    words?: Array<{ word?: string; start?: number }>;
+  };
   const text = (v.text ?? "").trim();
   if (!text) return null;
-  return { text, detectedLanguage: v.language, durationSec: v.duration };
+  const words = (v.words ?? [])
+    .filter((w) => w.word && typeof w.start === "number")
+    .map((w) => ({ w: (w.word ?? "").trim(), t: Math.floor(w.start ?? 0) }));
+  return { text, detectedLanguage: v.language, durationSec: v.duration, words };
 }
 
 export type AsrResult = {
   text: string;
   detectedLanguage?: string;
   durationSec?: number;
-  provider: "deepgram" | "groq";
+  provider: "deepgram" | "groq" | "youtube_auto";
+  words: Array<{ w: string; t: number }>;
 };
+
+// Filter out words falling inside ad / promo windows so the LLM doesn't score
+// sponsor read-outs as actual content hooks/CTAs.
+const AD_CATEGORIES = new Set(["sponsor", "selfpromo"]);
+
+export function stripAdSegments(
+  words: Array<{ w: string; t: number }>,
+  sponsorChapters: Array<{ start_time: number; end_time: number; category: string }>,
+): Array<{ w: string; t: number }> {
+  const ads = sponsorChapters.filter((c) => AD_CATEGORIES.has(c.category));
+  if (ads.length === 0) return words;
+  return words.filter(
+    (w) => !ads.some((a) => w.t >= a.start_time && w.t < a.end_time),
+  );
+}
+
+// Inject [mm:ss] markers every ~6 seconds so the LLM can cite specific moments
+// without ballooning prompt length (token-balanced for 5-15 chars/sec speech).
+const TIMESTAMP_INTERVAL_SEC = 6;
+
+export function renderTranscriptWithTimestamps(
+  text: string,
+  words: Array<{ w: string; t: number }>,
+): string {
+  if (words.length === 0) return text;
+  const segments: string[] = [];
+  let lastStamp = -TIMESTAMP_INTERVAL_SEC;
+  let buffer: string[] = [];
+  const flush = (t: number) => {
+    if (buffer.length === 0) return;
+    const mm = Math.floor(t / 60);
+    const ss = t % 60;
+    segments.push(`[${mm}:${ss.toString().padStart(2, "0")}] ${buffer.join(" ")}`);
+    buffer = [];
+  };
+  for (const word of words) {
+    if (word.t - lastStamp >= TIMESTAMP_INTERVAL_SEC) {
+      flush(lastStamp >= 0 ? lastStamp : 0);
+      lastStamp = word.t;
+    }
+    buffer.push(word.w);
+  }
+  flush(lastStamp >= 0 ? lastStamp : 0);
+  return segments.join("\n");
+}
 
 export type AsrPhase = "selecting" | "downloading" | "transcribing";
 
@@ -192,14 +254,63 @@ export type TranscribeOpts = {
   tag?: string;
 };
 
-// Platform-agnostic core: try each candidate URL in order, download (with
-// per-URL retry + auto-fallback to next URL), then run Deepgram → Groq.
-// Used by both YouTube (TikHub audio streams) and XHS (TikHub video master_urls).
+async function transcribeAtPath(
+  tempPath: string,
+  mime: string,
+  sizeBytes: number,
+  opts: TranscribeOpts,
+): Promise<AsrResult | null> {
+  const { onPhase, logger, durationSec, tag = "ASR" } = opts;
+  onPhase?.("transcribing", { bytes: sizeBytes, provider: "deepgram" });
+  try {
+    const bytes = readFileSync(tempPath);
+    const dg = await transcribeWithDeepgram(bytes, mime);
+    if (dg) {
+      const effectiveDur = durationSec ?? dg.durationSec;
+      const ratio = effectiveDur && effectiveDur > 0 ? dg.text.length / effectiveDur : Infinity;
+      if (effectiveDur && effectiveDur > 30 && ratio < MIN_CHARS_PER_SEC) {
+        logger?.warn(
+          `${tag}: Deepgram returned ${dg.text.length} chars for ${effectiveDur}s audio (${ratio.toFixed(2)} chars/sec, likely garbled), trying Groq`,
+        );
+      } else {
+        logger?.info(`${tag}: Deepgram OK (${dg.text.length} chars, ${dg.words.length} words)`);
+        return { ...dg, provider: "deepgram" };
+      }
+    } else {
+      logger?.warn(`${tag}: Deepgram returned empty, trying Groq`);
+    }
+  } catch (err) {
+    logger?.warn(
+      `${tag}: Deepgram failed (${(err as Error).message?.slice(0, 120)}), trying Groq`,
+    );
+  }
+
+  if (sizeBytes > GROQ_FILE_LIMIT_BYTES) {
+    logger?.warn(
+      `${tag}: Deepgram failed and file ${sizeBytes}B exceeds Groq 25MB cap`,
+    );
+    return null;
+  }
+  onPhase?.("transcribing", { bytes: sizeBytes, provider: "groq" });
+  try {
+    const groq = await transcribeWithGroq(tempPath);
+    if (groq) {
+      logger?.info(`${tag}: Groq OK (${groq.text.length} chars, ${groq.words.length} words)`);
+      return { ...groq, provider: "groq" };
+    }
+    logger?.warn(`${tag}: Groq returned empty`);
+  } catch (err) {
+    logger?.warn(`${tag}: Groq failed (${(err as Error).message?.slice(0, 120)})`);
+  }
+  return null;
+}
+
+// XHS path: pre-resolved CDN URLs, no proxy needed (rednotecdn unrestricted).
 export async function transcribeFromStreams(
   streams: StreamCandidate[],
   opts: TranscribeOpts = {},
 ): Promise<AsrResult | null> {
-  const { onPhase, logger, durationSec, tag = "ASR" } = opts;
+  const { onPhase, logger, tag = "ASR" } = opts;
   let tempPath: string | null = null;
   try {
     const sorted = [...streams]
@@ -237,55 +348,8 @@ export async function transcribeFromStreams(
     logger?.info(
       `${tag}: downloaded ${actualSize} bytes${chosen.label ? ` (${chosen.label})` : ""}`,
     );
-
     const mime = (chosen.mimeType ?? "audio/mp4").split(";")[0] ?? "audio/mp4";
-
-    // Try Deepgram first.
-    onPhase?.("transcribing", { bytes: actualSize, provider: "deepgram" });
-    try {
-      const bytes = readFileSync(tempPath);
-      const dg = await transcribeWithDeepgram(bytes, mime);
-      if (dg) {
-        const effectiveDur = durationSec ?? dg.durationSec;
-        const ratio = effectiveDur && effectiveDur > 0 ? dg.text.length / effectiveDur : Infinity;
-        if (effectiveDur && effectiveDur > 30 && ratio < MIN_CHARS_PER_SEC) {
-          logger?.warn(
-            `${tag}: Deepgram returned ${dg.text.length} chars for ${effectiveDur}s audio (${ratio.toFixed(2)} chars/sec, likely garbled), trying Groq`,
-          );
-        } else {
-          logger?.info(`${tag}: Deepgram OK (${dg.text.length} chars)`);
-          return { ...dg, provider: "deepgram" };
-        }
-      } else {
-        logger?.warn(`${tag}: Deepgram returned empty, trying Groq`);
-      }
-    } catch (err) {
-      logger?.warn(
-        `${tag}: Deepgram failed (${(err as Error).message?.slice(0, 120)}), trying Groq`,
-      );
-    }
-
-    // Groq fallback (only if file fits its 25 MB cap).
-    if (actualSize > GROQ_FILE_LIMIT_BYTES) {
-      logger?.warn(
-        `${tag}: Deepgram failed and file ${actualSize}B exceeds Groq 25MB cap`,
-      );
-      return null;
-    }
-    onPhase?.("transcribing", { bytes: actualSize, provider: "groq" });
-    try {
-      const groq = await transcribeWithGroq(tempPath);
-      if (groq) {
-        logger?.info(`${tag}: Groq OK (${groq.text.length} chars)`);
-        return { ...groq, provider: "groq" };
-      }
-      logger?.warn(`${tag}: Groq returned empty`);
-    } catch (err) {
-      logger?.warn(
-        `${tag}: Groq failed (${(err as Error).message?.slice(0, 120)})`,
-      );
-    }
-    return null;
+    return await transcribeAtPath(tempPath, mime, actualSize, opts);
   } catch (err) {
     logger?.warn(`${tag} failed: ${(err as Error).message?.slice(0, 200) ?? err}`);
     return null;
@@ -300,33 +364,127 @@ export async function transcribeFromStreams(
   }
 }
 
-// YouTube wrapper: resolves audio streams via TikHub then delegates to the core.
+async function transcribeYoutubeOnce(
+  videoId: string,
+  session: ProxySession,
+  opts: TranscribeOpts,
+): Promise<{ result: AsrResult | null; bytes: number }> {
+  const { logger, tag = `ASR ${videoId}`, onPhase } = opts;
+  await ensureYtdlpBinary();
+
+  // Caption-first: ~50KB vs 5-10MB audio download. Skip on caption miss or short text.
+  try {
+    onPhase?.("selecting");
+    const captions = await getAutoCaptionsYtdlp(
+      videoId,
+      CAPTION_PREFER_LANGS,
+      session.url,
+      60_000,
+      logger,
+    );
+    if (captions && captions.text.length >= CAPTION_MIN_CHARS) {
+      logger?.info(
+        `${tag}: YouTube auto-captions OK (${captions.text.length} chars, ${captions.words.length} words, lang=${captions.lang})`,
+      );
+      return {
+        result: {
+          text: captions.text,
+          detectedLanguage: captions.lang,
+          provider: "youtube_auto",
+          words: captions.words,
+        },
+        // Approx json3 file size on proxy bandwidth — wealthproxies bills on
+        // bytes-over-wire, not transcript text length.
+        bytes: 50_000,
+      };
+    }
+    if (captions) {
+      logger?.warn(
+        `${tag}: auto-captions returned ${captions.text.length} chars < ${CAPTION_MIN_CHARS} floor — falling through to audio ASR`,
+      );
+    } else {
+      logger?.info(`${tag}: no auto-captions found, falling through to audio ASR`);
+    }
+  } catch (err) {
+    logger?.warn(`${tag}: caption attempt threw: ${(err as Error).message?.slice(0, 120)}`);
+  }
+
+  if (opts.durationSec !== undefined && opts.durationSec > MAX_AUDIO_DURATION_SEC) {
+    logger?.info(
+      `${tag}: skipping audio ASR — duration ${opts.durationSec}s > ${MAX_AUDIO_DURATION_SEC}s cap`,
+    );
+    return { result: null, bytes: 0 };
+  }
+
+  const outPath = join(
+    tmpdir(),
+    `singularity-asr-${videoId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.m4a`,
+  );
+  onPhase?.("downloading");
+  try {
+    const r = await downloadAudioWithYtdlp({ videoId, outPath, proxyUrl: session.url });
+    if (r.code !== 0) {
+      const stderr = r.stderr.slice(0, 300);
+      const httpMatch = stderr.match(/HTTP Error (\d{3})/);
+      const status = httpMatch ? Number(httpMatch[1]) : undefined;
+      const err = new Error(`yt-dlp exit=${r.code} stderr=${stderr}`);
+      (err as Error & { status?: number }).status = status;
+      throw err;
+    }
+    if (!statSync(outPath).isFile()) {
+      throw new Error(`yt-dlp finished but no output file at ${outPath}`);
+    }
+    const size = statSync(outPath).size;
+    logger?.info(`${tag}: downloaded ${size} bytes via ${session.provider} session`);
+    const asr = await transcribeAtPath(outPath, "audio/mp4", size, opts);
+    return { result: asr, bytes: size };
+  } finally {
+    try {
+      unlinkSync(outPath);
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+// High-level YouTube ASR: checks out session from pool, downloads via that session,
+// reports outcome back to pool. Retries once on session-fatal error with a new session.
 export async function transcribeYoutubeVideo(
   videoId: string,
+  pool: ProxyPool,
   opts: TranscribeOpts = {},
+  maxAttempts = 2,
 ): Promise<AsrResult | null> {
-  opts.onPhase?.("selecting");
-  // TikHub 400s on bogus / removed video IDs; treat as "no audio" instead of throwing.
-  let streams: Awaited<ReturnType<typeof getAudioStreams>>;
-  try {
-    streams = await getAudioStreams(videoId);
-  } catch (err) {
-    opts.logger?.warn(`ASR ${videoId}: stream fetch failed (${(err as Error).message.slice(0, 120)})`);
-    return null;
+  let lastErr: Error | undefined;
+  let excludeProvider: string | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let session: ProxySession;
+    try {
+      session = pool.checkout({ excludeProvider });
+    } catch (err) {
+      opts.logger?.warn(`ASR ${videoId}: pool exhausted on attempt ${attempt}`);
+      throw err;
+    }
+    try {
+      const { result, bytes } = await transcribeYoutubeOnce(videoId, session, opts);
+      pool.reportOk(session, bytes);
+      return result;
+    } catch (err) {
+      lastErr = err as Error;
+      const status = (err as Error & { status?: number }).status;
+      const kind = classifyError(err, status);
+      pool.reportErr(session, lastErr.message, kind);
+      opts.logger?.warn(
+        `ASR ${videoId}: attempt ${attempt}/${maxAttempts} via ${session.provider} failed (${kind}) — ${lastErr.message?.slice(0, 120)}`,
+      );
+      if (kind === "consecutive_403" || kind === "auth_failed") {
+        excludeProvider = undefined;
+      }
+    }
   }
-  if (streams.length === 0) {
-    opts.logger?.warn(`ASR ${videoId}: no audio streams`);
-    return null;
-  }
-  return transcribeFromStreams(
-    streams
-      .filter((s) => s.url)
-      .map((s) => ({
-        url: s.url,
-        mimeType: s.mime_type,
-        sizeHint: s.content_length ? Number(s.content_length) : undefined,
-        label: `itag=${s.itag}`,
-      })),
-    { ...opts, tag: `ASR ${videoId}` },
+  opts.logger?.warn(
+    `ASR ${videoId}: all ${maxAttempts} attempts exhausted (last: ${lastErr?.message?.slice(0, 120)})`,
   );
+  return null;
 }
