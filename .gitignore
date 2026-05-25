@@ -65,3 +65,8 @@ next-env.d.ts
 # Local data dumps (xlsx exports, never commit)
 *.xlsx
 .vercel
+
+
+# Proxy session backups (provider lists with credentials — synced to DB via seed-proxy-sessions)
+residential-proxies-*.txt
+proxy-backup-*.txt

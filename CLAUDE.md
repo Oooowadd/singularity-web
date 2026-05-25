@@ -4,73 +4,97 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目状态
 
-**Week 0**：仓库刚初始化，只有 planning 文档。Week 1 Day 1 才开始 `pnpm dlx create-turbo` 拉骨架。8 周 closed beta 目标 Q3 2026，里程碑见 `notes/beta_rewrite_plan.md` §5。
+已 scaffold 并部署到生产：Vercel（`hkg1` 函数）+ Trigger.dev cloud（`us-east-1` worker）+ Supabase（Singapore）+ Logto Cloud（Tokyo）。Closed beta 目标 Q3 2026。
+
+功能模块、运维注意、未来优化见 `notes/beta.md`；架构图与决策依据见 `notes/architecture_final.md`。
 
 ## 它是什么
 
-AI 内容教练 web SaaS。目标用户：中国小型创作者（1-2 人团队，主战 XHS + YouTube）。核心交付：60 秒内出流式 AI 批改稿件。
-
-完整定位 / 业务模型见 `notes/beta_rewrite_plan.md`；架构图与决策依据见 `notes/architecture_final.md`。
+AI 内容教练 web SaaS。目标用户：中国小型创作者（主战 XHS + YouTube）。核心交付：看对标 → 出选题 → 写稿全链路。
 
 ## 锁定的技术栈
 
 | 层 | 选择 |
 |---|---|
-| 主语言 | **TypeScript**（仅 yt-dlp / XHS sidecar 用 Python）|
-| 前端 | Next.js 15 App Router on Vercel |
-| UI | Tailwind 4 + shadcn/ui + Radix |
+| 主语言 | **TypeScript** |
+| 前端 | Next.js 16 App Router on Vercel（函数 `hkg1`）|
+| UI | Tailwind 4 + shadcn/ui (base-nova) + Radix |
 | API | tRPC v11 |
-| AI 流式 | Vercel AI SDK v4+ |
-| 长任务 | Trigger.dev v3（Vercel Pro 函数最长 800s 跑不了 30 min 长稿）|
-| Auth | Logto Cloud（不是 Supabase Auth；要支持 WeChat）|
-| DB | Supabase Pro (Postgres + Realtime) + Drizzle ORM |
-| 大文件 | Cloudflare R2 |
-| Python sidecar | FastAPI on Render SG（yt-dlp + bgutil-pot-provider + XHS sign.js）|
+| AI 流式 | Vercel AI SDK v6 |
+| 长任务 | Trigger.dev v4 Hobby（cloud workers us-east-1）|
+| Auth | Logto Cloud（Tokyo 区域）|
+| DB | Supabase Pro（Postgres ap-southeast-1 + Drizzle ORM，不用 Realtime/Auth/Storage SDK）|
+| LLM 主链 | DeepSeek V4 Pro + Flash |
+| LLM vision | Claude Sonnet 4.6（`@ai-sdk/anthropic`）|
+| ASR | Deepgram Nova-3 主 + Groq Whisper 备 |
+| 视频元数据 | YouTube Data API v3 |
+| 数据层 | TikHub（YouTube + XHS 全套）|
 | Monorepo | pnpm + Turborepo |
 
 ## 任务分类决定代码放哪里
 
 任务时长 + 运行时决定写在哪个 workspace：
 
-- **Class A 短任务（< 800s）** → Next.js API 路由内 Vercel AI SDK：`streamText` / `useChat` / `streamObject` / `useObject`；多步 agent 用 `stopWhen: stepCountIs(N)`。Upload Critique、Link Analysis、短脚本都走这条
-- **Class B 长任务（≥ 800s）** → `apps/jobs/trigger/` 下 Trigger.dev v3 任务，前端 `useRealtimeRun` 推进度。30 分钟长稿（outline → section expand）、Clerk 频道分析、Muse 竞品监控都走这条
-- **抓取（yt-dlp / XHS）** → `apps/scraper/`（Python FastAPI on Render SG），Next.js 通过内部 JWT 调；唯一允许出现 Python 的子目录
+- **Class A 短任务（< 800s）** → Next.js API 路由内 Vercel AI SDK：`streamText` / `useChat` / `streamObject` / `useObject`；多步 agent 用 `stopWhen: stepCountIs(N)`。Upload Critique（计划中）、Link Analysis、短脚本都走这条
+- **Class B 长任务（≥ 800s）** → `apps/jobs/trigger/` 下 Trigger.dev v4 任务，前端 `useRealtimeRun` 推进度。Clerk 频道分析、Muse 竞品监控、Poet 长稿、Bible 生成都走这条
 
-完整规划目录树见 `notes/beta_rewrite_plan.md` §3。
+数据抓取目前全走 TypeScript 调 TikHub REST（`packages/shared/src/clients/tikhub.ts` + `xhs.ts`），无 Python sidecar。
 
 ## 约定
 
-- TS 一统天下，Python 只在 `apps/scraper/` 出现
+- TS 一统天下，仓库当前**没有** Python。`apps/scraper/` 是未来选项（见 `notes/beta.md` 未来优化），尚未启用
 - **不**预装 Zustand。客户端状态用 tRPC + React Query + useState/Context；只有跨页面复杂共享状态出现时才引入
-- 所有 prompt 模板集中在 `packages/shared/prompts/`（核心 IP，从 archive 1:1 移植，见下方清单）
+- 所有 prompt 模板集中在 `packages/shared/src/prompts/`（核心 IP，从 archive 移植，见下方清单）
 - 所有 Trigger.dev 任务在 `apps/jobs/trigger/`
-- 文档输出统一 HTML + PDF（不做 `.docx`，npm `docx` 功能弱于 `python-docx`，已在 2026-05-15 决策放弃）
+- 文档输出统一 HTML + PDF（不做 `.docx`，npm `docx` 功能弱于 `python-docx`，2026-05-15 决策放弃）
 - 长稿阈值：中文 ≥2000 字 / 英文 ≥1500 词（约 10 min+）触发 outline → section expand 路径（即走 Trigger.dev）。来源 archive `script_writer.py:_write_script_long_form()`
 - 用词避免"拍死""完胜""硬伤"等口语化措辞
+- commit message 用简洁英文，**不**加 Co-Authored-By trailer
+- 改完 `packages/shared/**` 或 `apps/jobs/**` 后**必须**重新部署 Trigger.dev（Vercel 自动部署，Trigger.dev 不会）
 
-## 核心 IP（从 archive 1:1 移植到 `packages/shared/prompts/`）
+## 核心 IP（已从 archive 移植到 `packages/shared/src/`）
 
-这些 prompt 与算法是产品壁垒，移植时保留原措辞与逻辑：
+这些 prompt 与算法是产品壁垒。当前已落位：
 
-- `prompts/poet_prompts.py` — SCRIPT_WRITING / LONG_FORM_OUTLINE / SECTION_EXPAND / CHANNEL_BIBLE
-- `prompts/muse_prompts.py` — VIRAL_TRIGGER / IDEA_GENERATION
-- `prompts/clerk_prompts.py` — analysis prompts
-- `services/humanizer.py` — humanize_chinese
-- `services/bible_generator.py` — drift detection 算法（lexical overlap + stopwords list）
-- `services/script_writer.py` — long-form thresholds（即上方 4000 字 / 3000 词的来源）
+- `prompts/clerk.ts` — 视频分析 / SOP 生成（human / ai_reference / hottest 三种）
+- `prompts/poet.ts` — SCRIPT_WRITING / LONG_FORM_OUTLINE / SECTION_EXPAND / CHANNEL_BIBLE / TOPIC_ANALYSIS / HUMANIZER
+- `prompts/muse.ts` — VIRAL_TRIGGER / IDEA_GENERATION
+- `services/poet/bible.ts` — drift detection（lexical overlap + stopwords，archive `bible_generator.py` 1:1 移植）
+- `services/poet/humanizer.ts` — humanize_chinese
+- `services/poet/scriptWriter.ts` — long-form thresholds
+- `services/muse.ts` — classify / extract / generate ideas
 
-archive 路径见文末"前身仓库"。
+archive 路径见文末"前身仓库"，仅用于追溯原始逻辑、查 prompt 变更动机。
 
 ## 开发命令
 
-**Week 0：尚未 scaffold**。Week 1 Day 1 启动序列见 `notes/beta_rewrite_plan.md` §9（`pnpm dlx create-turbo` → `create-next-app` → `shadcn init` → 注册云服务 → Vercel deploy）。
+```bash
+pnpm install
+pnpm --filter @singularity/web dev          # Next.js dev
+pnpm --filter @singularity/jobs dev         # Trigger.dev worker（另开窗口）
 
-Turborepo 拉起后此处填入 build / lint / test / 单 workspace 运行命令。
+pnpm build                                  # 全仓 turbo build
+pnpm typecheck                              # 全仓 tsc --noEmit
+pnpm lint
+```
 
-## 仍待 Justin 决定
+Smoke 测试（手动跑，未接 Playwright/Vitest）：
+
+```bash
+pnpm --filter @singularity/db poet-services-smoke
+pnpm --filter @singularity/db muse-services-smoke
+pnpm --filter @singularity/db xhs-client-smoke
+pnpm --filter @singularity/db vision-and-verify-smoke
+pnpm --filter @singularity/db asr-fallback-smoke
+```
+
+`.env.local` 只在仓库根目录维护一份；`apps/web/.env.local` 和 `apps/jobs/.env.local` 由 `scripts/link-env.js` postinstall 自动 symlink 过去。
+
+## 之后我们决定
 
 - **D3**：1 人 8 周 vs 2 人 5 周开发节奏
 - **D4**：ICP 备案 + 微信开放平台是否 Week 1 启动（备案周期 3-6 个月、$5-15K，启动越晚 WeChat 上线越晚）
+- **D5**：YouTube CDN R9（IDC IP 被 403）解决方案 — BrightData / Smartproxy 残留代理 vs 自起 `apps/scraper/` yt-dlp sidecar
 
 ## 前身仓库（archive）
 
