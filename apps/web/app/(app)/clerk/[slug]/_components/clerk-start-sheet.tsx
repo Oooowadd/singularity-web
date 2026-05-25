@@ -156,7 +156,7 @@ export function ClerkStartSheet({
                   className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground">
-                  推荐 10-15 个，越多 SOP 越全面（并行分析，约 3-6 分钟出 SOP）
+                  推荐 10 个（约 3-5 分钟出 SOP，4 并行）
                 </p>
               </Field>
             ) : (

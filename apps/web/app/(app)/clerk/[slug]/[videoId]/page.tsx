@@ -123,6 +123,13 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
         <div className="flex flex-col gap-6">
           <Section title="封面描述" body={video.thumbnailDescription} />
           <Section title="封面有效原因" body={video.thumbnailWhyItWorks} />
+          <Section title="封面诊断" body={video.coverDiagnosis} />
+          {video.coverTitleSuggestions && video.coverTitleSuggestions.length > 0 ? (
+            <Section
+              title="备选标题建议"
+              body={video.coverTitleSuggestions.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+            />
+          ) : null}
           <Section title="开场钩子" body={video.openingHook} />
           <Section title="文字钩子" body={video.textHook} />
           <Section title="全片钩子" body={video.hooksThroughout} />
@@ -140,6 +147,33 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
           <Section title="核心要点" body={video.keyTakeaways} />
         </div>
       </div>
+
+      {video.chapters && video.chapters.length > 0 ? (
+        <Section
+          title="章节（创作者标注）"
+          body={video.chapters
+            .map((c) => {
+              const m = Math.floor(c.start_time / 60);
+              const s = Math.floor(c.start_time % 60);
+              return `[${m}:${s.toString().padStart(2, "0")}] ${c.title}`;
+            })
+            .join("\n")}
+        />
+      ) : null}
+      {video.sponsorChapters && video.sponsorChapters.length > 0 ? (
+        <Section
+          title="SponsorBlock 标记"
+          body={video.sponsorChapters
+            .map((c) => {
+              const m1 = Math.floor(c.start_time / 60);
+              const s1 = Math.floor(c.start_time % 60);
+              const m2 = Math.floor(c.end_time / 60);
+              const s2 = Math.floor(c.end_time % 60);
+              return `[${m1}:${s1.toString().padStart(2, "0")}-${m2}:${s2.toString().padStart(2, "0")}] ${c.category}`;
+            })
+            .join("\n")}
+        />
+      ) : null}
 
       {video.transcript && video.transcript !== "None" ? (
         <Section
