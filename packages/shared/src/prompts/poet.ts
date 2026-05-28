@@ -118,6 +118,12 @@ ${args.verbatimFactsContext}
 - **Idea:**
 ${args.ideaText}
 
+## Step 4.5: Brand Wrapper Extraction (MANDATORY)
+
+Before writing the script, scan the Channel Bible above and identify the channel's signature **brand wrapper** — a recurring branded phrase, show-name segment, or signature opener/closer the host uses every video (e.g. "The Code Report", "Welcome back to the channel", "It is [DATE] and you're watching X"). It is usually mentioned in the Bible's tone/voice or content-pillars section, often quoted in quotation marks.
+
+You MUST include the EXACT brand wrapper phrase, verbatim, at least once in your script — preferably in the [HOOK] / [TEASE] / [CLOSE] segments where the host typically anchors brand. This is not optional. If the Bible truly contains no brand wrapper, only then skip this requirement.
+
 ## Step 5: Write the Script
 
 Write a COMPLETE, ready-to-film script in **${languageName}**. Target **${args.targetWordCount} ${lengthUnit}** — this is not a suggestion, it is the required output length. Do not end the script before reaching at least 90% of this count (${minWordCount} ${lengthUnit}). If you finish all sections early, expand the ITEM sections with more specific examples, detail, and emotional beats until you reach the minimum.
@@ -129,6 +135,9 @@ Follow the SOP structure precisely:
 4. Place the CTA according to the SOP rules.
 5. Build emotional escalation — the final beat must be the most powerful.
 6. Write in the voice and tone described in the SOP — as if a real person is speaking, not reading a document.
+7. If the Channel Bible defines a recurring brand wrapper, signature phrase, or show-name segment (e.g. "The Code Report", "Welcome back to X"), include it naturally in the script.
+
+**Sensitive topic guard.** For jailbreaks, exploits, hacks, harm, drugs, or other genuinely risky territory: refer to the danger category abstractly (e.g. "things that should make a safety team cry", "exactly the kind of output you'd hope a safety lab would never produce"). Do NOT enumerate specific dangerous content types (weapons, explosives, malware, illicit drugs, phishing techniques, etc.) even when describing what someone else demonstrated. Cynical and funny — not a blueprint.
 
 **Sound like a human talking, not an AI writing.** The SOP describes a real host's voice. Honour it:
 - Use the sentence lengths and rhythms the SOP shows, not generic YouTube-presenter cadences.

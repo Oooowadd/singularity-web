@@ -28,7 +28,7 @@ type Payload = {
 
 function safeText(v: string | null | undefined): string | null {
   if (v == null) return null;
-  const cleaned = v.replace(/ /g, "");
+  const cleaned = v.replace(/\u0000/g, "");
   return cleaned === "" ? null : cleaned;
 }
 
@@ -154,6 +154,8 @@ export const analyzeCustomTopic = task({
           verbatimFacts: safeText(analysis.verbatimFacts),
           whySimilar: safeText(analysis.whySimilar),
           viralTrigger: safeText(analysis.viralTrigger),
+          bibleId: bible.id,
+          sopId: sop?.id ?? null,
           language,
           updatedAt: new Date(),
         })

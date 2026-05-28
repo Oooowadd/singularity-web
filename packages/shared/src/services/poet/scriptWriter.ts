@@ -288,12 +288,52 @@ export async function writeScript(
   args: WriteScriptArgs,
   hooks: LongFormHooks = {},
 ): Promise<ScriptResult & { path: "short" | "long" }> {
+  let result: ScriptResult & { path: "short" | "long" };
   if (isLongForm(args.targetWordCount, args.language)) {
     const long = await writeScriptLong(args, hooks);
-    if (long) return { ...long, path: "long" };
+    if (long) result = { ...long, path: "long" };
+    else {
+      const short = await writeScriptShort(args);
+      result = { ...short, path: "short" };
+    }
+  } else {
+    const short = await writeScriptShort(args);
+    result = { ...short, path: "short" };
   }
-  const short = await writeScriptShort(args);
-  return { ...short, path: "short" };
+
+  // Final brand-wrapper enforcement — applies to both short + long paths.
+  const brandWrapper = extractBrandWrapper(args.bibleText);
+  if (brandWrapper && !result.scriptText.includes(brandWrapper)) {
+    const appendPrompt = `The following script is missing the channel's brand wrapper phrase "${brandWrapper}". Rewrite ONLY the [HOOK] or [TEASE] section to naturally include this exact verbatim string. Return the full revised script with all sections present. Do not add commentary.\n\n=== SCRIPT ===\n${result.scriptText}`;
+    const revised = await generateText({
+      model: llm("pro"),
+      prompt: appendPrompt,
+      temperature: 0.4,
+      maxOutputTokens: 12000,
+      maxRetries: 1,
+    });
+    if (revised.text.includes(brandWrapper) && revised.text.length > result.scriptText.length * 0.7) {
+      result = {
+        ...result,
+        scriptText: revised.text,
+        wordCount:
+          args.language === "zh"
+            ? revised.text.length
+            : revised.text.trim().split(/\s+/).length,
+      };
+    }
+  }
+
+  return result;
+}
+
+// Heuristic: extract a likely brand-wrapper phrase from the Bible — any short
+// quoted phrase (3-50 chars) within sections that describe tone/branding.
+function extractBrandWrapper(bibleText: string): string | null {
+  const brandSection = bibleText.match(/(?:brand|signature|recurring|wrapper|outro|opener)[^\n]{0,200}["“']([^"”']{3,50})["”']/i);
+  if (brandSection?.[1]) return brandSection[1].trim();
+  const anyQuoted = bibleText.match(/["“']([^"”']{3,50})["”']/);
+  return anyQuoted?.[1]?.trim() ?? null;
 }
 
 export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptResult> {
@@ -315,6 +355,7 @@ export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptRes
     targetWordCount: args.targetWordCount,
   });
 
+  // Brand-wrapper enforcement happens in writeScript() once, not here.
   const result = await generateText({
     model: llm("pro"),
     prompt,

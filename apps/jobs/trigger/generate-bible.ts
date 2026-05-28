@@ -1,10 +1,12 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { generateText } from "ai";
 
-import { channels, pipelineRuns, poetBible, poetDriftEvents } from "@singularity/db";
+import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents } from "@singularity/db";
 import { generateChannelBible } from "@singularity/shared/services/poet/bible";
+import { llm } from "@singularity/shared/clients/llm";
 
 type Payload = {
   channelId: string;
@@ -16,7 +18,7 @@ type Payload = {
 
 function safeText(v: string | null | undefined): string | null {
   if (v == null) return null;
-  const cleaned = v.replace(/ /g, "");
+  const cleaned = v.replace(/\u0000/g, "");
   return cleaned === "" ? null : cleaned;
 }
 
@@ -40,6 +42,42 @@ export const generateBible = task({
         .update(pipelineRuns)
         .set({ status: "running" })
         .where(eq(pipelineRuns.id, payload.runId));
+
+      // Auto-derive description from channel name + sample video titles if empty.
+      let resolvedDescription = channel.description?.trim() ?? "";
+      if (!resolvedDescription) {
+        const sampleVideos = await db
+          .select({ title: clerkVideos.title })
+          .from(clerkVideos)
+          .where(eq(clerkVideos.channelId, channel.id))
+          .orderBy(desc(clerkVideos.views))
+          .limit(8);
+        if (sampleVideos.length > 0) {
+          await metadata.set("progress", {
+            current: 0,
+            total: 1,
+            phase: "deriving channel description",
+            detail: `从 ${sampleVideos.length} 个视频标题派生频道简介`,
+          });
+          const derivePrompt = `Channel name: "${channel.name}".\nTop video titles:\n${sampleVideos.map((v, i) => `${i + 1}. ${v.title}`).join("\n")}\n\nWrite a 2-3 sentence factual description of this channel's niche, format, and target audience. Plain text, no preamble.`;
+          const derive = await generateText({
+            model: llm("flash"),
+            prompt: derivePrompt,
+            temperature: 0.3,
+            maxOutputTokens: 400,
+            maxRetries: 2,
+          });
+          resolvedDescription = derive.text.trim() || channel.name;
+          await db
+            .update(channels)
+            .set({ description: resolvedDescription })
+            .where(eq(channels.id, channel.id));
+          logger.info(`Auto-derived channel description: ${resolvedDescription.slice(0, 120)}…`);
+        } else {
+          resolvedDescription = channel.name;
+        }
+      }
+
       await metadata.set("progress", {
         current: 0,
         total: 1,
@@ -49,7 +87,7 @@ export const generateBible = task({
 
       const bible = await generateChannelBible({
         ideaText: payload.ideaText,
-        channelDescription: channel.description ?? channel.name,
+        channelDescription: resolvedDescription,
         language,
       });
 
