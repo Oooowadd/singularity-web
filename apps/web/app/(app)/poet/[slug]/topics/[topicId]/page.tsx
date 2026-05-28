@@ -89,7 +89,7 @@ export default async function PoetTopicDetailPage({ params }: Props) {
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-8 p-8">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
       <Button
         variant="ghost"
         size="sm"

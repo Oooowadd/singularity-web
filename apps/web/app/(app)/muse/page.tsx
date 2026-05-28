@@ -48,9 +48,9 @@ export default async function MuseLandingPage() {
   const monitoredByChannel = new Map(videoRows.map((r) => [r.channelId, r.monitoredCount]));
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <header className="flex items-center gap-3">
-        <span className="size-2 rounded-full bg-muse" />
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
+      <header className="flex flex-wrap items-center gap-3">
+        <span className="size-2 shrink-0 rounded-full bg-muse" />
         <h1 className="text-2xl font-semibold tracking-tight">Muse · 选题官</h1>
         <span className="text-sm text-muted-foreground">巡视对标账号，提取爆款机制并生成选题</span>
       </header>
@@ -63,6 +63,7 @@ export default async function MuseLandingPage() {
           </Link>
         </div>
       ) : (
+        <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -104,6 +105,7 @@ export default async function MuseLandingPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   );

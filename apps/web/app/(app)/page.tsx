@@ -53,7 +53,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 p-6 md:p-10">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 md:p-10">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="font-display text-3xl italic leading-tight md:text-4xl">{hello}</h1>

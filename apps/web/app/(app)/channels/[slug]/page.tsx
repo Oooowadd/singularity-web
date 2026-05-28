@@ -145,7 +145,7 @@ export default async function ChannelDetailPage({ params }: Props) {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
       <Button
         variant="ghost"
         size="sm"
@@ -220,6 +220,7 @@ export default async function ChannelDetailPage({ params }: Props) {
       {topClerkVideos.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">Top Clerk videos</h2>
+          <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -251,12 +252,14 @@ export default async function ChannelDetailPage({ params }: Props) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </section>
       ) : null}
 
       {bibles.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">Poet bibles</h2>
+          <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -285,12 +288,14 @@ export default async function ChannelDetailPage({ params }: Props) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </section>
       ) : null}
 
       {topPoetTopics.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">Custom topics</h2>
+          <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -315,12 +320,14 @@ export default async function ChannelDetailPage({ params }: Props) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </section>
       ) : null}
 
       {topMuseIdeas.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">Recent Muse ideas</h2>
+          <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -351,6 +358,7 @@ export default async function ChannelDetailPage({ params }: Props) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </section>
       ) : null}
     </div>

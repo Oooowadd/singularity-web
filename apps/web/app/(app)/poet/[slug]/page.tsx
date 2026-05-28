@@ -28,6 +28,8 @@ import { DeleteScriptButton } from "./_components/delete-script-button";
 import { CustomTopicActions } from "./_components/custom-topic-actions";
 import { CustomTopicCreateSheet } from "./_components/custom-topic-create-sheet";
 import { DriftBanner } from "./_components/drift-banner";
+import { ActiveRunsBanner } from "@/components/active-runs-banner";
+
 import { PoetRunProgress } from "./_components/poet-run-progress";
 import { WriteScriptButton } from "./_components/write-script-button";
 
@@ -116,7 +118,7 @@ export default async function PoetChannelPage({ params }: Props) {
     bibles.some((b) => b.id === recentDrift.bibleId && !b.isActive);
 
   return (
-    <div className="flex flex-1 flex-col gap-8 p-8">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
       <Button
         variant="ghost"
         size="sm"
@@ -139,6 +141,8 @@ export default async function PoetChannelPage({ params }: Props) {
           </Badge>
         </div>
       </header>
+
+      <ActiveRunsBanner channelId={channel.id} />
 
       <PoetRunProgress
         initialActive={

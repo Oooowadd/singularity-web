@@ -20,6 +20,8 @@ import { formatDateTime } from "@/lib/datetime";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
+import { ActiveRunsBanner } from "@/components/active-runs-banner";
+
 import { ClerkRunButton } from "./_components/clerk-run-button";
 import { DeleteSopButton } from "./_components/delete-sop-button";
 import { ClerkSeriesPanel } from "./_components/clerk-series-panel";
@@ -93,7 +95,7 @@ export default async function ClerkChannelPage({ params }: Props) {
   const aiReferenceSops = sortedSops.filter((s) => s.sopType === "ai_reference");
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
       <Button
         variant="ghost"
         size="sm"
@@ -104,11 +106,11 @@ export default async function ClerkChannelPage({ params }: Props) {
         Clerk · 分析师
       </Button>
 
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="size-2 rounded-full bg-clerk" />
-          <h1 className="text-2xl font-semibold tracking-tight">{channel.name}</h1>
-          <Badge variant="secondary" className="font-mono text-[10px]">
+      <header className="flex flex-col items-start gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="size-2 shrink-0 rounded-full bg-clerk" />
+          <h1 className="truncate text-2xl font-semibold tracking-tight">{channel.name}</h1>
+          <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
             {videos.length} {isXhs ? "篇笔记" : "个视频"}
           </Badge>
         </div>
@@ -120,6 +122,9 @@ export default async function ClerkChannelPage({ params }: Props) {
         />
       </header>
 
+      <ActiveRunsBanner channelId={channel.id} />
+
+      <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -174,6 +179,7 @@ export default async function ClerkChannelPage({ params }: Props) {
           ))}
         </TableBody>
       </Table>
+      </div>
 
       {channel.platform === "youtube" ? (
         <ClerkSeriesPanel channelId={channel.id} initialSeries={seriesRows} />

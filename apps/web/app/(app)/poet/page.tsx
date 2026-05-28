@@ -56,9 +56,9 @@ export default async function PoetLandingPage() {
     });
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <header className="flex items-center gap-3">
-        <span className="size-2 rounded-full bg-poet" />
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
+      <header className="flex flex-wrap items-center gap-3">
+        <span className="size-2 shrink-0 rounded-full bg-poet" />
         <h1 className="text-2xl font-semibold tracking-tight">Poet · 写手</h1>
         <span className="text-sm text-muted-foreground">频道圣经 + 短/长脚本生成</span>
       </header>
@@ -71,6 +71,7 @@ export default async function PoetLandingPage() {
           </Link>
         </div>
       ) : (
+        <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -110,6 +111,7 @@ export default async function PoetLandingPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   );

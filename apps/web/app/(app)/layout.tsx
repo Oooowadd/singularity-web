@@ -14,7 +14,7 @@ export default function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
           <SidebarTrigger className="md:hidden" />
           <span className="ml-auto font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
@@ -22,7 +22,7 @@ export default function AppLayout({
           </span>
           <AuthChip />
         </header>
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

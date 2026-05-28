@@ -19,6 +19,8 @@ import { getActiveAgentRun } from "@/lib/agent-run";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
+import { ActiveRunsBanner } from "@/components/active-runs-banner";
+
 import { IdeaApproveToggle } from "./_components/idea-approve-toggle";
 import { MuseRunButton } from "./_components/muse-run-button";
 import {
@@ -165,7 +167,7 @@ export default async function MuseChannelPage({ params }: Props) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 p-8">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
       <Button
         variant="ghost"
         size="sm"
@@ -195,6 +197,8 @@ export default async function MuseChannelPage({ params }: Props) {
         />
       </header>
 
+      <ActiveRunsBanner channelId={channel.id} />
+
       {activeRun && liveStats ? (
         <MuseRunProgressPanel
           triggerRunId={activeRun.triggerRunId}
@@ -208,6 +212,7 @@ export default async function MuseChannelPage({ params }: Props) {
       {monitored.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">已巡视视频</h2>
+          <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -258,6 +263,7 @@ export default async function MuseChannelPage({ params }: Props) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </section>
       ) : null}
 

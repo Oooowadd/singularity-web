@@ -36,9 +36,9 @@ export default async function ClerkLandingPage() {
     .orderBy(desc(max(clerkVideos.analyzedAt)), desc(channels.createdAt));
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <header className="flex items-center gap-3">
-        <span className="size-2 rounded-full bg-clerk" />
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
+      <header className="flex flex-wrap items-center gap-3">
+        <span className="size-2 shrink-0 rounded-full bg-clerk" />
         <h1 className="text-2xl font-semibold tracking-tight">Clerk · 分析师</h1>
         <span className="text-sm text-muted-foreground">
           分析视频结构、钩子、节奏，生成可复用的脚本撰写 SOP
@@ -53,6 +53,7 @@ export default async function ClerkLandingPage() {
           </Link>
         </div>
       ) : (
+        <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -88,6 +89,7 @@ export default async function ClerkLandingPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   );
