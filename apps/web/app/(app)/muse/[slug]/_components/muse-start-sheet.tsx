@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Play } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -35,6 +36,8 @@ const LANGUAGE_OPTIONS: Array<{ value: Language; label: string; hint: string }> 
 ];
 
 export function MuseStartSheet({ channelId, channelName, competitorCount, disabled }: Props) {
+  const router = useRouter();
+  const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const [maxVideos, setMaxVideos] = useState<(typeof VIDEOS_PER_COMPETITOR)[number]>(10);
   const [numIdeas, setNumIdeas] = useState<(typeof IDEAS_PER_VIDEO)[number]>(5);
@@ -45,6 +48,9 @@ export function MuseStartSheet({ channelId, channelName, competitorCount, disabl
     onSuccess: () => {
       toast.info(`已开始巡视「${channelName}」的对标频道`);
       setOpen(false);
+      // Re-fetch the server `activeRun` so the progress panel shows without a manual refresh.
+      utils.invalidate();
+      router.refresh();
     },
     onError: (err) => setError(err.message),
   });
