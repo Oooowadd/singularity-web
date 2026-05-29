@@ -93,12 +93,13 @@ export function PoetRunProgress({ initialActive }: Props) {
   // present right after onSettled before the next router.refresh round-trip)
   // doesn't re-render the card.
   const [settledIds, setSettledIds] = useState<Set<string>>(new Set());
+  const [mountedAt] = useState(() => Date.now());
   const active =
     initialActive && !settledIds.has(initialActive.triggerRunId) ? initialActive : null;
   const startedAt = active
     ? active.startedAt
       ? new Date(active.startedAt).getTime()
-      : Date.now()
+      : mountedAt
     : null;
 
   if (!active || !startedAt) return null;
@@ -139,7 +140,7 @@ function ProgressCard({
   const { run, error } = useRealtimeRun(active.triggerRunId, {
     accessToken: active.publicAccessToken,
   });
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -149,7 +150,9 @@ function ProgressCard({
   const phase = (run?.metadata?.progress as ProgressPayload | undefined)?.phase;
   const lastPhaseRef = useRef<string | undefined>(undefined);
   const tickRef = useRef(onProgressTick);
-  tickRef.current = onProgressTick;
+  useEffect(() => {
+    tickRef.current = onProgressTick;
+  });
   useEffect(() => {
     if (phase && phase !== lastPhaseRef.current) {
       lastPhaseRef.current = phase;

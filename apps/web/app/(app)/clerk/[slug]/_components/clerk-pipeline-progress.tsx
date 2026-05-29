@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Loader2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -64,13 +64,6 @@ type Props = {
   canceling?: boolean;
 };
 
-function fmtSeconds(sec: number): string {
-  if (sec < 60) return `${sec}s`;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 function fmtElapsed(ms: number): string {
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
@@ -92,37 +85,14 @@ export function ClerkPipelineProgress({
   onCancel,
   canceling,
 }: Props) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (allDone) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [allDone]);
 
-  // Track phase transition timestamps so we can show per-stage durations.
-  const stageStartsRef = useRef<Record<string, number>>({});
-  const lastStageIdxRef = useRef<number>(-1);
-
-  const currentIdx = phase
-    ? CLERK_STAGES.findIndex((s) => s.matches(phase))
-    : -1;
-  useEffect(() => {
-    if (currentIdx === -1) return;
-    if (currentIdx !== lastStageIdxRef.current) {
-      const stageId = CLERK_STAGES[currentIdx]!.id;
-      if (!stageStartsRef.current[stageId]) {
-        stageStartsRef.current[stageId] = Date.now();
-      }
-      // Backfill: mark all previous stages as started (in case we missed events).
-      for (let i = 0; i < currentIdx; i++) {
-        const id = CLERK_STAGES[i]!.id;
-        if (!stageStartsRef.current[id]) {
-          stageStartsRef.current[id] = startedAt;
-        }
-      }
-      lastStageIdxRef.current = currentIdx;
-    }
-  }, [currentIdx, startedAt]);
+  const currentIdx = phase ? CLERK_STAGES.findIndex((s) => s.matches(phase)) : -1;
 
   const elapsed = now - startedAt;
   const pct = total > 0 ? Math.round((current / total) * 100) : 0;
@@ -183,13 +153,6 @@ export function ClerkPipelineProgress({
         {CLERK_STAGES.map((s, i) => {
           const isDone = allDone || i < currentIdx;
           const isCurrent = !allDone && i === currentIdx;
-          const startedTs = stageStartsRef.current[s.id];
-          const stageElapsed =
-            startedTs && (isDone || isCurrent)
-              ? Math.floor(
-                  ((isCurrent ? now : stageStartsRef.current[CLERK_STAGES[i + 1]?.id ?? ""] ?? now) - startedTs) / 1000,
-                )
-              : null;
           return (
             <li key={s.id} className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2.5">
@@ -209,11 +172,6 @@ export function ClerkPipelineProgress({
                 >
                   {s.label}
                 </span>
-                {stageElapsed !== null ? (
-                  <span className="ml-auto font-mono text-xs text-muted-foreground">
-                    {fmtSeconds(stageElapsed)}
-                  </span>
-                ) : null}
               </div>
               {isCurrent && detail ? (
                 <span className="ml-7 line-clamp-2 text-xs text-muted-foreground">

@@ -1,9 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 
@@ -31,21 +29,13 @@ export function ClerkRunButton({ channelId, channelName, platform, initialActive
   const router = useRouter();
   const utils = trpc.useUtils();
   const [active, setActive] = useState<ActiveRun | null>(initialActive ?? null);
-  const [startedAt, setStartedAt] = useState<number | null>(
+  const [startedAt, setStartedAt] = useState<number | null>(() =>
     initialActive?.startedAt
       ? new Date(initialActive.startedAt).getTime()
       : initialActive
         ? Date.now()
         : null,
   );
-
-  // Portal target for the full-width progress panel (rendered below the header by
-  // the page). Keeps the header showing a compact chip while the detailed panel
-  // spans full width — avoids a narrow card squeezed into the header slot.
-  const [panelSlot, setPanelSlot] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setPanelSlot(document.getElementById("clerk-run-panel-slot"));
-  }, []);
 
   const cancel = trpc.pipeline.cancelRun.useMutation({
     onSuccess: () => {
@@ -60,20 +50,22 @@ export function ClerkRunButton({ channelId, channelName, platform, initialActive
 
   if (!active || !startedAt) {
     return (
-      <ClerkStartSheet
-        channelId={channelId}
-        channelName={channelName}
-        platform={platform}
-        disabled={false}
-        onStarted={(run) => {
-          setActive(run);
-          setStartedAt(Date.now());
-        }}
-      />
+      <div className="flex justify-end">
+        <ClerkStartSheet
+          channelId={channelId}
+          channelName={channelName}
+          platform={platform}
+          disabled={false}
+          onStarted={(run) => {
+            setActive(run);
+            setStartedAt(Date.now());
+          }}
+        />
+      </div>
     );
   }
 
-  const panel = (
+  return (
     <ClerkRunProgress
       triggerRunId={active.triggerRunId}
       accessToken={active.publicAccessToken}
@@ -96,16 +88,6 @@ export function ClerkRunButton({ channelId, channelName, platform, initialActive
         }
       }}
     />
-  );
-
-  return (
-    <>
-      <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-        <Loader2 className="size-3 animate-spin" />
-        分析中…
-      </div>
-      {panelSlot ? createPortal(panel, panelSlot) : null}
-    </>
   );
 }
 
@@ -142,7 +124,9 @@ function ClerkRunProgress({
   const phase = (run?.metadata?.progress as ProgressPayload | undefined)?.phase;
   const lastPhaseRef = useRef<string | undefined>(undefined);
   const tickRef = useRef(onProgressTick);
-  tickRef.current = onProgressTick;
+  useEffect(() => {
+    tickRef.current = onProgressTick;
+  });
   useEffect(() => {
     if (phase && phase !== lastPhaseRef.current) {
       lastPhaseRef.current = phase;

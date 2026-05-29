@@ -104,8 +104,8 @@ export function MuseRunProgressPanel({
   const utils = trpc.useUtils();
   const { run, error } = useRealtimeRun(triggerRunId, { accessToken });
 
-  const startedMs = startedAt ? new Date(startedAt).getTime() : Date.now();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  const startedMs = startedAt ? new Date(startedAt).getTime() : now;
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);

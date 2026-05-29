@@ -104,7 +104,7 @@ export function BibleGenerateSheet({
                 required
               />
               <p className="text-xs text-muted-foreground">
-                越具体越好。如果填得太泛，AI 可能"偏题"——系统会自动检测并提示
+                越具体越好。如果填得太泛，AI 可能「偏题」——系统会自动检测并提示
               </p>
             </Field>
           </FieldGroup>

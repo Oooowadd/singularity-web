@@ -113,15 +113,14 @@ export default async function ClerkChannelPage({ params }: Props) {
             {videos.length} {isXhs ? "篇笔记" : "个视频"}
           </Badge>
         </div>
-        <ClerkRunButton
-          channelId={channel.id}
-          channelName={channel.name}
-          platform={channel.platform}
-          initialActive={activeRun}
-        />
       </header>
 
-      <div id="clerk-run-panel-slot" className="empty:hidden" />
+      <ClerkRunButton
+        channelId={channel.id}
+        channelName={channel.name}
+        platform={channel.platform}
+        initialActive={activeRun}
+      />
 
       <div className="overflow-x-auto rounded-md border">
       <Table>

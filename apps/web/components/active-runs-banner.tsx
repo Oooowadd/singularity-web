@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -26,9 +27,8 @@ const COMMAND_LABEL: Record<string, string> = {
   "poet-generate-script": "脚本生成",
 };
 
-function elapsed(startedAt: Date | string): string {
-  const ms = Date.now() - new Date(startedAt).getTime();
-  const min = Math.floor(ms / 60_000);
+function elapsed(now: number, startedAt: Date | string): string {
+  const min = Math.floor((now - new Date(startedAt).getTime()) / 60_000);
   if (min < 1) return "刚刚";
   if (min < 60) return `${min} 分钟前`;
   const h = Math.floor(min / 60);
@@ -36,6 +36,12 @@ function elapsed(startedAt: Date | string): string {
 }
 
 export function ActiveRunsBanner({ channelId }: Props) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   const listQuery = trpc.pipeline.listActive.useQuery(
     { channelId },
     { refetchInterval: 8_000, refetchOnWindowFocus: true },
@@ -63,7 +69,7 @@ export function ActiveRunsBanner({ channelId }: Props) {
       </div>
       <ul className="flex flex-col gap-1.5">
         {runs.map((r) => {
-          const isStale = Date.now() - new Date(r.startedAt).getTime() > 30 * 60 * 1000;
+          const isStale = now - new Date(r.startedAt).getTime() > 30 * 60 * 1000;
           return (
             <li
               key={r.id}
@@ -83,7 +89,7 @@ export function ActiveRunsBanner({ channelId }: Props) {
                 </Badge>
               )}
               <span className="font-mono text-[10px] text-muted-foreground">
-                {elapsed(r.startedAt)}
+                {elapsed(now, r.startedAt)}
               </span>
               {isStale ? (
                 <Badge variant="outline" className="border-amber-500 text-[10px] text-amber-700">

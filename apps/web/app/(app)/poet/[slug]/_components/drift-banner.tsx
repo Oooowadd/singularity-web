@@ -19,6 +19,8 @@ export function DriftBanner({ driftEventId, humanMessage }: Props) {
     try {
       const raw = window.localStorage.getItem(DISMISS_KEY);
       const ids = raw ? (JSON.parse(raw) as string[]) : [];
+      // Effect, not lazy init — reading localStorage at init breaks SSR hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (ids.includes(driftEventId)) setDismissed(true);
     } catch {
       /* ignore */

@@ -374,7 +374,7 @@ export default async function MuseChannelPage({ params }: Props) {
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
           <span>还没有选题</span>
           {activeCompetitors.length > 0 ? (
-            <span className="text-xs">点击右上角"开始巡视"，分析对标频道的爆款并生成选题</span>
+            <span className="text-xs">点击右上角「开始巡视」，分析对标频道的爆款并生成选题</span>
           ) : (
             <span className="text-xs">先在频道设置中添加对标账号</span>
           )}

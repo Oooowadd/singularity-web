@@ -26,18 +26,19 @@ function Section({ title, body }: { title: string; body: string | null }) {
   );
 }
 
-function ReferenceChip({ ref }: { ref: CustomTopicReference }) {
-  const label = ref.title ?? ref.url ?? ref.text?.slice(0, 60) ?? ref.kind;
-  if (ref.url) {
+function ReferenceChip({ reference }: { reference: CustomTopicReference }) {
+  const label =
+    reference.title ?? reference.url ?? reference.text?.slice(0, 60) ?? reference.kind;
+  if (reference.url) {
     return (
       <a
-        href={ref.url}
+        href={reference.url}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-1 text-xs hover:bg-muted"
       >
         <Badge variant="secondary" className="text-[9px]">
-          {ref.kind}
+          {reference.kind}
         </Badge>
         <span className="max-w-[24ch] truncate">{label}</span>
         <ExternalLink className="size-3" />
@@ -47,7 +48,7 @@ function ReferenceChip({ ref }: { ref: CustomTopicReference }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-1 text-xs">
       <Badge variant="secondary" className="text-[9px]">
-        {ref.kind}
+        {reference.kind}
       </Badge>
       <span className="max-w-[24ch] truncate">{label}</span>
     </span>
@@ -127,8 +128,8 @@ export default async function PoetTopicDetailPage({ params }: Props) {
             References
           </h3>
           <div className="flex flex-wrap gap-2">
-            {topic.references.map((ref, i) => (
-              <ReferenceChip key={i} ref={ref} />
+            {topic.references.map((reference, i) => (
+              <ReferenceChip key={i} reference={reference} />
             ))}
           </div>
         </section>
