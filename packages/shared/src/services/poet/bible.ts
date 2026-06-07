@@ -1,6 +1,7 @@
 import { streamText } from "ai";
 
 import { llm } from "../../clients/llm";
+import { redactUngrounded } from "../grounding";
 import { buildChannelBiblePrompt } from "../../prompts/poet";
 import type { DriftWarning } from "../../schemas/poet";
 
@@ -140,6 +141,12 @@ export async function generateChannelBible(
     content = acc.trim();
     if (content.length > 0) break;
   }
+  // Grounding pass: strip invented prices/specs/names the channel material doesn't support.
+  content = await redactUngrounded({
+    draft: content,
+    source: `${args.channelDescription}\n\n${args.ideaText}`,
+    language: args.language,
+  });
   const topicClaimed = extractTopicLine(content);
   const driftWarning = checkDrift(
     `${args.ideaText}\n${args.channelDescription}`,

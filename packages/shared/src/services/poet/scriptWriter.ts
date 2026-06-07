@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 
 import { llm } from "../../clients/llm";
+import { redactUngrounded } from "../grounding";
 import {
   buildLongFormOutlinePrompt,
   buildScriptWritingPrompt,
@@ -312,6 +313,21 @@ export async function writeScript(
   // Brand wrapper is now a soft guideline inside the script prompt itself — no
   // post-hoc forced rewrite. (Removed: regex that injected any quoted Bible
   // phrase into the hook, which often shoved an irrelevant line into the open.)
+
+  // Grounding pass: strip stats/specs/quotes the references + idea facts don't support.
+  const source = [
+    formatReferencesBlock(args.references),
+    formatVerbatimFacts(args.verbatimFacts),
+    args.idea.factsAndData,
+  ].join("\n\n");
+  const grounded = await redactUngrounded({ draft: result.scriptText, source, language: args.language });
+  if (grounded && grounded !== result.scriptText) {
+    result = {
+      ...result,
+      scriptText: grounded,
+      wordCount: args.language === "zh" ? grounded.length : grounded.trim().split(/\s+/).length,
+    };
+  }
   return result;
 }
 

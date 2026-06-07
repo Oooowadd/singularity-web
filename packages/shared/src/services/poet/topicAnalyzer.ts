@@ -1,4 +1,5 @@
 import { generateTextWithFallback } from "../../clients/llm";
+import { redactUngrounded } from "../grounding";
 import { buildTopicAnalysisPrompt } from "../../prompts/poet";
 import { formatReferencesBlock, type ScriptReference } from "./scriptWriter";
 
@@ -86,5 +87,12 @@ export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysi
       "Topic analysis produced no usable content (story_angle + facts_and_data empty)",
     );
   }
+  // Grounding pass on the data-heavy field: drop specs/stats the references don't support.
+  analysis.factsAndData = await redactUngrounded({
+    draft: analysis.factsAndData,
+    source: formatReferencesBlock(args.references ?? null),
+    language: args.language,
+    maxOutputTokens: 4096,
+  });
   return analysis;
 }
