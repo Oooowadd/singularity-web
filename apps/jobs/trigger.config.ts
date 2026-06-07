@@ -1,4 +1,5 @@
 import { defineConfig } from "@trigger.dev/sdk";
+import { ffmpeg } from "@trigger.dev/build/extensions/core";
 
 export default defineConfig({
   project: "proj_lfwtogxhtvfemlfqeooh",
@@ -6,6 +7,9 @@ export default defineConfig({
   logLevel: "log",
   maxDuration: 14400,
   dirs: ["./trigger"],
+  build: {
+    extensions: [ffmpeg()],
+  },
   retries: {
     enabledInDev: true,
     default: {

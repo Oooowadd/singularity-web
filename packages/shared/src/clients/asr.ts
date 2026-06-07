@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { createWriteStream, readFileSync, statSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,7 +24,6 @@ const CAPTION_MIN_CHARS = 80;
 // Deepgram billing becomes unhappy.
 const MAX_AUDIO_DURATION_SEC = 3600;
 
-const QWEN_FILE_LIMIT_BYTES = 10 * 1024 * 1024; // Qwen3-ASR OpenAI-compatible mode cap
 const DOWNLOAD_TIMEOUT_MS = 900_000;
 
 function extensionForMime(mime?: string): string {
@@ -205,6 +205,7 @@ export type StreamCandidate = {
   mimeType?: string;
   sizeHint?: number;
   label?: string;
+  codec?: string;
 };
 
 export type TranscribeOpts = {
@@ -214,39 +215,115 @@ export type TranscribeOpts = {
   tag?: string;
 };
 
-// Qwen3-ASR-Flash (Alibaba Model Studio, Singapore) — Chinese-native ASR. Handles
-// XHS h265 video/mp4 directly, far better Mandarin than Deepgram, ~1-5s. OpenAI-
-// compatible chat endpoint, base64 data-URI input (10MB cap). Pass language to
-// force it (XHS -> "zh"); omit for auto-detect (enable_lid).
+// Extract a compact mono 16kHz MP3 so Qwen's base64 request body stays well under
+// its ~10MB limit. XHS gives full h265 video (7-12MB) and base64 inflates ~37%, so
+// shipping raw video 413s; a few-minute audio clip is ~1MB. Returns null if ffmpeg
+// is unavailable or fails — caller falls back to the raw file.
+async function extractAudioForQwen(
+  srcPath: string,
+  logger?: { warn: (msg: string) => void },
+): Promise<string | null> {
+  const out = join(
+    tmpdir(),
+    `singularity-asr-audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.m4a`,
+  );
+  // The Trigger ffmpeg build extension installs to /usr/bin/ffmpeg and exposes it via
+  // FFMPEG_PATH — spawned children don't reliably inherit a PATH that includes it.
+  // Use the native AAC encoder (always compiled into ffmpeg core); the Debian image's
+  // ffmpeg has no libmp3lame, so "-f mp3" exits 1.
+  const bin = process.env.FFMPEG_PATH || "ffmpeg";
+  return await new Promise((resolve) => {
+    let stderr = "";
+    const ff = spawn(
+      bin,
+      // +faststart moves the moov atom to the front — Qwen's m4a parser rejects it otherwise.
+      ["-y", "-i", srcPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "aac", "-b:a", "48k", "-movflags", "+faststart", out],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+    ff.stderr?.on("data", (d) => {
+      if (stderr.length < 4000) stderr += d.toString();
+    });
+    ff.on("error", (e) => {
+      logger?.warn(`ffmpeg spawn failed (bin=${bin}): ${(e as Error).message}`);
+      resolve(null);
+    });
+    ff.on("close", (code) => {
+      try {
+        if (code === 0 && statSync(out).size > 0) return resolve(out);
+      } catch {
+        /* no output file */
+      }
+      if (code !== 0) logger?.warn(`ffmpeg exit ${code} (bin=${bin}): ${stderr.trim().slice(-240)}`);
+      try {
+        unlinkSync(out);
+      } catch {
+        /* already gone */
+      }
+      resolve(null);
+    });
+  });
+}
+
+// base64 inflates ~37%, plus JSON/data-URI overhead — keep the encoded body < ~10MB.
+const QWEN_BODY_SAFE_BYTES = 7_300_000;
+
+// Qwen3-ASR-Flash (Alibaba Model Studio, Singapore) — Chinese-native ASR, far better
+// Mandarin than Deepgram, ~1-5s. OpenAI-compatible chat endpoint, base64 audio input.
+// We extract audio first (XHS ships full video); pass language to force it (XHS ->
+// "zh"), omit for auto-detect (enable_lid).
 async function transcribeWithQwen(
   tempPath: string,
   mime: string,
   language?: string,
+  logger?: { warn: (msg: string) => void },
 ): Promise<{ text: string; detectedLanguage?: string; words: Array<{ w: string; t: number }> } | null> {
   const key = process.env.DASHSCOPE_API_KEY;
   const base = process.env.DASHSCOPE_ASR_BASE_URL;
   if (!key || !base) return null; // not configured
-  const b64 = readFileSync(tempPath).toString("base64");
-  const mediaType = /^(audio|video)\//.test(mime) ? mime : "audio/mp4";
-  const asrOptions: Record<string, unknown> = { enable_lid: true, enable_itn: false };
-  if (language) asrOptions.language = language;
-  const res = await fetch(`${base}/compatible-mode/v1/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "qwen3-asr-flash",
-      messages: [{ role: "user", content: [{ type: "input_audio", input_audio: { data: `data:${mediaType};base64,${b64}` } }] }],
-      stream: false,
-      asr_options: asrOptions,
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Qwen ASR HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+
+  const audioPath = await extractAudioForQwen(tempPath, logger);
+  const sendPath = audioPath ?? tempPath;
+  const mediaType = audioPath
+    ? "audio/mp4"
+    : /^(audio|video)\//.test(mime)
+      ? mime
+      : "audio/mp4";
+  try {
+    const sendBytes = statSync(sendPath).size;
+    if (sendBytes > QWEN_BODY_SAFE_BYTES) {
+      throw new Error(
+        `audio ${sendBytes}B over Qwen body-safe cap${audioPath ? " after extraction" : " (ffmpeg unavailable)"}`,
+      );
+    }
+    const b64 = readFileSync(sendPath).toString("base64");
+    const asrOptions: Record<string, unknown> = { enable_lid: true, enable_itn: false };
+    if (language) asrOptions.language = language;
+    const res = await fetch(`${base}/compatible-mode/v1/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "qwen3-asr-flash",
+        messages: [{ role: "user", content: [{ type: "input_audio", input_audio: { data: `data:${mediaType};base64,${b64}` } }] }],
+        stream: false,
+        asr_options: asrOptions,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Qwen ASR HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+    }
+    const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const text = (j.choices?.[0]?.message?.content ?? "").trim();
+    if (!text) return null;
+    return { text, words: [], detectedLanguage: language ?? "auto" };
+  } finally {
+    if (audioPath) {
+      try {
+        unlinkSync(audioPath);
+      } catch {
+        /* already gone */
+      }
+    }
   }
-  const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  const text = (j.choices?.[0]?.message?.content ?? "").trim();
-  if (!text) return null;
-  return { text, words: [], detectedLanguage: language ?? "auto" };
 }
 
 async function transcribeAtPath(
@@ -257,19 +334,15 @@ async function transcribeAtPath(
   preferQwen = false,
 ): Promise<AsrResult | null> {
   const { onPhase, logger, durationSec, tag = "ASR" } = opts;
-  const qwenFits = sizeBytes <= QWEN_FILE_LIMIT_BYTES;
 
   if (preferQwen) {
-    // XHS / Chinese: Qwen3-ASR-Flash only (force zh). Deepgram returns gibberish on
-    // Chinese, so there's no audio fallback — on failure return null and let the
-    // caller fall back to title-only text.
-    if (!qwenFits) {
-      logger?.warn(`${tag}: file ${sizeBytes}B exceeds Qwen 10MB cap, skipping ASR`);
-      return null;
-    }
+    // XHS / Chinese: Qwen3-ASR-Flash only (force zh). transcribeWithQwen extracts a
+    // compact audio clip first, so video size no longer matters. Deepgram returns
+    // gibberish on Chinese, so there's no audio fallback — on failure return null and
+    // let the caller fall back to title-only text.
     onPhase?.("transcribing", { bytes: sizeBytes, provider: "qwen" });
     try {
-      const qwen = await transcribeWithQwen(tempPath, mime, "zh");
+      const qwen = await transcribeWithQwen(tempPath, mime, "zh", logger);
       if (qwen) {
         logger?.info(`${tag}: Qwen OK (${qwen.text.length} chars)`);
         return { ...qwen, provider: "qwen" };
@@ -281,8 +354,8 @@ async function transcribeAtPath(
     return null;
   }
 
-  // YouTube / English: Deepgram primary (fast, handles long audio); Qwen as a
-  // ≤10MB fallback (auto language).
+  // YouTube / English: Deepgram primary (fast, handles long audio); Qwen as fallback
+  // (auto language, audio extracted) for Chinese audio Deepgram garbles.
   onPhase?.("transcribing", { bytes: sizeBytes, provider: "deepgram" });
   try {
     const bytes = readFileSync(tempPath);
@@ -305,13 +378,9 @@ async function transcribeAtPath(
     logger?.warn(`${tag}: Deepgram failed (${(err as Error).message?.slice(0, 120)}), trying Qwen`);
   }
 
-  if (!qwenFits) {
-    logger?.warn(`${tag}: file ${sizeBytes}B exceeds Qwen 10MB cap, no fallback`);
-    return null;
-  }
   onPhase?.("transcribing", { bytes: sizeBytes, provider: "qwen" });
   try {
-    const qwen = await transcribeWithQwen(tempPath, mime);
+    const qwen = await transcribeWithQwen(tempPath, mime, undefined, logger);
     if (qwen) {
       logger?.info(`${tag}: Qwen fallback OK (${qwen.text.length} chars)`);
       return { ...qwen, provider: "qwen" };
@@ -323,70 +392,65 @@ async function transcribeAtPath(
   return null;
 }
 
-// XHS path: pre-resolved CDN URLs, no proxy needed (rednotecdn unrestricted).
+// XHS path: pre-resolved CDN URLs, no proxy needed (rednotecdn unrestricted). XHS
+// serves its h265 variants as VIDEO-ONLY — the audio track lives in the h264 stream —
+// so try audio-bearing codecs first, and fall through to the next stream when one
+// yields no transcript (a video-only variant → ffmpeg finds no audio → null).
 export async function transcribeFromStreams(
   streams: StreamCandidate[],
   opts: TranscribeOpts = {},
 ): Promise<AsrResult | null> {
   const { onPhase, logger, durationSec, tag = "ASR" } = opts;
-  // Skip oversized audio before downloading (mirrors the YouTube path's cap).
   if (durationSec !== undefined && durationSec > MAX_AUDIO_DURATION_SEC) {
     logger?.warn(`${tag}: skipping audio ASR — duration ${durationSec}s > ${MAX_AUDIO_DURATION_SEC}s cap`);
     return null;
   }
-  let tempPath: string | null = null;
-  try {
-    const sorted = [...streams]
-      .filter((s) => s.url)
-      .sort((a, b) => (a.sizeHint ?? Infinity) - (b.sizeHint ?? Infinity));
-    if (sorted.length === 0) {
-      logger?.warn(`${tag}: no streams with URLs`);
-      return null;
-    }
-
-    onPhase?.("downloading");
-    let chosen: StreamCandidate | null = null;
-    for (let s = 0; s < sorted.length; s++) {
-      const stream = sorted[s]!;
-      try {
-        tempPath = await downloadToTemp(
-          stream.url,
-          extensionForMime(stream.mimeType),
-          2,
-          logger,
-        );
-        chosen = stream;
-        break;
-      } catch (err) {
-        logger?.warn(
-          `${tag}: stream ${s + 1}/${sorted.length}${stream.label ? ` (${stream.label})` : ""} failed after retries: ${(err as Error).message?.slice(0, 120)}`,
-        );
-      }
-    }
-    if (!tempPath || !chosen) {
-      logger?.warn(`${tag}: all ${sorted.length} streams failed to download`);
-      return null;
-    }
-    const actualSize = statSync(tempPath).size;
-    logger?.info(
-      `${tag}: downloaded ${actualSize} bytes${chosen.label ? ` (${chosen.label})` : ""}`,
+  const isH265 = (s: StreamCandidate) => /h265|hevc/i.test(`${s.codec ?? ""} ${s.label ?? ""}`);
+  const sorted = [...streams]
+    .filter((s) => s.url)
+    .sort(
+      (a, b) =>
+        Number(isH265(a)) - Number(isH265(b)) || (a.sizeHint ?? Infinity) - (b.sizeHint ?? Infinity),
     );
-    const mime = (chosen.mimeType ?? "audio/mp4").split(";")[0] ?? "audio/mp4";
-    // XHS → Qwen3-ASR-Flash (Chinese-native); no audio fallback (Deepgram returns
-    // gibberish on Chinese) — caller uses title-only text if this returns null.
-    return await transcribeAtPath(tempPath, mime, actualSize, opts, true);
-  } catch (err) {
-    logger?.warn(`${tag} failed: ${(err as Error).message?.slice(0, 200) ?? err}`);
+  if (sorted.length === 0) {
+    logger?.warn(`${tag}: no streams with URLs`);
     return null;
-  } finally {
-    if (tempPath) {
-      try {
-        unlinkSync(tempPath);
-      } catch {
-        /* already gone */
+  }
+
+  for (let s = 0; s < sorted.length; s++) {
+    const stream = sorted[s]!;
+    let tempPath: string | null = null;
+    try {
+      onPhase?.("downloading");
+      tempPath = await downloadToTemp(stream.url, extensionForMime(stream.mimeType), 2, logger);
+      const actualSize = statSync(tempPath).size;
+      logger?.info(
+        `${tag}: downloaded ${actualSize} bytes${stream.label ? ` (${stream.label})` : ""}`,
+      );
+      const mime = (stream.mimeType ?? "audio/mp4").split(";")[0] ?? "audio/mp4";
+      // XHS → Qwen3-ASR-Flash (Chinese-native); no audio fallback (Deepgram returns
+      // gibberish on Chinese) — caller uses title-only text if all streams return null.
+      const result = await transcribeAtPath(tempPath, mime, actualSize, opts, true);
+      if (result) return result;
+      logger?.warn(
+        `${tag}: stream ${s + 1}/${sorted.length}${stream.label ? ` (${stream.label})` : ""} yielded no transcript${s + 1 < sorted.length ? ", trying next" : ""}`,
+      );
+    } catch (err) {
+      logger?.warn(
+        `${tag}: stream ${s + 1}/${sorted.length}${stream.label ? ` (${stream.label})` : ""} failed: ${(err as Error).message?.slice(0, 120)}`,
+      );
+    } finally {
+      if (tempPath) {
+        try {
+          unlinkSync(tempPath);
+        } catch {
+          /* already gone */
+        }
       }
     }
   }
+  logger?.warn(`${tag}: all ${sorted.length} streams exhausted, no transcript`);
+  return null;
 }
 
 async function transcribeYoutubeOnce(
