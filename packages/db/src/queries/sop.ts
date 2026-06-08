@@ -19,7 +19,7 @@ export async function resolvePrimarySop(
     .from(projectSops)
     .innerJoin(clerkSops, eq(clerkSops.id, projectSops.sopId))
     .where(and(eq(projectSops.projectId, projectId), eq(projectSops.role, "primary")))
-    .orderBy(desc(clerkSops.generatedAt))
+    .orderBy(desc(clerkSops.generatedAt), desc(clerkSops.id))
     .limit(1);
   if (bound) return bound;
 
@@ -27,7 +27,7 @@ export async function resolvePrimarySop(
     .select({ id: clerkSops.id, contentMd: clerkSops.contentMd })
     .from(clerkSops)
     .where(and(eq(clerkSops.channelId, projectId), eq(clerkSops.sopType, "ai_reference")))
-    .orderBy(desc(clerkSops.generatedAt))
+    .orderBy(desc(clerkSops.generatedAt), desc(clerkSops.id))
     .limit(1);
   return legacy ?? null;
 }

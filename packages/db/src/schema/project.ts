@@ -1,4 +1,5 @@
-import { index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { platformEnum } from "./channels";
 import { clerkSops } from "./clerk";
@@ -55,6 +56,10 @@ export const projectSops = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.projectId, table.sopId] }),
+    // At most one primary SOP per project; resolver + consumers assume a single primary.
+    onePrimaryPerProject: uniqueIndex("project_sops_one_primary_per_project")
+      .on(table.projectId)
+      .where(sql`${table.role} = 'primary'`),
   }),
 );
 

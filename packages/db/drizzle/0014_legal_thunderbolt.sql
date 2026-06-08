@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "project_sops_one_primary_per_project" ON "project_sops" USING btree ("project_id") WHERE "project_sops"."role" = 'primary';
