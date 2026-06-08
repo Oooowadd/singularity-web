@@ -180,6 +180,7 @@ export const detectChannelSeries = task({
         if (sampleVideos.length === 0) continue;
         await db.insert(channelSeries).values({
           channelId: channel.id,
+          ownAccountId: channel.id,
           name: s.name.slice(0, 80),
           description: s.description?.slice(0, 500) ?? null,
           videoCount: s.video_indices.length,

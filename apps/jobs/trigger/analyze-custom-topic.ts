@@ -1,16 +1,16 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import {
   channels,
-  clerkSops,
   flushProxyPool,
   loadProxyPool,
   pipelineRuns,
   poetBible,
   poetCustomTopics,
+  resolvePrimarySop,
   type CustomTopicReference,
 } from "@singularity/db";
 import {
@@ -67,12 +67,7 @@ export const analyzeCustomTopic = task({
         .limit(1);
       if (!bible) throw new Error("请先生成并激活一份频道圣经");
 
-      const [sop] = await db
-        .select()
-        .from(clerkSops)
-        .where(and(eq(clerkSops.channelId, channel.id), eq(clerkSops.sopType, "ai_reference")))
-        .orderBy(desc(clerkSops.generatedAt))
-        .limit(1);
+      const sop = await resolvePrimarySop(db, channel.id);
       const sopText = sop?.contentMd ?? "[No SOP reference available]";
 
       await db
@@ -148,6 +143,7 @@ export const analyzeCustomTopic = task({
         .update(poetCustomTopics)
         .set({
           status: "analyzed",
+          projectId: channel.id,
           references: persistedRefs,
           storyAngle: safeText(analysis.storyAngle),
           factsAndData: safeText(analysis.factsAndData),

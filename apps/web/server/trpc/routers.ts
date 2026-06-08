@@ -1004,6 +1004,7 @@ export const appRouter = router({
           .insert(poetCustomTopics)
           .values({
             channelId: channel.id,
+            projectId: channel.id,
             topic: input.topic,
             references: input.references.map((r) => ({
               kind: r.kind,

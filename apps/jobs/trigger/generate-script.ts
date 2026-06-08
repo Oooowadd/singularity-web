@@ -5,7 +5,6 @@ import postgres from "postgres";
 
 import {
   channels,
-  clerkSops,
   clerkVideos,
   museIdeas,
   museMonitorVideos,
@@ -13,6 +12,7 @@ import {
   poetBible,
   poetCustomTopics,
   poetScripts,
+  resolvePrimarySop,
   type CheckedFact,
   type CustomTopicReference,
 } from "@singularity/db";
@@ -196,12 +196,7 @@ export const generateScript = task({
         .limit(1);
       if (!bible) throw new Error("No active Channel Bible — generate one first");
 
-      const [sop] = await db
-        .select()
-        .from(clerkSops)
-        .where(and(eq(clerkSops.channelId, channel.id), eq(clerkSops.sopType, "ai_reference")))
-        .orderBy(desc(clerkSops.generatedAt))
-        .limit(1);
+      const sop = await resolvePrimarySop(db, channel.id);
       const sopText = sop?.contentMd ?? "";
       if (!sopText) {
         logger.warn(
@@ -275,6 +270,7 @@ export const generateScript = task({
         .insert(poetScripts)
         .values({
           channelId: channel.id,
+          projectId: channel.id,
           ideaId: museIdeaId,
           customTopicId: customTopicIdFinal,
           bibleId: bible.id,

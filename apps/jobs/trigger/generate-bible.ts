@@ -118,6 +118,7 @@ export const generateBible = task({
         .insert(poetBible)
         .values({
           channelId: channel.id,
+          ownAccountId: channel.id,
           name: payload.name ?? (bible.topicClaimed || "未命名"),
           content: cleanContent,
           sourceIdea: payload.ideaText,
@@ -128,6 +129,7 @@ export const generateBible = task({
       if (drifted && bible.driftWarning && inserted) {
         await db.insert(poetDriftEvents).values({
           channelId: channel.id,
+          ownAccountId: channel.id,
           bibleId: inserted.id,
           reason: bible.driftWarning.reason,
           claimedTopic: bible.driftWarning.claimedTopic,
