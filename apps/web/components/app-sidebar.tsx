@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Tv } from "lucide-react";
+import { Crosshair, Home, Tv } from "lucide-react";
 
 import {
   Sidebar,
@@ -19,6 +19,7 @@ import {
 const GENERAL = [
   { label: "工作台", href: "/", icon: Home, end: true },
   { label: "频道", href: "/channels", icon: Tv },
+  { label: "对标库", href: "/competitors", icon: Crosshair },
 ];
 
 const AGENTS = [
