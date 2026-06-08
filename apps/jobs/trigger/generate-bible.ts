@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { generateText } from "ai";
 
-import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents } from "@singularity/db";
+import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects } from "@singularity/db";
 import { generateChannelBible } from "@singularity/shared/services/poet/bible";
 import { llm } from "@singularity/shared/clients/llm";
 
@@ -125,6 +125,14 @@ export const generateBible = task({
           isActive: shouldActivate,
         })
         .returning();
+
+      // Keep the project's hard pin in sync with the active Bible (INC5d read path).
+      if (shouldActivate && inserted) {
+        await db
+          .update(projects)
+          .set({ activeBibleId: inserted.id, updatedAt: new Date() })
+          .where(eq(projects.id, channel.id));
+      }
 
       if (drifted && bible.driftWarning && inserted) {
         await db.insert(poetDriftEvents).values({

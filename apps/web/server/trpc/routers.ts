@@ -1159,6 +1159,11 @@ export const appRouter = router({
           .set({ isActive: true, updatedAt: new Date() })
           .where(eq(poetBible.id, input.bibleId))
           .returning();
+        // Keep the project's hard pin in sync (INC5d read path; project.id == channel.id).
+        await db
+          .update(projects)
+          .set({ activeBibleId: input.bibleId, updatedAt: new Date() })
+          .where(eq(projects.id, target.poet_bible.channelId));
         return activated;
       }),
 

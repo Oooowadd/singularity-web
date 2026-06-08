@@ -8,8 +8,8 @@ import {
   flushProxyPool,
   loadProxyPool,
   pipelineRuns,
-  poetBible,
   poetCustomTopics,
+  resolveActiveBible,
   resolvePrimarySop,
   type CustomTopicReference,
 } from "@singularity/db";
@@ -60,12 +60,12 @@ export const analyzeCustomTopic = task({
         .limit(1);
       if (!topic) throw new Error(`custom topic ${payload.topicId} not found`);
 
-      const [bible] = await db
-        .select()
-        .from(poetBible)
-        .where(and(eq(poetBible.channelId, channel.id), eq(poetBible.isActive, true)))
-        .limit(1);
-      if (!bible) throw new Error("请先生成并激活一份频道圣经");
+      const resolvedBible = await resolveActiveBible(db, channel.id);
+      if (!resolvedBible) throw new Error("请先生成并激活一份频道圣经");
+      if (resolvedBible.viaFallback) {
+        logger.warn(`Project ${channel.id} has no Bible pin; used channel active-bible fallback`);
+      }
+      const bible = resolvedBible.bible;
 
       const sop = await resolvePrimarySop(db, channel.id);
       const sopText = sop?.contentMd ?? "[No SOP reference available]";

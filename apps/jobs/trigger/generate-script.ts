@@ -9,10 +9,10 @@ import {
   museIdeas,
   museMonitorVideos,
   pipelineRuns,
-  poetBible,
   poetCustomTopics,
   poetScripts,
   projects,
+  resolveActiveBible,
   resolvePrimarySop,
   type CheckedFact,
   type CustomTopicReference,
@@ -204,12 +204,12 @@ export const generateScript = task({
       const willGoLong = isLongForm(targetWordCount, language);
       total = willGoLong ? 4 : 3;
 
-      const [bible] = await db
-        .select()
-        .from(poetBible)
-        .where(and(eq(poetBible.channelId, channel.id), eq(poetBible.isActive, true)))
-        .limit(1);
-      if (!bible) throw new Error("No active Channel Bible — generate one first");
+      const resolvedBible = await resolveActiveBible(db, channel.id);
+      if (!resolvedBible) throw new Error("No active Channel Bible — generate one first");
+      if (resolvedBible.viaFallback) {
+        logger.warn(`Project ${channel.id} has no Bible pin; used channel active-bible fallback`);
+      }
+      const bible = resolvedBible.bible;
 
       const sop = await resolvePrimarySop(db, channel.id);
       const sopText = sop?.contentMd ?? "";
