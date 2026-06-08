@@ -20,7 +20,15 @@ export async function resolveActiveBible(
     .where(eq(projects.id, projectId))
     .limit(1);
   if (proj?.pin) {
-    const [pinned] = await db.select().from(poetBible).where(eq(poetBible.id, proj.pin)).limit(1);
+    // Require the pinned Bible to still be active: a stale pin (left pointing at a now-
+    // deactivated Bible by an un-synced switch during a deploy window) falls through to the
+    // active-Bible fallback instead of serving the wrong voice. In 1:1 pin == active, so this
+    // is a no-op; revisit when a project can pin a Bible that isn't its channel's active one.
+    const [pinned] = await db
+      .select()
+      .from(poetBible)
+      .where(and(eq(poetBible.id, proj.pin), eq(poetBible.isActive, true)))
+      .limit(1);
     if (pinned) return { bible: pinned, viaFallback: false };
   }
   const [legacy] = await db
