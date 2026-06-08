@@ -35,7 +35,7 @@ export function ChannelsList() {
   if (!data || data.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
-        <Button render={<Link href="/channels/new" />} size="lg">
+        <Button render={<Link href="/accounts/new" />} size="lg">
           <Plus data-icon="inline-start" />
           新建频道
         </Button>
@@ -46,7 +46,7 @@ export function ChannelsList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end">
-        <Button render={<Link href="/channels/new" />} size="sm">
+        <Button render={<Link href="/accounts/new" />} size="sm">
           <Plus data-icon="inline-start" />
           新建频道
         </Button>
@@ -66,7 +66,7 @@ export function ChannelsList() {
             <TableRow key={channel.id}>
               <TableCell className="font-medium">
                 <Link
-                  href={`/channels/${encodeURIComponent(channel.slug)}`}
+                  href={`/accounts/${encodeURIComponent(channel.slug)}`}
                   className="hover:text-foreground hover:underline"
                 >
                   {channel.name}

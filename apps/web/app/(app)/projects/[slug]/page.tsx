@@ -10,5 +10,5 @@ export default async function ProjectHubRedirect({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  redirect(`/channels/${encodeURIComponent(slug)}`);
+  redirect(`/accounts/${encodeURIComponent(slug)}`);
 }

@@ -114,7 +114,7 @@ export function EditChannelSheet({ channel }: Props) {
       utils.channels.bySlug.invalidate();
       toast.success(`URL 路径已更新为 ${fresh.slug}`);
       setOpen(false);
-      router.replace(`/channels/${encodeURIComponent(fresh.slug)}`);
+      router.replace(`/accounts/${encodeURIComponent(fresh.slug)}`);
     },
     onError: (err) => setError(err.message),
   });
@@ -146,7 +146,7 @@ export function EditChannelSheet({ channel }: Props) {
             <Field>
               <FieldLabel>URL 路径</FieldLabel>
               <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-                <code className="truncate font-mono text-xs">/channels/{channel.slug}</code>
+                <code className="truncate font-mono text-xs">/accounts/{channel.slug}</code>
                 <Button
                   type="button"
                   size="sm"

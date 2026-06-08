@@ -1,12 +1,6 @@
-import { ChannelsList } from "./_components/channels-list";
+import { permanentRedirect } from "next/navigation";
 
-export default function ChannelsPage() {
-  return (
-    <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">频道</h1>
-      </header>
-      <ChannelsList />
-    </div>
-  );
+// Back-compat: /channels is now /accounts.
+export default function ChannelsRedirect() {
+  permanentRedirect("/accounts");
 }

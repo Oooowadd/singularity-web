@@ -39,7 +39,7 @@ export function CreateChannelForm() {
     onSuccess: (channel) => {
       utils.channels.list.invalidate();
       toast.success(`已创建「${channel.name}」`);
-      router.push("/channels");
+      router.push("/accounts");
     },
     onError: (err) => {
       setError(err.message);

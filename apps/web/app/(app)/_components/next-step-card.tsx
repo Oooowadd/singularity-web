@@ -30,7 +30,7 @@ function pickStep({
       title: "先建一个自己的频道",
       description: "Singularity 围绕你自己的频道运转 — 配置好定位和对标后，三个 agent 才能工作。",
       cta: "创建频道",
-      href: "/channels/new",
+      href: "/accounts/new",
     };
   }
   if (clerkTotal === 0) {

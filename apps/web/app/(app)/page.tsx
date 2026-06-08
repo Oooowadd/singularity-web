@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         <p className="text-sm text-muted-foreground">
           Singularity 围绕你自己的频道运转，先建一个再回来。
         </p>
-        <Button render={<Link href="/channels/new" />} size="lg" className="mt-2">
+        <Button render={<Link href="/accounts/new" />} size="lg" className="mt-2">
           <Plus data-icon="inline-start" />
           创建第一个频道
         </Button>

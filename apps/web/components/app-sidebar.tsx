@@ -18,7 +18,7 @@ import {
 
 const GENERAL = [
   { label: "工作台", href: "/", icon: Home, end: true },
-  { label: "频道", href: "/channels", icon: Tv },
+  { label: "账号", href: "/accounts", icon: Tv },
   { label: "对标库", href: "/competitors", icon: Crosshair },
 ];
 
