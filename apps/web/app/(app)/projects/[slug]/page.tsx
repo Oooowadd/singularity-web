@@ -1,14 +1,12 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-// In the current 1:1 (account == project == channel), the channel/account detail page is
-// the project hub, so bare /projects/[slug] redirects there. The explicit project namespace
-// still owns the tool routes at /projects/[slug]/{clerk,muse,poet}. Temporary (307) — when a
-// project can differ from its account (multiple projects per account), this becomes a real hub.
+// §5: the explicit account namespace owns the project hub at /accounts/[slug]/projects/[project].
+// Bare /projects/[slug] 308s to the account hub.
 export default async function ProjectHubRedirect({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  redirect(`/accounts/${encodeURIComponent(slug)}`);
+  permanentRedirect(`/accounts/${encodeURIComponent(slug)}`);
 }

@@ -54,12 +54,12 @@ export default async function AccountBiblePage({ params }: Props) {
 
       <header className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Channel Bible</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">频道圣经</h1>
           <BibleGenerateSheet
             channelId={channel.id}
             channelName={channel.name}
             channelDescription={channel.description}
-            buttonLabel={activeBible ? "+ 新建 Bible" : "生成圣经"}
+            buttonLabel={activeBible ? "+ 新建圣经" : "生成圣经"}
             buttonVariant={activeBible ? "outline" : "default"}
           />
         </div>

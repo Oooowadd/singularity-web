@@ -38,6 +38,19 @@ export default async function DashboardPage() {
   const name = resolveDisplayName(user.displayName ?? null, user.email);
   const hello = `${greeting()}${name ? `，${name}` : ""}`;
 
+  // With a single account (the 1:1 expand phase), deep-link agent CTAs straight to its default
+  // project/tool instead of dumping the user on the account list.
+  const solo = snapshot.accounts.length === 1 ? snapshot.accounts[0]! : null;
+  const s = solo ? encodeURIComponent(solo.slug) : "";
+  const links = solo
+    ? {
+        clerk: `/clerk/${s}`,
+        muse: `/accounts/${s}/projects/${s}/muse`,
+        poet: `/accounts/${s}/projects/${s}/poet`,
+        projectHub: `/accounts/${s}/projects/${s}`,
+      }
+    : { clerk: "/clerk", muse: "/accounts", poet: "/accounts", projectHub: "/accounts" };
+
   if (snapshot.channelCount === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
@@ -72,7 +85,11 @@ export default async function DashboardPage() {
         <DashboardRefresher />
       </header>
 
-      <AgentStatCards stats={snapshot.stats} runningByAgent={snapshot.runningByAgent} />
+      <AgentStatCards
+        stats={snapshot.stats}
+        runningByAgent={snapshot.runningByAgent}
+        hrefs={{ clerk: links.clerk, muse: links.muse, poet: links.poet }}
+      />
 
       <AccountsOverview accounts={snapshot.accounts} />
 
@@ -85,6 +102,7 @@ export default async function DashboardPage() {
           poetTotal={snapshot.stats.poet.total}
           pendingMuseIdeas={snapshot.pendingMuseIdeas}
           competitorCount={snapshot.competitorCount}
+          links={links}
         />
       </div>
     </div>

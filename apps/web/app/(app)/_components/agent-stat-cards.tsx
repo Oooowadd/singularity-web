@@ -62,9 +62,10 @@ const CARDS: CardSpec[] = [
 type Props = {
   stats: AgentStats;
   runningByAgent: RunningByAgent;
+  hrefs: Record<AgentName, string>;
 };
 
-export function AgentStatCards({ stats, runningByAgent }: Props) {
+export function AgentStatCards({ stats, runningByAgent, hrefs }: Props) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {CARDS.map((card, index) => {
@@ -83,7 +84,7 @@ export function AgentStatCards({ stats, runningByAgent }: Props) {
             }}
           >
             <Link
-              href={card.href}
+              href={hrefs[card.agent]}
               className="group relative flex h-full flex-col gap-4 overflow-hidden rounded-lg border bg-card p-5 transition-shadow hover:shadow-md"
             >
               {isRunning ? (

@@ -1,9 +1,15 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 
-import { channels, museIdeas, museMonitorVideos, type CompetitorRef } from "@singularity/db";
+import {
+  channels,
+  competitorAccounts,
+  museIdeas,
+  museMonitorVideos,
+  projectCompetitors,
+} from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,12 +60,7 @@ export default async function MuseChannelPage({ params }: Props) {
 
   if (!channel || channel.userId !== user.id) notFound();
 
-  const competitors = (channel.competitors ?? []) as CompetitorRef[];
-  const activeCompetitors = competitors.filter(
-    (c) => c.platform === "youtube" || c.platform === "xhs",
-  );
-
-  const [monitored, ideas, activeRun] = await Promise.all([
+  const [monitored, ideas, activeRun, [boundCompetitorRow]] = await Promise.all([
     db
       .select()
       .from(museMonitorVideos)
@@ -87,7 +88,16 @@ export default async function MuseChannelPage({ params }: Props) {
       .where(eq(museIdeas.channelId, channel.id))
       .orderBy(asc(museIdeas.ideaNumber)),
     getActiveAgentRun(channel.id, user.id, "muse"),
+    // Bound competitors are project_competitors (the source the monitor reads), not the
+    // legacy channel.competitors JSONB; project.id == channel.id during expand.
+    db
+      .select({ c: count() })
+      .from(projectCompetitors)
+      .innerJoin(competitorAccounts, eq(competitorAccounts.id, projectCompetitors.competitorAccountId))
+      .where(and(eq(projectCompetitors.projectId, channel.id), isNull(competitorAccounts.deletedAt))),
   ]);
+
+  const activeCompetitorCount = boundCompetitorRow?.c ?? 0;
 
   let liveStats: LiveStats | null = null;
   let lastProcessed: LastProcessed = null;
@@ -187,13 +197,13 @@ export default async function MuseChannelPage({ params }: Props) {
             {ideas.length} 个选题
           </Badge>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {activeCompetitors.length} 个对标频道
+            {activeCompetitorCount} 个对标频道
           </Badge>
         </div>
         <MuseRunButton
           channelId={channel.id}
           channelName={channel.name}
-          competitorCount={activeCompetitors.length}
+          competitorCount={activeCompetitorCount}
           isActive={!!activeRun}
         />
       </header>
@@ -374,10 +384,10 @@ export default async function MuseChannelPage({ params }: Props) {
       ) : monitored.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
           <span>还没有选题</span>
-          {activeCompetitors.length > 0 ? (
+          {activeCompetitorCount > 0 ? (
             <span className="text-xs">点击右上角「开始巡视」，分析对标频道的爆款并生成选题</span>
           ) : (
-            <span className="text-xs">先在频道设置中添加对标账号</span>
+            <span className="text-xs">先在项目里绑定对标账号（项目页「管理对标」）</span>
           )}
         </div>
       ) : null}

@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -140,7 +140,7 @@ export default async function ProjectHubPage({ params }: Props) {
           <CardTitle className="flex items-center justify-between gap-3 text-sm font-medium text-muted-foreground">
             <span className="flex items-center gap-2">
               <span className="size-[9px] rounded-full bg-poet" />
-              Channel Bible
+              频道圣经
             </span>
             <Button variant="ghost" size="sm" render={<Link href={`/accounts/${a}/bible`} />}>
               管理

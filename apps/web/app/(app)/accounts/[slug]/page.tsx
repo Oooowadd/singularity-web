@@ -1,7 +1,7 @@
 import { count, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import { channels, clerkSops, clerkVideos, poetBible, projects } from "@singularity/db";
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
@@ -147,7 +147,7 @@ export default async function AccountDetailPage({ params }: Props) {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span className="size-[9px] rounded-full bg-poet" />
-                Channel Bible
+                频道圣经
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -167,13 +167,7 @@ export default async function AccountDetailPage({ params }: Props) {
       </section>
 
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">项目</h2>
-          <Button variant="ghost" size="sm" render={<Link href={`/accounts/${a}/projects/new`} />}>
-            <Plus data-icon="inline-start" />
-            新建项目
-          </Button>
-        </div>
+        <h2 className="text-sm font-medium text-muted-foreground">项目</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {projectList.map((proj) => (
             <Link key={proj.id} href={`/accounts/${a}/projects/${encodeURIComponent(proj.slug)}`}>
@@ -199,14 +193,14 @@ export default async function AccountDetailPage({ params }: Props) {
 
       {topClerkVideos.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">Top Clerk videos</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">热门 Clerk 视频</h2>
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="w-24">Views</TableHead>
-                  <TableHead className="w-20">Duration</TableHead>
+                  <TableHead>标题</TableHead>
+                  <TableHead className="w-24">播放量</TableHead>
+                  <TableHead className="w-20">时长</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
