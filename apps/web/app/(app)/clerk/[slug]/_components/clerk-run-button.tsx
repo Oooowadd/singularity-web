@@ -176,6 +176,7 @@ function ClerkRunProgress({
       detail={progress?.detail}
       current={progress?.current ?? 0}
       total={progress?.total ?? 0}
+      estSecondsRemaining={progress?.estSecondsRemaining}
       startedAt={startedAt}
       log={log}
       videoTracks={videoTracks}

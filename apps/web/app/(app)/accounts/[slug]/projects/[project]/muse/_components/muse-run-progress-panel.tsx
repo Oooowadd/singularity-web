@@ -29,6 +29,7 @@ type ProgressPayload = {
   total?: number;
   phase?: string;
   detail?: string;
+  estSecondsRemaining?: number;
 };
 
 export type LiveStats = {
@@ -182,7 +183,7 @@ export function MuseRunProgressPanel({
             {phaseLabel}
           </span>
           <span className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-            <EtaHint jobKey="muse.monitor" />
+            <EtaHint jobKey="muse.monitor" liveSec={progressData?.estSecondsRemaining} />
             <span>{elapsed}</span>
           </span>
         </div>

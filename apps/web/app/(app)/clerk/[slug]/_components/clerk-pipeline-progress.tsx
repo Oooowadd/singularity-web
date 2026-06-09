@@ -57,6 +57,7 @@ type Props = {
   detail: string | undefined;
   current: number;
   total: number;
+  estSecondsRemaining?: number;
   startedAt: number;
   log: LogEntry[];
   videoTracks: Record<string, VideoTrack>;
@@ -79,6 +80,7 @@ export function ClerkPipelineProgress({
   detail,
   current,
   total,
+  estSecondsRemaining,
   startedAt,
   log,
   videoTracks,
@@ -117,7 +119,9 @@ export function ClerkPipelineProgress({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          {!allDone ? <EtaHint jobKey="clerk.analyze" count={total} /> : null}
+          {!allDone ? (
+            <EtaHint jobKey="clerk.analyze" count={total} liveSec={estSecondsRemaining} />
+          ) : null}
           <span className="font-mono text-xs text-muted-foreground">{fmtElapsed(elapsed)}</span>
           {onCancel && !allDone ? (
             <Button

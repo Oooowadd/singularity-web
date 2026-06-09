@@ -280,6 +280,15 @@ export const monitorCompetitors = task({
         transcript: string;
       }> = [];
 
+      // Stage-weighted live ETA (§ PROG P2): extrapolate remaining time from elapsed /
+      // weighted-progress so the classify→idea-gen boundary doesn't reset. Classify (with ASR)
+      // is ~65% of the timeline; serial loop so this is a sound estimator.
+      const etaStart = Date.now();
+      const etaField = (frac: number): { estSecondsRemaining?: number } => {
+        const el = (Date.now() - etaStart) / 1000;
+        return frac > 0.05 ? { estSecondsRemaining: Math.max(0, Math.round(el / frac - el)) } : {};
+      };
+
       for (let i = 0; i < fresh.length; i++) {
         const ref = fresh[i]!;
         const stepBase = { current: i + 1, total: fresh.length };
@@ -287,6 +296,7 @@ export const monitorCompetitors = task({
           ...stepBase,
           phase: "fetching video metadata",
           detail: `[${i + 1}/${fresh.length}] ${ref.title}`,
+          ...etaField((0.65 * i) / fresh.length),
         });
 
         try {
@@ -530,6 +540,7 @@ export const monitorCompetitors = task({
           total: relevantRows.length,
           phase: "generating ideas",
           detail: `共 ${relevantRows.length} 个相关视频，开始生成选题`,
+          ...etaField(0.65),
         });
 
         for (let i = 0; i < relevantRows.length; i++) {
@@ -539,6 +550,7 @@ export const monitorCompetitors = task({
             ...stepBase,
             phase: "analyzing viral trigger",
             detail: `[${i + 1}/${relevantRows.length}] ${row.title} · 分析爆款触发因素`,
+            ...etaField(0.65 + (0.35 * i) / relevantRows.length),
           });
           try {
             const viralTrigger = await analyzeViralTrigger({
@@ -560,6 +572,7 @@ export const monitorCompetitors = task({
               ...stepBase,
               phase: "generating ideas",
               detail: `[${i + 1}/${relevantRows.length}] ${row.title} · 生成 ${numIdeasPerVideo} 个选题`,
+              ...etaField(0.65 + (0.35 * i) / relevantRows.length),
             });
             const ideasResult = await generateIdeas({
               channelDescription,
