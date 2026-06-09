@@ -6,6 +6,7 @@ import { cnHour } from "@/lib/cn-time";
 import { ensureCurrentUser } from "@/lib/users";
 import { getDashboardSnapshot } from "@/lib/dashboard-data";
 
+import { AccountsOverview } from "./_components/accounts-overview";
 import { ActivityFeed } from "./_components/activity-feed";
 import { AgentStatCards } from "./_components/agent-stat-cards";
 import { DashboardRefresher } from "./_components/dashboard-refresher";
@@ -73,6 +74,8 @@ export default async function DashboardPage() {
 
       <AgentStatCards stats={snapshot.stats} runningByAgent={snapshot.runningByAgent} />
 
+      <AccountsOverview accounts={snapshot.accounts} />
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <ActivityFeed activity={snapshot.activity} />
         <NextStepCard
@@ -81,6 +84,7 @@ export default async function DashboardPage() {
           museTotal={snapshot.stats.muse.total}
           poetTotal={snapshot.stats.poet.total}
           pendingMuseIdeas={snapshot.pendingMuseIdeas}
+          competitorCount={snapshot.competitorCount}
         />
       </div>
     </div>

@@ -318,6 +318,46 @@ export const appRouter = router({
         return channel ?? null;
       }),
 
+    // Persistent context header (§5): resolve [account · platform] > [project · duration] from route slugs.
+    context: protectedProcedure
+      .input(z.object({ accountSlug: z.string().min(1), projectSlug: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        const [account] = await db
+          .select({
+            id: channels.id,
+            name: channels.name,
+            slug: channels.slug,
+            platform: channels.platform,
+          })
+          .from(channels)
+          .where(and(eq(channels.userId, ctx.user.id), eq(channels.slug, input.accountSlug)))
+          .limit(1);
+        if (!account) return null;
+        let project: {
+          name: string;
+          slug: string;
+          platform: "youtube" | "xhs";
+          targetDurationSeconds: number;
+        } | null = null;
+        if (input.projectSlug) {
+          const [p] = await db
+            .select({
+              name: projects.name,
+              slug: projects.slug,
+              platform: projects.platform,
+              targetDurationSeconds: projects.targetDurationSeconds,
+            })
+            .from(projects)
+            .where(and(eq(projects.ownAccountId, account.id), eq(projects.slug, input.projectSlug)))
+            .limit(1);
+          project = p ?? null;
+        }
+        return {
+          account: { name: account.name, slug: account.slug, platform: account.platform },
+          project,
+        };
+      }),
+
     create: protectedProcedure
       .input(createChannelInput)
       .mutation(async ({ ctx, input }) => {

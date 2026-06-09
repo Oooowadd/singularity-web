@@ -8,6 +8,8 @@ import {
   museIdeas,
   pipelineRuns,
   poetScripts,
+  projectCompetitors,
+  projects,
 } from "@singularity/db";
 
 import { db } from "./db";
@@ -32,6 +34,17 @@ export type ActivityRow = {
 
 export type RunningByAgent = Record<"clerk" | "muse" | "poet", boolean>;
 
+export type AccountSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  platform: "youtube" | "xhs";
+  projectCount: number;
+  clerkVideos: number;
+  museIdeas: number;
+  poetScripts: number;
+};
+
 export type DashboardSnapshot = {
   channelCount: number;
   activeRunCount: number;
@@ -39,13 +52,15 @@ export type DashboardSnapshot = {
   stats: AgentStats;
   activity: ActivityRow[];
   pendingMuseIdeas: number;
+  competitorCount: number;
+  accounts: AccountSummary[];
 };
 
 export async function getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
-    [channelCountRow],
+    accountRows,
     [activeRunRow],
     [clerkRow],
     [clerkDeltaRow],
@@ -54,12 +69,18 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
     [poetRow],
     [poetDeltaRow],
     [pendingMuseRow],
+    [competitorRow],
+    clerkByAccount,
+    museByAccount,
+    poetByAccount,
+    projectsByAccount,
     activityRows,
   ] = await Promise.all([
     db
-      .select({ c: count() })
+      .select({ id: channels.id, name: channels.name, slug: channels.slug, platform: channels.platform })
       .from(channels)
-      .where(eq(channels.userId, userId)),
+      .where(eq(channels.userId, userId))
+      .orderBy(desc(channels.createdAt)),
     db
       .select({ c: count() })
       .from(pipelineRuns)
@@ -107,6 +128,34 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
         ),
       ),
     db
+      .select({ c: count() })
+      .from(projectCompetitors)
+      .innerJoin(projects, eq(projects.id, projectCompetitors.projectId))
+      .where(eq(projects.userId, userId)),
+    db
+      .select({ channelId: clerkVideos.channelId, c: count() })
+      .from(clerkVideos)
+      .innerJoin(channels, eq(channels.id, clerkVideos.channelId))
+      .where(eq(channels.userId, userId))
+      .groupBy(clerkVideos.channelId),
+    db
+      .select({ channelId: museIdeas.channelId, c: count() })
+      .from(museIdeas)
+      .innerJoin(channels, eq(channels.id, museIdeas.channelId))
+      .where(eq(channels.userId, userId))
+      .groupBy(museIdeas.channelId),
+    db
+      .select({ channelId: poetScripts.channelId, c: count() })
+      .from(poetScripts)
+      .innerJoin(channels, eq(channels.id, poetScripts.channelId))
+      .where(eq(channels.userId, userId))
+      .groupBy(poetScripts.channelId),
+    db
+      .select({ ownAccountId: projects.ownAccountId, c: count() })
+      .from(projects)
+      .where(eq(projects.userId, userId))
+      .groupBy(projects.ownAccountId),
+    db
       .select({
         id: pipelineRuns.id,
         agent: pipelineRuns.agent,
@@ -132,25 +181,33 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
     }
   }
 
+  const clerkMap = new Map(clerkByAccount.map((r) => [r.channelId, r.c]));
+  const museMap = new Map(museByAccount.map((r) => [r.channelId, r.c]));
+  const poetMap = new Map(poetByAccount.map((r) => [r.channelId, r.c]));
+  const projectMap = new Map(projectsByAccount.map((r) => [r.ownAccountId, r.c]));
+  const accounts: AccountSummary[] = accountRows.map((a) => ({
+    id: a.id,
+    name: a.name,
+    slug: a.slug,
+    platform: a.platform,
+    projectCount: projectMap.get(a.id) ?? 0,
+    clerkVideos: clerkMap.get(a.id) ?? 0,
+    museIdeas: museMap.get(a.id) ?? 0,
+    poetScripts: poetMap.get(a.id) ?? 0,
+  }));
+
   return {
-    channelCount: channelCountRow?.c ?? 0,
+    channelCount: accountRows.length,
     activeRunCount: activeRunRow?.c ?? 0,
     runningByAgent,
     stats: {
-      clerk: {
-        total: clerkRow?.c ?? 0,
-        deltaSevenDay: clerkDeltaRow?.c ?? 0,
-      },
-      muse: {
-        total: museRow?.c ?? 0,
-        deltaSevenDay: museDeltaRow?.c ?? 0,
-      },
-      poet: {
-        total: poetRow?.c ?? 0,
-        deltaSevenDay: poetDeltaRow?.c ?? 0,
-      },
+      clerk: { total: clerkRow?.c ?? 0, deltaSevenDay: clerkDeltaRow?.c ?? 0 },
+      muse: { total: museRow?.c ?? 0, deltaSevenDay: museDeltaRow?.c ?? 0 },
+      poet: { total: poetRow?.c ?? 0, deltaSevenDay: poetDeltaRow?.c ?? 0 },
     },
     activity: activityRows,
     pendingMuseIdeas: pendingMuseRow?.c ?? 0,
+    competitorCount: competitorRow?.c ?? 0,
+    accounts,
   };
 }

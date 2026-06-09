@@ -16,6 +16,7 @@ type Props = {
   museTotal: number;
   poetTotal: number;
   pendingMuseIdeas: number;
+  competitorCount: number;
 };
 
 function pickStep({
@@ -24,6 +25,7 @@ function pickStep({
   museTotal,
   poetTotal,
   pendingMuseIdeas,
+  competitorCount,
 }: Props): Step {
   if (channelCount === 0) {
     return {
@@ -31,6 +33,14 @@ function pickStep({
       description: "Singularity 围绕你自己的频道运转 — 配置好定位和对标后，三个 agent 才能工作。",
       cta: "创建频道",
       href: "/accounts/new",
+    };
+  }
+  if (competitorCount === 0) {
+    return {
+      title: "给项目加几个对标账号",
+      description: "Muse 靠对标账号巡视爆款、提取选题；先在项目里绑定几个同赛道账号，后面才有素材可挖。",
+      cta: "去加对标",
+      href: "/accounts",
     };
   }
   if (clerkTotal === 0) {

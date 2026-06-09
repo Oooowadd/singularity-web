@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthChip } from "@/components/auth-chip";
+import { ContextHeader } from "@/components/context-header";
 import {
   SidebarInset,
   SidebarProvider,
@@ -17,6 +18,7 @@ export default function AppLayout({
       <SidebarInset className="min-w-0">
         <header className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
           <SidebarTrigger className="md:hidden" />
+          <ContextHeader />
           <span className="ml-auto font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
             内测 · 2026 Q3
           </span>
