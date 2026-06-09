@@ -30,6 +30,7 @@ singularity-web/
 
 ```bash
 pnpm install
+pnpm --filter @singularity/web build
 pnpm --filter @singularity/web dev          # Next.js dev
 pnpm --filter @singularity/jobs dev         # Trigger.dev worker（另开窗口）
 ```
