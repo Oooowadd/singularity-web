@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { auth } from "@trigger.dev/sdk";
 
-import { channels, pipelineRuns } from "@singularity/db";
+import { channels, competitorAccounts, pipelineRuns } from "@singularity/db";
 
 import { db } from "./db";
 
@@ -15,11 +15,18 @@ export type ActiveAgentRun = {
   startedAt: Date;
 };
 
+export type AgentRunOwner = { channelId: string } | { competitorAccountId: string };
+
 export async function getActiveAgentRun(
-  channelId: string,
+  owner: string | AgentRunOwner,
   userId: string,
   agent: "clerk" | "muse" | "poet",
 ): Promise<ActiveAgentRun | null> {
+  const ownerObj: AgentRunOwner = typeof owner === "string" ? { channelId: owner } : owner;
+  const ownerCond =
+    "channelId" in ownerObj
+      ? eq(pipelineRuns.channelId, ownerObj.channelId)
+      : eq(pipelineRuns.competitorAccountId, ownerObj.competitorAccountId);
   const [active] = await db
     .select({
       id: pipelineRuns.id,
@@ -28,11 +35,12 @@ export async function getActiveAgentRun(
       startedAt: pipelineRuns.startedAt,
     })
     .from(pipelineRuns)
-    .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
+    .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+    .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
     .where(
       and(
-        eq(pipelineRuns.channelId, channelId),
-        eq(channels.userId, userId),
+        ownerCond,
+        or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)),
         eq(pipelineRuns.agent, agent),
         inArray(pipelineRuns.status, ["pending", "running"]),
       ),

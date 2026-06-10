@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, or, sql } from "drizzle-orm";
 
 import {
   channels,
   clerkVideos,
+  competitorAccounts,
   museIdeas,
   pipelineRuns,
   poetScripts,
@@ -25,8 +26,10 @@ export type ActivityRow = {
   agent: "clerk" | "muse" | "poet";
   command: string;
   status: "pending" | "running" | "done" | "failed";
+  // Coalesced display name; channelSlug is null for competitor-target clerk runs.
   channelName: string;
-  channelSlug: string;
+  channelSlug: string | null;
+  competitorAccountId: string | null;
   startedAt: Date;
   completedAt: Date | null;
   errorMessage: string | null;
@@ -84,8 +87,14 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
     db
       .select({ c: count() })
       .from(pipelineRuns)
-      .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
-      .where(and(eq(channels.userId, userId), eq(pipelineRuns.status, "running"))),
+      .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+      .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
+      .where(
+        and(
+          or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)),
+          eq(pipelineRuns.status, "running"),
+        ),
+      ),
     db
       .select({ c: count() })
       .from(clerkVideos)
@@ -161,15 +170,17 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
         agent: pipelineRuns.agent,
         command: pipelineRuns.command,
         status: pipelineRuns.status,
-        channelName: channels.name,
+        channelName: sql<string>`coalesce(${channels.name}, ${competitorAccounts.name}, ${competitorAccounts.url}, '未知目标')`,
         channelSlug: channels.slug,
+        competitorAccountId: pipelineRuns.competitorAccountId,
         startedAt: pipelineRuns.startedAt,
         completedAt: pipelineRuns.completedAt,
         errorMessage: pipelineRuns.errorMessage,
       })
       .from(pipelineRuns)
-      .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
-      .where(eq(channels.userId, userId))
+      .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+      .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
+      .where(or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)))
       .orderBy(desc(pipelineRuns.startedAt))
       .limit(10),
   ]);

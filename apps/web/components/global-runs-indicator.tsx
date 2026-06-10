@@ -25,10 +25,12 @@ const COMMAND_LABEL: Record<string, string> = {
 };
 
 // Default project slug == account slug (D3 spine), so agent pages deep-link off channelSlug.
-function deepLink(agent: string, channelSlug: string): string {
-  const s = encodeURIComponent(channelSlug);
-  if (agent === "clerk") return `/clerk/${s}`;
-  if (agent === "muse" || agent === "poet") return `/accounts/${s}/projects/${s}/${agent}`;
+// Competitor-target clerk runs (no slug) link to the competitor analysis page.
+function deepLink(run: { agent: string; channelSlug: string | null; competitorAccountId: string | null }): string {
+  if (run.competitorAccountId) return `/clerk/competitor/${run.competitorAccountId}`;
+  const s = encodeURIComponent(run.channelSlug ?? "");
+  if (run.agent === "clerk") return `/clerk/${s}`;
+  if (run.agent === "muse" || run.agent === "poet") return `/accounts/${s}/projects/${s}/${run.agent}`;
   return "/";
 }
 
@@ -48,8 +50,9 @@ type RunRow = {
   startedAt: Date | string;
   progress: number | null;
   total: number | null;
-  channelSlug: string;
-  channelName: string;
+  channelSlug: string | null;
+  competitorAccountId: string | null;
+  targetName: string;
 };
 
 function GlobalRunsIndicatorInner() {
@@ -98,10 +101,10 @@ function GlobalRunsIndicatorInner() {
     for (const [id, r] of prev) {
       if (current.has(id)) continue;
       toast(`${AGENT_LABEL[r.agent] ?? r.agent} · ${COMMAND_LABEL[r.command] ?? r.command} 已结束`, {
-        description: r.channelName,
+        description: r.targetName,
         action: {
           label: "查看",
-          onClick: () => router.push(deepLink(r.agent, r.channelSlug)),
+          onClick: () => router.push(deepLink(r)),
         },
       });
     }
@@ -139,7 +142,7 @@ function GlobalRunsIndicatorInner() {
                 </span>
                 <span className="flex w-full items-center gap-2">
                   <span className="truncate text-[11px] text-muted-foreground">
-                    {r.channelName}
+                    {r.targetName}
                   </span>
                   {r.status === "running" && (r.total ?? 0) > 0 ? (
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">

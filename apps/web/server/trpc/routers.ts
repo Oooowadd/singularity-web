@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { auth, runs, tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
@@ -667,14 +667,21 @@ export const appRouter = router({
             id: clerkSops.id,
             language: clerkSops.language,
             generatedAt: clerkSops.generatedAt,
-            sourceName: channels.name,
-            sourceSlug: channels.slug,
+            // SOPs are owned by an own channel OR a competitor (one-owner XOR, 0018).
+            sourceName: sql<string>`coalesce(${channels.name}, ${competitorAccounts.name}, ${competitorAccounts.url}, '未知来源')`,
+            sourceKind: sql<"own" | "competitor">`case when ${clerkSops.channelId} is not null then 'own' else 'competitor' end`,
             usedBy: sql<number>`(SELECT count(*)::int FROM project_sops ps WHERE ps.sop_id = ${clerkSops.id} AND ps.role = 'primary')`,
             isCurrent: sql<boolean>`EXISTS (SELECT 1 FROM project_sops ps WHERE ps.sop_id = ${clerkSops.id} AND ps.project_id = ${input.projectId} AND ps.role = 'primary')`,
           })
           .from(clerkSops)
-          .innerJoin(channels, eq(channels.id, clerkSops.channelId))
-          .where(and(eq(channels.userId, ctx.user.id), eq(clerkSops.sopType, "ai_reference")))
+          .leftJoin(channels, eq(channels.id, clerkSops.channelId))
+          .leftJoin(competitorAccounts, eq(competitorAccounts.id, clerkSops.competitorAccountId))
+          .where(
+            and(
+              or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
+              eq(clerkSops.sopType, "ai_reference"),
+            ),
+          )
           .orderBy(desc(clerkSops.generatedAt));
         return rows;
       }),
@@ -686,8 +693,14 @@ export const appRouter = router({
         const [sop] = await db
           .select({ id: clerkSops.id })
           .from(clerkSops)
-          .innerJoin(channels, eq(channels.id, clerkSops.channelId))
-          .where(and(eq(clerkSops.id, input.sopId), eq(channels.userId, ctx.user.id)))
+          .leftJoin(channels, eq(channels.id, clerkSops.channelId))
+          .leftJoin(competitorAccounts, eq(competitorAccounts.id, clerkSops.competitorAccountId))
+          .where(
+            and(
+              eq(clerkSops.id, input.sopId),
+              or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
+            ),
+          )
           .limit(1);
         if (!sop) throw new TRPCError({ code: "NOT_FOUND", message: "SOP not found" });
         await db.transaction(async (tx) => {
@@ -708,8 +721,20 @@ export const appRouter = router({
 
   pipeline: router({
     listActive: protectedProcedure
-      .input(z.object({ channelId: z.string().uuid() }))
+      .input(
+        z
+          .object({
+            channelId: z.string().uuid().optional(),
+            competitorAccountId: z.string().uuid().optional(),
+          })
+          .refine((v) => (v.channelId == null) !== (v.competitorAccountId == null), {
+            message: "exactly one owner",
+          }),
+      )
       .query(async ({ ctx, input }) => {
+        const ownerCond = input.channelId
+          ? eq(pipelineRuns.channelId, input.channelId)
+          : eq(pipelineRuns.competitorAccountId, input.competitorAccountId!);
         return db
           .select({
             id: pipelineRuns.id,
@@ -722,18 +747,19 @@ export const appRouter = router({
             configJson: pipelineRuns.configJson,
           })
           .from(pipelineRuns)
-          .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
           .where(
             and(
-              eq(pipelineRuns.channelId, input.channelId),
-              eq(channels.userId, ctx.user.id),
+              ownerCond,
+              or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
               inArray(pipelineRuns.status, ["pending", "running"]),
             ),
           )
           .orderBy(desc(pipelineRuns.startedAt));
       }),
 
-    // All active runs across the user's channels — powers the global header indicator.
+    // All active runs across the user's channels AND competitors — global header indicator.
     listActiveAll: protectedProcedure.query(async ({ ctx }) => {
       return db
         .select({
@@ -745,13 +771,15 @@ export const appRouter = router({
           progress: pipelineRuns.progress,
           total: pipelineRuns.total,
           channelSlug: channels.slug,
-          channelName: channels.name,
+          competitorAccountId: pipelineRuns.competitorAccountId,
+          targetName: sql<string>`coalesce(${channels.name}, ${competitorAccounts.name}, ${competitorAccounts.url}, '未知目标')`,
         })
         .from(pipelineRuns)
-        .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
+        .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+        .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
         .where(
           and(
-            eq(channels.userId, ctx.user.id),
+            or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
             inArray(pipelineRuns.status, ["pending", "running"]),
           ),
         )
@@ -795,8 +823,14 @@ export const appRouter = router({
             status: pipelineRuns.status,
           })
           .from(pipelineRuns)
-          .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
-          .where(and(eq(pipelineRuns.id, input.runId), eq(channels.userId, ctx.user.id)))
+          .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
+          .where(
+            and(
+              eq(pipelineRuns.id, input.runId),
+              or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
+            ),
+          )
           .limit(1);
         if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
 
@@ -902,19 +936,32 @@ export const appRouter = router({
 
     // Reissues a scoped token so the client can re-attach useRealtimeRun after a page refresh.
     activeRun: protectedProcedure
-      .input(z.object({ channelId: z.string().uuid() }))
+      .input(
+        z
+          .object({
+            channelId: z.string().uuid().optional(),
+            competitorAccountId: z.string().uuid().optional(),
+          })
+          .refine((v) => (v.channelId == null) !== (v.competitorAccountId == null), {
+            message: "exactly one owner",
+          }),
+      )
       .query(async ({ ctx, input }) => {
+        const ownerCond = input.channelId
+          ? eq(pipelineRuns.channelId, input.channelId)
+          : eq(pipelineRuns.competitorAccountId, input.competitorAccountId!);
         const [active] = await db
           .select({
             id: pipelineRuns.id,
             configJson: pipelineRuns.configJson,
           })
           .from(pipelineRuns)
-          .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
           .where(
             and(
-              eq(pipelineRuns.channelId, input.channelId),
-              eq(channels.userId, ctx.user.id),
+              ownerCond,
+              or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
               inArray(pipelineRuns.status, ["pending", "running"]),
             ),
           )
@@ -955,8 +1002,14 @@ export const appRouter = router({
             configJson: pipelineRuns.configJson,
           })
           .from(pipelineRuns)
-          .innerJoin(channels, eq(channels.id, pipelineRuns.channelId))
-          .where(and(eq(pipelineRuns.id, input.runId), eq(channels.userId, ctx.user.id)))
+          .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+          .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
+          .where(
+            and(
+              eq(pipelineRuns.id, input.runId),
+              or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
+            ),
+          )
           .limit(1);
         return run ?? null;
       }),
@@ -969,12 +1022,21 @@ export const appRouter = router({
           .where(
             and(
               eq(clerkSops.id, input.sopId),
-              inArray(
-                clerkSops.channelId,
-                db
-                  .select({ id: channels.id })
-                  .from(channels)
-                  .where(eq(channels.userId, ctx.user.id)),
+              or(
+                inArray(
+                  clerkSops.channelId,
+                  db
+                    .select({ id: channels.id })
+                    .from(channels)
+                    .where(eq(channels.userId, ctx.user.id)),
+                ),
+                inArray(
+                  clerkSops.competitorAccountId,
+                  db
+                    .select({ id: competitorAccounts.id })
+                    .from(competitorAccounts)
+                    .where(eq(competitorAccounts.userId, ctx.user.id)),
+                ),
               ),
             ),
           )

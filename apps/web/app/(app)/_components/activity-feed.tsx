@@ -61,10 +61,12 @@ function describeCommand(command: string): string {
 
 // Default project slug == account slug (D3 spine); muse/poet live under the nested
 // project route, so linking there directly avoids the 308 hop off the bare route.
-function agentDeepLink(agent: ActivityRow["agent"], channelSlug: string): string {
-  const s = encodeURIComponent(channelSlug);
-  if (agent === "clerk") return `/clerk/${s}`;
-  return `/accounts/${s}/projects/${s}/${agent}`;
+// Competitor-target clerk runs (no slug) link to the competitor analysis page.
+function agentDeepLink(row: ActivityRow): string {
+  if (row.competitorAccountId) return `/clerk/competitor/${row.competitorAccountId}`;
+  const s = encodeURIComponent(row.channelSlug ?? "");
+  if (row.agent === "clerk") return `/clerk/${s}`;
+  return `/accounts/${s}/projects/${s}/${row.agent}`;
 }
 
 function relativeTime(d: Date): string {
@@ -176,7 +178,7 @@ function ActivityItem({ row, index }: { row: ActivityRow; index: number }) {
           <span className="font-medium">{AGENT_LABEL[row.agent]}</span>
           <span className="text-muted-foreground"> {describeCommand(row.command)} · </span>
           <Link
-            href={agentDeepLink(row.agent, row.channelSlug)}
+            href={agentDeepLink(row)}
             className="font-medium hover:underline"
           >
             {row.channelName}
