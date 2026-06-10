@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +46,13 @@ export function ProjectCompetitorsCard({
 
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+
+  // Setup-checklist step ① opens this sheet directly (hash scroll alone felt dead).
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("singularity:manage-competitors", onOpen);
+    return () => window.removeEventListener("singularity:manage-competitors", onOpen);
+  }, []);
 
   const boundIds = useMemo(() => new Set((bound.data ?? []).map((c) => c.id)), [bound.data]);
 
