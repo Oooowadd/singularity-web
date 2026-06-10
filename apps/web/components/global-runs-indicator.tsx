@@ -1,18 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 
 const AGENT_LABEL: Record<string, string> = {
@@ -58,13 +52,33 @@ type RunRow = {
   channelName: string;
 };
 
-export function GlobalRunsIndicator() {
+function GlobalRunsIndicatorInner() {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Hand-rolled popover (no portal, no menu semantics): plain conditional div with
+  // outside-click + Escape dismissal — nothing here can take down the page.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const listQuery = trpc.pipeline.listActiveAll.useQuery(undefined, {
     refetchInterval: 8_000,
@@ -93,57 +107,87 @@ export function GlobalRunsIndicator() {
     }
   }, [listQuery.data, router]);
 
+  useEffect(() => {
+    if (runs.length === 0) setOpen(false);
+  }, [runs.length]);
+
   if (runs.length === 0) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2" />}
+    <div ref={wrapRef} className="relative">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1.5 px-2"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
       >
         <Loader2 className="size-3.5 animate-spin text-amber-600" />
         <span className="font-mono text-xs">{runs.length}</span>
         <span className="hidden text-xs text-muted-foreground sm:inline">任务运行中</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>运行中的任务</DropdownMenuLabel>
-        {/* Display-only rows — the panel answers "what's running" in place; finish
-            toasts carry the navigation. */}
-        <div className="flex flex-col gap-0.5 px-1 pb-1">
-          {runs.map((r) => (
-            <div key={r.id} className="flex flex-col gap-1 rounded-md px-2 py-2">
-              <span className="flex w-full items-center gap-2">
-                <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                  {AGENT_LABEL[r.agent] ?? r.agent}
-                </Badge>
-                <span className="text-xs">{COMMAND_LABEL[r.command] ?? r.command}</span>
-                <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-                  {r.status === "pending" ? "待启动" : elapsed(now, r.startedAt)}
-                </span>
-              </span>
-              <span className="flex w-full items-center gap-2">
-                <span className="truncate text-[11px] text-muted-foreground">{r.channelName}</span>
-                {r.status === "running" && (r.total ?? 0) > 0 ? (
-                  <span className="ml-auto flex shrink-0 items-center gap-1.5">
-                    <span className="h-1 w-14 overflow-hidden rounded-full bg-muted">
-                      <span
-                        className="block h-full rounded-full bg-amber-500 transition-all duration-500"
-                        style={{
-                          width: `${Math.min(100, Math.round(((r.progress ?? 0) / (r.total ?? 1)) * 100))}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {r.progress ?? 0}/{r.total}
-                    </span>
+      </Button>
+      {open ? (
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-80 rounded-md border bg-popover p-1.5 text-popover-foreground shadow-md">
+          <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">运行中的任务</p>
+          <div className="flex flex-col gap-0.5">
+            {runs.map((r) => (
+              <div key={r.id} className="flex flex-col gap-1 rounded-md px-2 py-2 text-sm">
+                <span className="flex w-full items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                    {AGENT_LABEL[r.agent] ?? r.agent}
+                  </Badge>
+                  <span className="text-xs">{COMMAND_LABEL[r.command] ?? r.command}</span>
+                  <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                    {r.status === "pending" ? "待启动" : elapsed(now, r.startedAt)}
                   </span>
-                ) : (
-                  <Loader2 className="ml-auto size-3 animate-spin text-amber-600" />
-                )}
-              </span>
-            </div>
-          ))}
+                </span>
+                <span className="flex w-full items-center gap-2">
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    {r.channelName}
+                  </span>
+                  {r.status === "running" && (r.total ?? 0) > 0 ? (
+                    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                      <span className="h-1 w-14 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-amber-500 transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, Math.round(((r.progress ?? 0) / (r.total ?? 1)) * 100))}%`,
+                          }}
+                        />
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {r.progress ?? 0}/{r.total}
+                      </span>
+                    </span>
+                  ) : (
+                    <Loader2 className="ml-auto size-3 animate-spin text-amber-600" />
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      ) : null}
+    </div>
+  );
+}
+
+// A status indicator must never be able to take the page down with it: any render
+// error inside collapses to "no indicator" instead of the route error screen.
+class IndicatorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+export function GlobalRunsIndicator() {
+  return (
+    <IndicatorBoundary>
+      <GlobalRunsIndicatorInner />
+    </IndicatorBoundary>
   );
 }
