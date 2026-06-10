@@ -56,7 +56,9 @@ export function ContextHeader() {
         <span className="truncate font-medium text-foreground">{data.account.name}</span>
         <span className="font-mono text-[10px] uppercase opacity-70">{data.account.platform}</span>
       </Link>
-      {data.project ? (
+      {data.project && data.project.slug !== data.account.slug ? (
+        // Default project shares the account's slug AND name — a second crumb would
+        // just repeat it. Only named (future multi-) projects get their own crumb.
         <>
           <ChevronRight className="size-3 shrink-0 text-muted-foreground opacity-50" />
           <Link

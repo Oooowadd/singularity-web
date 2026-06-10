@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
+import { EditChannelSheet } from "../../../_components/edit-channel-sheet";
 import { ProjectCompetitorsCard } from "../../../_components/project-competitors-card";
 
 import { SetupChecklist } from "./_components/setup-checklist";
@@ -116,18 +117,34 @@ export default async function ProjectHubPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <BackLink href={`/accounts/${a}`} label={channel.name} />
+      <BackLink href="/accounts" label="账号" />
 
       <header className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="secondary" className="font-mono text-[10px] uppercase">
-            {project.platform}
-          </Badge>
-          <Badge variant="outline" className="font-mono text-[10px]">
-            目标时长 {formatDurationLabel(project.targetDurationSeconds)}
-          </Badge>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{channel.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="secondary" className="font-mono text-[10px] uppercase">
+                {project.platform}
+              </Badge>
+              <Badge variant="outline" className="font-mono text-[10px]">
+                目标时长 {formatDurationLabel(project.targetDurationSeconds)}
+              </Badge>
+              <a
+                href={channel.platformUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate font-mono text-xs hover:text-foreground"
+              >
+                {channel.platformUrl}
+              </a>
+            </div>
+          </div>
+          <EditChannelSheet channel={channel} />
         </div>
+        {channel.description ? (
+          <p className="max-w-2xl text-sm text-muted-foreground">{channel.description}</p>
+        ) : null}
       </header>
 
       <SetupChecklist steps={setupSteps} />

@@ -1,6 +1,6 @@
 import { count, desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { channels, clerkSops, clerkVideos, poetBible, projects } from "@singularity/db";
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
@@ -83,6 +83,14 @@ export default async function AccountDetailPage({ params }: Props) {
       .orderBy(desc(clerkVideos.views))
       .limit(5),
   ]);
+
+  // Single-project phase: this page adds nothing over the default project hub, so
+  // skip the hop entirely. With 2+ projects it renders again as the project chooser.
+  if (projectList.length === 1) {
+    redirect(
+      `/accounts/${encodeURIComponent(channel.slug)}/projects/${encodeURIComponent(projectList[0]!.slug)}`,
+    );
+  }
 
   const a = encodeURIComponent(channel.slug);
   const itemNoun = channel.platform === "xhs" ? "篇笔记" : "个视频";
