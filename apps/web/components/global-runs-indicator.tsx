@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -11,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -108,41 +106,43 @@ export function GlobalRunsIndicator() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>运行中的任务</DropdownMenuLabel>
-        {runs.map((r) => (
-          <DropdownMenuItem
-            key={r.id}
-            render={<Link href={deepLink(r.agent, r.channelSlug)} />}
-            className="flex flex-col items-start gap-1 py-2"
-          >
-            <span className="flex w-full items-center gap-2">
-              <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                {AGENT_LABEL[r.agent] ?? r.agent}
-              </Badge>
-              <span className="text-xs">{COMMAND_LABEL[r.command] ?? r.command}</span>
-              <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-                {r.status === "pending" ? "待启动" : elapsed(now, r.startedAt)}
-              </span>
-            </span>
-            <span className="flex w-full items-center gap-2">
-              <span className="truncate text-[11px] text-muted-foreground">{r.channelName}</span>
-              {r.status === "running" && (r.total ?? 0) > 0 ? (
-                <span className="ml-auto flex shrink-0 items-center gap-1.5">
-                  <span className="h-1 w-14 overflow-hidden rounded-full bg-muted">
-                    <span
-                      className="block h-full rounded-full bg-amber-500 transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, Math.round(((r.progress ?? 0) / (r.total ?? 1)) * 100))}%`,
-                      }}
-                    />
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {r.progress ?? 0}/{r.total}
-                  </span>
+        {/* Display-only rows — the panel answers "what's running" in place; finish
+            toasts carry the navigation. */}
+        <div className="flex flex-col gap-0.5 px-1 pb-1">
+          {runs.map((r) => (
+            <div key={r.id} className="flex flex-col gap-1 rounded-md px-2 py-2">
+              <span className="flex w-full items-center gap-2">
+                <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                  {AGENT_LABEL[r.agent] ?? r.agent}
+                </Badge>
+                <span className="text-xs">{COMMAND_LABEL[r.command] ?? r.command}</span>
+                <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                  {r.status === "pending" ? "待启动" : elapsed(now, r.startedAt)}
                 </span>
-              ) : null}
-            </span>
-          </DropdownMenuItem>
-        ))}
+              </span>
+              <span className="flex w-full items-center gap-2">
+                <span className="truncate text-[11px] text-muted-foreground">{r.channelName}</span>
+                {r.status === "running" && (r.total ?? 0) > 0 ? (
+                  <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                    <span className="h-1 w-14 overflow-hidden rounded-full bg-muted">
+                      <span
+                        className="block h-full rounded-full bg-amber-500 transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, Math.round(((r.progress ?? 0) / (r.total ?? 1)) * 100))}%`,
+                        }}
+                      />
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {r.progress ?? 0}/{r.total}
+                    </span>
+                  </span>
+                ) : (
+                  <Loader2 className="ml-auto size-3 animate-spin text-amber-600" />
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
