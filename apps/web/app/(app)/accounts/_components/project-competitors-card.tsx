@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { Check, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
+import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { followerNoun, formatFollowerCount } from "@/lib/format-count";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Sheet,
@@ -144,11 +145,17 @@ export function ProjectCompetitorsCard({
                   poolList.map((c) => {
                     const isBound = boundIds.has(c.id);
                     return (
-                      <div key={c.id} className="flex items-center gap-2 rounded border p-2 text-xs">
-                        <Badge variant="outline" className="shrink-0">
-                          {c.platform === "xhs" ? "小红书" : "YouTube"}
-                        </Badge>
-                        <span className="min-w-0 flex-1 truncate">{c.name ?? c.url}</span>
+                      <div key={c.id} className="flex items-center gap-2.5 rounded border p-2 text-xs">
+                        <CompetitorAvatar name={c.name} avatarUrl={c.avatarUrl} className="size-7" />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate font-medium">{c.name ?? c.url}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {c.platform === "xhs" ? "小红书" : "YouTube"}
+                            {c.subscriberCount != null
+                              ? ` · ${formatFollowerCount(c.subscriberCount)} ${followerNoun(c.platform)}`
+                              : ""}
+                          </span>
+                        </div>
                         <Button
                           size="sm"
                           variant={isBound ? "secondary" : "outline"}
@@ -220,25 +227,33 @@ export function ProjectCompetitorsCard({
             未绑定对标 — 点「管理对标」添加。Muse 需要至少一个对标才能巡视。
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {boundList.map((c) => (
-              <span
+              <div
                 key={c.id}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-xs"
+                className="flex items-center gap-2.5 rounded-md border bg-card px-2.5 py-2"
               >
-                <Badge variant="outline" className="text-[9px]">
-                  {c.platform === "xhs" ? "小红书" : "YouTube"}
-                </Badge>
-                <span className="max-w-[160px] truncate">{c.name ?? c.url}</span>
+                <CompetitorAvatar name={c.name} avatarUrl={c.avatarUrl} className="size-8" />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium">{c.name ?? c.url}</span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span>{c.platform === "xhs" ? "小红书" : "YouTube"}</span>
+                    {c.subscriberCount != null ? (
+                      <span>
+                        {formatFollowerCount(c.subscriberCount)} {followerNoun(c.platform)}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-destructive"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
                   onClick={() => unbindM.mutate({ projectId, competitorAccountId: c.id })}
                   aria-label="解绑"
                 >
-                  <X className="size-3" />
+                  <X className="size-3.5" />
                 </button>
-              </span>
+              </div>
             ))}
           </div>
         )}

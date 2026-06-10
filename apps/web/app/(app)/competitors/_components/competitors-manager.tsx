@@ -37,6 +37,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { CompetitorAvatar } from "@/components/competitor-avatar";
+import { formatFollowerCount } from "@/lib/format-count";
 import { trpc } from "@/lib/trpc";
 import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
 
@@ -45,12 +47,6 @@ function inferPlatform(url: string): "youtube" | "xhs" {
 }
 function isValidFormat(platform: "youtube" | "xhs", url: string): boolean {
   return platform === "xhs" ? isValidXhsProfileUrl(url) : isValidYoutubeChannelUrl(url);
-}
-function fmtCount(n: number | null | undefined): string {
-  if (n == null) return "—";
-  if (n >= 10_000) return `${(n / 10_000).toFixed(1)}万`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
 }
 
 const STATUS_LABEL: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "secondary" }> = {
@@ -232,10 +228,13 @@ export function CompetitorsManager() {
           <TableBody>
             {rows.map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="max-w-[220px]">
-                  <div className="flex flex-col">
-                    <span className="truncate font-medium">{c.name ?? "（未取名）"}</span>
-                    <span className="truncate font-mono text-[10px] text-muted-foreground">{c.url}</span>
+                <TableCell className="max-w-[260px]">
+                  <div className="flex items-center gap-2.5">
+                    <CompetitorAvatar name={c.name} avatarUrl={c.avatarUrl} className="size-8" />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium">{c.name ?? "（未取名）"}</span>
+                      <span className="truncate font-mono text-[10px] text-muted-foreground">{c.url}</span>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -246,7 +245,7 @@ export function CompetitorsManager() {
                     </Badge>
                   ) : null}
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs">{fmtCount(c.subscriberCount)}</TableCell>
+                <TableCell className="text-right font-mono text-xs">{formatFollowerCount(c.subscriberCount)}</TableCell>
                 <TableCell className="text-right font-mono text-xs">{c.usedBy}</TableCell>
                 <TableCell className="text-right">
                   <AlertDialog>

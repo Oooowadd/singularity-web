@@ -552,6 +552,7 @@ export const appRouter = router({
             platform: competitorAccounts.platform,
             url: competitorAccounts.url,
             name: competitorAccounts.name,
+            avatarUrl: competitorAccounts.avatarUrl,
             subscriberCount: competitorAccounts.subscriberCount,
             needsResolution: competitorAccounts.needsResolution,
           })
