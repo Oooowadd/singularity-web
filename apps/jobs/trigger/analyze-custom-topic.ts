@@ -72,7 +72,7 @@ export const analyzeCustomTopic = task({
 
       await db
         .update(pipelineRuns)
-        .set({ status: "running", total: 2 })
+        .set({ status: "running", total: 2, startedAt: new Date() })
         .where(eq(pipelineRuns.id, payload.runId));
 
       const userRefs: CustomTopicReference[] = (topic.references as CustomTopicReference[]) ?? [];

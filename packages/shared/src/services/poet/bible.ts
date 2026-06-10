@@ -29,9 +29,33 @@ const STOPWORDS = new Set([
   "了", "就", "把", "从", "到", "对", "为", "频道", "视频", "内容",
 ]);
 
+// Single CJK chars too common to signal topic overlap on their own — bigrams
+// containing them are skipped so "的日"/"了一" style noise can't mask real drift.
+const ZH_CHAR_STOP = new Set([
+  "的", "和", "与", "是", "在", "我", "你", "他", "她", "们", "也", "都",
+  "了", "就", "把", "从", "到", "对", "为", "一", "个", "这", "那", "有",
+]);
+
 function tokenize(text: string): Set<string> {
-  const tokens = text.toLowerCase().match(/[\w一-鿿]+/g) ?? [];
-  return new Set(tokens.filter((t) => !STOPWORDS.has(t) && t.length >= 2));
+  // CJK runs have no word boundaries: whole-run tokens would require exact phrase
+  // equality between user input and claimed topic, flagging no_overlap for nearly
+  // every zh bible. Compare character bigrams for CJK, word tokens for latin.
+  const out = new Set<string>();
+  const tokens = text.toLowerCase().match(/[a-z0-9_]+|[一-鿿]+/g) ?? [];
+  for (const t of tokens) {
+    if (/^[一-鿿]/.test(t)) {
+      for (let i = 0; i + 2 <= t.length; i++) {
+        const a = t[i]!;
+        const b = t[i + 1]!;
+        if (ZH_CHAR_STOP.has(a) || ZH_CHAR_STOP.has(b)) continue;
+        const bg = a + b;
+        if (!STOPWORDS.has(bg)) out.add(bg);
+      }
+    } else if (!STOPWORDS.has(t) && t.length >= 2) {
+      out.add(t);
+    }
+  }
+  return out;
 }
 
 function extractTopicLine(content: string): string {

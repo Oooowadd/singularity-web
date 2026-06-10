@@ -368,16 +368,19 @@ Output ONLY a JSON array, one object per fact, in the same order:
 No markdown fences, no prose. Must be parseable by JSON.parse().`;
 }
 
-export function buildChineseHumanizerPrompt(scriptText: string): string {
+export function buildChineseHumanizerPrompt(scriptText: string, maxChars?: number): string {
+  const lengthBlock = maxChars
+    ? `\n**长度硬上限**：改写后全文不得超过 ${maxChars} 字（含标点）。口语化不等于变长——不要把一句话拆成三句，不要新增论点，不要补充原稿没有的解释。脚本是按秒计费的口播，超出上限即失败。\n`
+    : "";
   return `你现在是这个视频的真实创作者，正在对着镜头说话。这个脚本是AI草稿，你的任务是把它改成你自己真实开口说出来的样子。
 
 不是"润色"，不是"优化"——是**改写成真人说话**。
 
 ## 改写标准
-
+${lengthBlock}
 **语气**：想象你现在坐在镜头前，跟一个认识你但不是专家的朋友聊天。不是演讲，不是播报，就是聊天。
 
-**句子**：你说话不会句句完整。短句就短句，省略就省略，重复就重复。真人说话会有停顿，会绕回去补一句，会突然换个角度。
+**句子**：你说话不会句句完整。短句就短句，省略就省略。真人说话会有停顿，会突然换个角度。
 
 **口语词**：把书面词换成你嘴里真的会说的词。"然而"→"但是呢"，"因此"→"所以"，"值得注意的是"→直接说，"总体而言"→删掉。
 
@@ -390,7 +393,7 @@ export function buildChineseHumanizerPrompt(scriptText: string): string {
 **必须保留**：
 - 所有段落标记 [HOOK]、[TEASE]、[ITEM]、[CTA]、[CLIMAX]、[CLOSE]
 - 所有数字、名字、数据、价格、型号——一个字不改
-- 所有内容和信息量——不要删减任何论点或细节
+- 所有论点和数据${maxChars ? "（在长度上限内保留——靠删冗余词达标，不靠删信息）" : "——不要删减任何论点或细节"}
 
 ## 脚本
 
@@ -400,4 +403,30 @@ ${scriptText}
 
 直接输出改写后的完整脚本。不加任何解释或前言。只输出脚本本身。
 `;
+}
+
+export function buildScriptCompressPrompt(args: {
+  scriptText: string;
+  language: "zh" | "en";
+  targetWordCount: number;
+}): string {
+  const lengthUnit = args.language === "zh" ? "characters (字)" : "words";
+  const maxCount = Math.round(args.targetWordCount * 1.2);
+  const minCount = Math.round(args.targetWordCount * 0.85);
+  return `You are a short-video script editor. The draft below overshoots its spoken-length budget. Compress it to **${minCount}–${maxCount} ${lengthUnit}** without losing what makes it work.
+
+Rules:
+- Keep the script's original language exactly as written.
+- Keep ALL section markers ([HOOK], [TEASE], [ITEM], [CLIMAX], [CTA], [CLOSE]) that survive, and always keep the [HOOK] and the [CTA].
+- Every number, name, price, model, date must stay character-for-character or be removed with its sentence — never alter a value.
+- Cut by: removing repetition and filler, merging wordy sentences, and — if still over budget — deleting the single least information-dense middle section entirely (a [TEASE] or one [ITEM]).
+- Do not add anything new.
+
+## Draft
+
+${args.scriptText}
+
+## Output
+
+Output ONLY the compressed script, no explanation.`;
 }

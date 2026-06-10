@@ -17,8 +17,10 @@ import {
   type CheckedFact,
   type CustomTopicReference,
 } from "@singularity/db";
+import { factCheckVerbatim } from "@singularity/shared/services/poet/fact-check";
 import { humanizeChinese } from "@singularity/shared/services/poet/humanizer";
 import {
+  formatVerbatimFacts,
   type ScriptReference,
   writeScript,
 } from "@singularity/shared/services/poet/script-writer";
@@ -65,7 +67,7 @@ export const generateScript = task({
 
       await db
         .update(pipelineRuns)
-        .set({ status: "running" })
+        .set({ status: "running", startedAt: new Date() })
         .where(eq(pipelineRuns.id, payload.runId));
 
       // total is conservative until duration/outline are known; corrected below + after outline.
@@ -152,6 +154,27 @@ export const generateScript = task({
               url: v.url,
               content: v.transcript!,
             }));
+        }
+        // Muse idea facts would otherwise reach the writer unchecked, and hedges
+        // like "(needs verification)" don't survive into spoken copy — same
+        // source-layer check custom topics get; conservative fallback never blocks.
+        if (idea.factsAndData.trim()) {
+          const checks = await factCheckVerbatim({
+            verbatimFacts: idea.factsAndData,
+            referenceTitles: [],
+            language,
+            logger: {
+              info: (m) => logger.info(m),
+              warn: (m) => logger.warn(m),
+            },
+          });
+          const flagged = checks.filter((c) => c.status !== "verified").length;
+          if (flagged > 0) {
+            idea = { ...idea, factsAndData: formatVerbatimFacts(idea.factsAndData, checks) };
+          }
+          verbatimFacts = idea.factsAndData;
+          factChecks = checks;
+          logger.info(`idea fact-check: ${checks.length} facts, ${flagged} flagged`);
         }
       } else {
         const [topicRow] = await db
@@ -271,7 +294,11 @@ export const generateScript = task({
       if (language === "zh" && draft.path === "short") {
         step = total - 1;
         await setProgress("humanizing script", "改写为真人口语（约 1-2 分钟）");
-        scriptText = (await humanizeChinese(scriptText)).trim() || scriptText;
+        // Budget cap: the colloquial rewrite was the historical 2-3× short-form
+        // inflator; over-budget rewrites fall back to the draft inside humanizeChinese.
+        scriptText =
+          (await humanizeChinese(scriptText, Math.round(targetWordCount * 1.25))).trim() ||
+          scriptText;
       }
 
       step = total;

@@ -4,6 +4,7 @@ import { llm } from "../../clients/llm";
 import { redactUngrounded } from "../grounding";
 import {
   buildLongFormOutlinePrompt,
+  buildScriptCompressPrompt,
   buildScriptWritingPrompt,
   buildSectionExpandPrompt,
 } from "../../prompts/poet";
@@ -388,6 +389,33 @@ export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptRes
   const scriptText = result.text;
   const wordCount =
     args.language === "zh" ? scriptText.length : scriptText.trim().split(/\s+/).length;
+
+  // Short-form duration is a product promise (30s must be speakable in ~30s). The
+  // prompt window alone gets ignored often enough that overshoots > 1.35× get one
+  // compress pass; anything else keeps the draft.
+  if (args.targetWordCount <= 600 && wordCount > args.targetWordCount * 1.35) {
+    const compressed = await generateText({
+      model: llm("pro"),
+      prompt: buildScriptCompressPrompt({
+        scriptText,
+        language: args.language,
+        targetWordCount: args.targetWordCount,
+      }),
+      temperature: 0.3,
+      maxOutputTokens: 8192,
+      maxRetries: 2,
+    });
+    const ct = compressed.text.trim();
+    const cc = args.language === "zh" ? ct.length : ct.split(/\s+/).length;
+    if (
+      ct.length > 0 &&
+      compressed.finishReason !== "length" &&
+      cc <= Math.round(args.targetWordCount * 1.25) &&
+      cc >= Math.round(args.targetWordCount * 0.5)
+    ) {
+      return { scriptText: ct, wordCount: cc };
+    }
+  }
 
   return { scriptText, wordCount };
 }

@@ -121,6 +121,8 @@ Rules:
 3. Specific enough to start scripting immediately.
 4. Include real facts, data points, or researchable claims.
 5. Feel native to the target channel.
+6. Vary the ANGLE TYPE across the batch — e.g. engineering deep-dive, myth-busting / expectation check, hands-on experiment, side-by-side comparison, data-driven story, prediction. At most 2 ideas may share an angle type, and story_angle phrasing must not repeat one sentence pattern across ideas.
+7. Stay inside the target channel's niche — drop an idea rather than drift into adjacent lifestyle / marketing / general-interest territory.
 
 Return JSON:
 {

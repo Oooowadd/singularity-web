@@ -73,7 +73,7 @@ export const detectChannelSeries = task({
 
       await db
         .update(pipelineRuns)
-        .set({ status: "running", total: 3 })
+        .set({ status: "running", total: 3, startedAt: new Date() })
         .where(eq(pipelineRuns.id, payload.runId));
 
       const proxyPool = await loadProxyPool(db, { provider: "wealthproxies" });

@@ -40,7 +40,7 @@ export const generateBible = task({
 
       await db
         .update(pipelineRuns)
-        .set({ status: "running" })
+        .set({ status: "running", startedAt: new Date() })
         .where(eq(pipelineRuns.id, payload.runId));
 
       // Auto-derive description from channel name + sample video titles if empty.

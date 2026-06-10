@@ -141,7 +141,7 @@ export const monitorCompetitors = task({
 
       await db
         .update(pipelineRuns)
-        .set({ status: "running" })
+        .set({ status: "running", startedAt: new Date() })
         .where(eq(pipelineRuns.id, payload.runId));
       await metadata.set("progress", {
         current: 0,
