@@ -1,10 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PenLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,6 +29,7 @@ import { trpc } from "@/lib/trpc";
 
 type Props = {
   channelId: string;
+  channelSlug?: string;
   ideaId: string;
   ideaTitle: string;
   disabled?: boolean;
@@ -37,6 +49,7 @@ const DURATIONS = [
 
 export function WriteScriptButton({
   channelId,
+  channelSlug,
   ideaId,
   ideaTitle,
   disabled,
@@ -47,6 +60,8 @@ export function WriteScriptButton({
   const utils = trpc.useUtils();
   const [pending, setPending] = useState(false);
   const [custom, setCustom] = useState("");
+  // Holds the chosen duration while the no-SOP AlertDialog awaits a decision.
+  const [pendingSeconds, setPendingSeconds] = useState<number | null>(null);
 
   const mutation = trpc.poet.generateScript.useMutation({
     onSuccess: () => {
@@ -74,17 +89,17 @@ export function WriteScriptButton({
     );
   }
 
-  const handlePick = (seconds: number) => {
-    if (
-      !hasSop &&
-      !confirm(
-        "该频道还没有 AI 参考 SOP（来自 Clerk 分析），脚本会缺少结构化的钩子 / 留人指导。建议先用 Clerk 生成 SOP。仍要继续写稿吗？",
-      )
-    ) {
-      return;
-    }
+  const startRun = (seconds: number) => {
     setPending(true);
     mutation.mutate({ channelId, ideaId, durationSeconds: seconds, language: "zh" });
+  };
+
+  const handlePick = (seconds: number) => {
+    if (!hasSop) {
+      setPendingSeconds(seconds);
+      return;
+    }
+    startRun(seconds);
   };
 
   const handlePickCustom = () => {
@@ -97,6 +112,43 @@ export function WriteScriptButton({
   };
 
   return (
+    <>
+      <AlertDialog
+        open={pendingSeconds !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingSeconds(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>该频道还没有 AI 参考 SOP</AlertDialogTitle>
+            <AlertDialogDescription>
+              SOP 来自 Clerk 分析，缺少它脚本会少了结构化的钩子 / 留人指导。建议先用 Clerk
+              生成 SOP，再回来写稿。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            {channelSlug ? (
+              <Button
+                variant="outline"
+                render={<Link href={`/clerk/${encodeURIComponent(channelSlug)}`} />}
+              >
+                去 Clerk 分析
+              </Button>
+            ) : null}
+            <AlertDialogAction
+              onClick={() => {
+                const s = pendingSeconds;
+                setPendingSeconds(null);
+                if (s !== null) startRun(s);
+              }}
+            >
+              仍要写稿
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
@@ -149,5 +201,6 @@ export function WriteScriptButton({
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }

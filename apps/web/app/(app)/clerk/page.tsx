@@ -52,9 +52,9 @@ export default async function ClerkLandingPage() {
 
       {rows.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <span>还没有频道</span>
+          <span>还没有账号</span>
           <Link href="/accounts/new" className="text-xs hover:text-foreground hover:underline">
-            先创建一个频道
+            先创建一个账号
           </Link>
         </div>
       ) : (

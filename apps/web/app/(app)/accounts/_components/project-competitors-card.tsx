@@ -30,7 +30,15 @@ function isValidFormat(platform: "youtube" | "xhs", url: string): boolean {
 }
 
 // project.id == channel.id during the expand phase, so the channel page passes channel.id.
-export function ProjectCompetitorsCard({ projectId }: { projectId: string }) {
+export function ProjectCompetitorsCard({
+  projectId,
+  accountSlug,
+  projectSlug,
+}: {
+  projectId: string;
+  accountSlug?: string;
+  projectSlug?: string;
+}) {
   const router = useRouter();
   const utils = trpc.useUtils();
   const bound = trpc.competitors.listForProject.useQuery({ projectId });
@@ -41,18 +49,38 @@ export function ProjectCompetitorsCard({ projectId }: { projectId: string }) {
 
   const boundIds = useMemo(() => new Set((bound.data ?? []).map((c) => c.id)), [bound.data]);
 
+  const museHref =
+    accountSlug && projectSlug
+      ? `/accounts/${encodeURIComponent(accountSlug)}/projects/${encodeURIComponent(projectSlug)}/muse`
+      : null;
+  const toastBound = (message: string) => {
+    if (museHref) {
+      toast.success(message, {
+        action: { label: "去 Muse 巡视", onClick: () => router.push(museHref) },
+      });
+    } else {
+      toast.success(message);
+    }
+  };
+
   const invalidate = () => {
     utils.competitors.listForProject.invalidate({ projectId });
     utils.competitors.list.invalidate();
     router.refresh();
   };
-  const bindM = trpc.competitors.bind.useMutation({ onSuccess: invalidate, onError: (e) => toast.error(e.message) });
+  const bindM = trpc.competitors.bind.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toastBound("已绑定对标账号");
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const unbindM = trpc.competitors.unbind.useMutation({ onSuccess: invalidate, onError: (e) => toast.error(e.message) });
   const importM = trpc.competitors.import.useMutation({
     onSuccess: (data) => {
       invalidate();
       const n = data.results.filter((r) => r.id).length;
-      toast.success(`已导入并绑定 ${n} 个对标`);
+      toastBound(`已导入并绑定 ${n} 个对标账号`);
       setText("");
     },
     onError: (e) => toast.error(e.message),
@@ -96,15 +124,15 @@ export function ProjectCompetitorsCard({ projectId }: { projectId: string }) {
             <SheetHeader>
               <SheetTitle>管理对标账号</SheetTitle>
               <SheetDescription>
-                从对标库选择，或粘贴新链接导入并绑定。Muse 会巡视绑定的对标并生成选题。
+                从已有对标账号选择，或粘贴新链接导入并绑定。Muse 会巡视绑定的对标账号并生成选题。
               </SheetDescription>
             </SheetHeader>
 
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
               <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium">从对标库选择</p>
+                <p className="text-xs font-medium">从已有对标账号选择</p>
                 {poolList.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">对标库为空，可在下方粘贴链接导入。</p>
+                  <p className="text-xs text-muted-foreground">还没有对标账号，可在下方粘贴链接导入。</p>
                 ) : (
                   poolList.map((c) => {
                     const isBound = boundIds.has(c.id);

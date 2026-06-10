@@ -34,7 +34,13 @@ export function ChannelsList() {
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-medium">先建一个自己的频道</p>
+          <p className="max-w-md text-xs text-muted-foreground">
+            频道是你的内容资产，沉淀定位与频道圣经；建好后在项目里绑定对标，Clerk、Muse、Poet 才能开工。
+          </p>
+        </div>
         <Button render={<Link href="/accounts/new" />} size="lg">
           <Plus data-icon="inline-start" />
           新建账号

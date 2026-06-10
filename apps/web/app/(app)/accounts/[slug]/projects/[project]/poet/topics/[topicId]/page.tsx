@@ -1,17 +1,19 @@
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 import { channels, poetBible, poetCustomTopics, clerkSops } from "@singularity/db";
 import type { CustomTopicReference } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { BackLink } from "@/components/back-link";
 import { PoetFactList } from "@/components/poet-fact-list";
 import { formatDateTime } from "@/lib/datetime";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
+
+import { CustomTopicActions } from "../../_components/custom-topic-actions";
 
 type Props = { params: Promise<{ slug: string; project: string; topicId: string }> };
 
@@ -82,31 +84,45 @@ export default async function PoetTopicDetailPage({ params }: Props) {
 
   if (!topic) notFound();
 
-  const [bible, sop] = await Promise.all([
+  const [bible, sop, activeBibleRows, aiSopRows] = await Promise.all([
     topic.bibleId
       ? db.select().from(poetBible).where(eq(poetBible.id, topic.bibleId)).limit(1).then((r) => r[0])
       : Promise.resolve(undefined),
     topic.sopId
       ? db.select().from(clerkSops).where(eq(clerkSops.id, topic.sopId)).limit(1).then((r) => r[0])
       : Promise.resolve(undefined),
+    // Action gating needs the CURRENT active bible, not the (possibly stale) one
+    // the topic was analyzed against.
+    db
+      .select({ id: poetBible.id })
+      .from(poetBible)
+      .where(and(eq(poetBible.channelId, channel.id), eq(poetBible.isActive, true)))
+      .limit(1),
+    db
+      .select({ id: clerkSops.id })
+      .from(clerkSops)
+      .where(and(eq(clerkSops.channelId, channel.id), eq(clerkSops.sopType, "ai_reference")))
+      .limit(1),
   ]);
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}/poet`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}/poet`} label="Poet · 写手" />
 
       <header className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight whitespace-pre-wrap">
-          {topic.topic}
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-semibold tracking-tight whitespace-pre-wrap">
+            {topic.topic}
+          </h1>
+          <CustomTopicActions
+            channelId={channel.id}
+            topicId={topic.id}
+            topicLabel={topic.topic}
+            status={topic.status}
+            hasActiveBible={activeBibleRows.length > 0}
+            hasSop={aiSopRows.length > 0}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <Badge variant="secondary" className="font-mono text-[10px]">
             {topic.status === "draft" ? "草稿" : topic.status === "analyzed" ? "已分析" : "已写稿"}

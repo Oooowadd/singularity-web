@@ -67,7 +67,7 @@ export default async function DashboardPage() {
           <h1 className="font-display text-3xl italic leading-tight md:text-4xl">{hello}</h1>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border bg-card px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {snapshot.channelCount} 个频道
+              {snapshot.channelCount} 个账号
             </span>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 import {
   channels,
@@ -12,6 +12,7 @@ import {
 } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -98,6 +99,7 @@ export default async function MuseChannelPage({ params }: Props) {
   ]);
 
   const activeCompetitorCount = boundCompetitorRow?.c ?? 0;
+  const approvedUnscripted = ideas.filter((i) => i.approved && !i.scripted).length;
 
   let liveStats: LiveStats | null = null;
   let lastProcessed: LastProcessed = null;
@@ -179,15 +181,7 @@ export default async function MuseChannelPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}`} label="项目" />
 
       <header className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -197,8 +191,21 @@ export default async function MuseChannelPage({ params }: Props) {
             {ideas.length} 个选题
           </Badge>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {activeCompetitorCount} 个对标频道
+            {activeCompetitorCount} 个对标账号
           </Badge>
+          {approvedUnscripted > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              render={
+                <Link
+                  href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}/poet`}
+                />
+              }
+            >
+              {approvedUnscripted} 个已通过 · 去 Poet 写稿
+            </Button>
+          ) : null}
         </div>
         <MuseRunButton
           channelId={channel.id}
@@ -230,7 +237,7 @@ export default async function MuseChannelPage({ params }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>标题</TableHead>
-                <TableHead className="w-40">对标频道</TableHead>
+                <TableHead className="w-40">对标账号</TableHead>
                 <TableHead className="hidden w-20 md:table-cell">时长</TableHead>
                 <TableHead className="w-24">相关性</TableHead>
                 <TableHead className="hidden w-32 md:table-cell">分类</TableHead>
@@ -281,7 +288,7 @@ export default async function MuseChannelPage({ params }: Props) {
       ) : null}
 
       {ideas.length > 0 ? (
-        <section className="flex flex-col gap-3">
+        <section id="muse-ideas" className="flex scroll-mt-20 flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">选题列表</h2>
           <div className="flex flex-col gap-4">
             {ideas.map((idea) => (
@@ -387,7 +394,7 @@ export default async function MuseChannelPage({ params }: Props) {
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
           <span>还没有选题</span>
           {activeCompetitorCount > 0 ? (
-            <span className="text-xs">点击右上角「开始巡视」，分析对标频道的爆款并生成选题</span>
+            <span className="text-xs">点击右上角「开始巡视」，分析对标账号的爆款并生成选题</span>
           ) : (
             <>
               <span className="text-xs">Muse 需要至少一个对标账号才能巡视</span>

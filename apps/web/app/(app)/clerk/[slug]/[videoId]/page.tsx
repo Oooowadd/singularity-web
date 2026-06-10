@@ -1,11 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   Anchor,
-  ChevronLeft,
   Clock,
   ExternalLink,
   FileText,
@@ -18,7 +16,7 @@ import {
 import { channels, clerkVideos } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { BackLink } from "@/components/back-link";
 import {
   Card,
   CardContent,
@@ -188,15 +186,7 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/clerk/${encodeURIComponent(slug)}`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/clerk/${encodeURIComponent(slug)}`} label={channel.name} />
 
       <Card>
         <div className="grid grid-cols-1 gap-0 md:grid-cols-[260px_minmax(0,1fr)]">

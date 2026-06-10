@@ -53,7 +53,6 @@ function fmtCount(n: number | null | undefined): string {
   return String(n);
 }
 
-// 待你定 — import-result status copy
 const STATUS_LABEL: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "secondary" }> = {
   added: { label: "已添加", variant: "success" },
   duplicate: { label: "已存在", variant: "secondary" },

@@ -1,7 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import {
   channels,
@@ -17,6 +16,7 @@ import {
 
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
 import { Badge } from "@/components/ui/badge";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { PoetFactList } from "@/components/poet-fact-list";
 import { getActiveAgentRun } from "@/lib/agent-run";
@@ -128,15 +128,7 @@ export default async function PoetChannelPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}`} label="项目" />
 
       <header className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -154,6 +146,8 @@ export default async function PoetChannelPage({ params }: Props) {
       <ActiveRunsBanner channelId={channel.id} />
 
       <PoetRunProgress
+        accountSlug={slug}
+        projectSlug={project}
         initialActive={
           activeRun
             ? {
@@ -182,13 +176,28 @@ export default async function PoetChannelPage({ params }: Props) {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-muted-foreground">频道圣经</h2>
-          <BibleGenerateSheet
-            channelId={channel.id}
-            channelName={channel.name}
-            channelDescription={channel.description}
-            buttonLabel={activeBible ? "+ 新建 Bible" : "生成圣经"}
-            buttonVariant={activeBible ? "outline" : "default"}
-          />
+          <div className="flex items-center gap-2">
+            {activeBible ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                render={
+                  <Link
+                    href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}/muse`}
+                  />
+                }
+              >
+                去 Muse 出选题
+              </Button>
+            ) : null}
+            <BibleGenerateSheet
+              channelId={channel.id}
+              channelName={channel.name}
+              channelDescription={channel.description}
+              buttonLabel={activeBible ? "+ 新建圣经" : "生成圣经"}
+              buttonVariant="outline"
+            />
+          </div>
         </div>
 
         {activeBible ? (
@@ -207,9 +216,15 @@ export default async function PoetChannelPage({ params }: Props) {
             </footer>
           </article>
         ) : (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-card/40 p-8 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-card/40 p-8 text-sm text-muted-foreground">
             <span>该频道还没有可用的圣经</span>
             <span className="text-xs">先生成一份，再来选题写稿</span>
+            <BibleGenerateSheet
+              channelId={channel.id}
+              channelName={channel.name}
+              channelDescription={channel.description}
+              buttonLabel="生成圣经"
+            />
           </div>
         )}
         <BibleHistory
@@ -244,6 +259,7 @@ export default async function PoetChannelPage({ params }: Props) {
                 </div>
                 <WriteScriptButton
                   channelId={channel.id}
+                  channelSlug={channel.slug}
                   ideaId={idea.id}
                   ideaTitle={idea.storyAngle ?? "选题"}
                   disabled={!activeBible}

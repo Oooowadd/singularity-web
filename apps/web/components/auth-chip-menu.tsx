@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTransition } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -31,7 +32,7 @@ export function AuthChipMenu({ label, onSignOut }: Props) {
             variant="ghost"
             size="icon"
             className="size-8 rounded-full"
-            aria-label="Account menu"
+            aria-label="账号菜单"
           />
         }
       >
@@ -44,18 +45,19 @@ export function AuthChipMenu({ label, onSignOut }: Props) {
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col gap-1">
               <span className="text-[10px] tracking-widest text-muted-foreground uppercase">
-                Signed in as
+                已登录
               </span>
               <span className="truncate font-mono text-xs">{label}</span>
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/" />}>返回工作台</DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => startTransition(() => onSignOut())}
           disabled={isPending}
         >
-          Sign out
+          退出登录
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

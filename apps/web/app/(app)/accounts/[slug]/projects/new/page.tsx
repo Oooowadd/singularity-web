@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { eq } from "drizzle-orm";
 
 import { channels } from "@singularity/db";
 
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
@@ -32,15 +32,7 @@ export default async function NewProjectPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/accounts/${a}`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/accounts/${a}`} label={channel.name} />
 
       <header className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">新建项目</h1>
@@ -49,12 +41,12 @@ export default async function NewProjectPage({ params }: Props) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            当前阶段：每个账号一个默认项目（待你定）
+            每个账号默认一个项目
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
           <p>
-            现阶段每个账号在创建时会自动生成一个与账号同名的默认项目，暂不支持手动新建额外项目（待你定）。
+            创建账号时会自动生成一个与账号同名的默认项目，暂不支持手动新建额外项目。
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button render={<Link href={`/accounts/${a}/projects/${a}`} />}>

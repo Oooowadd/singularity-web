@@ -83,7 +83,7 @@ export function CreateChannelForm() {
     <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-6">
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="name">频道名称</FieldLabel>
+          <FieldLabel htmlFor="name">账号名称</FieldLabel>
           <Input
             id="name"
             value={name}
@@ -141,7 +141,7 @@ export function CreateChannelForm() {
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="选填，频道定位、风格说明"
+            placeholder="选填，账号定位、风格说明"
             rows={3}
           />
         </Field>
@@ -153,7 +153,7 @@ export function CreateChannelForm() {
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={createMutation.isPending}>
-          {createMutation.isPending ? "创建中…" : "创建频道"}
+          {createMutation.isPending ? "创建中…" : "创建账号"}
         </Button>
         <Button variant="ghost" type="button" onClick={() => router.back()}>
           取消

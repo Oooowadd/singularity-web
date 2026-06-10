@@ -46,7 +46,7 @@ export function MuseStartSheet({ channelId, channelName, competitorCount, disabl
 
   const startMutation = trpc.muse.startMonitor.useMutation({
     onSuccess: () => {
-      toast.info(`已开始巡视「${channelName}」的对标频道`);
+      toast.info(`已开始巡视「${channelName}」的对标账号`);
       setOpen(false);
       // Re-fetch the server `activeRun` so the progress panel shows without a manual refresh.
       utils.invalidate();
@@ -75,16 +75,16 @@ export function MuseStartSheet({ channelId, channelName, competitorCount, disabl
       </SheetTrigger>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>巡视对标频道</SheetTitle>
+          <SheetTitle>巡视对标账号</SheetTitle>
           <SheetDescription>
-            扫描 {competitorCount} 个对标频道的最新视频，提取爆款机制并为本频道生成选题
+            扫描 {competitorCount} 个对标账号的最新视频，提取爆款机制并为本频道生成选题
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
           <FieldGroup>
             <Field>
-              <FieldLabel>每个对标频道拉取视频数</FieldLabel>
+              <FieldLabel>每个对标账号拉取视频数</FieldLabel>
               <div className="flex gap-2">
                 {VIDEOS_PER_COMPETITOR.map((n) => (
                   <button

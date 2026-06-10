@@ -1,7 +1,6 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import {
   channels,
@@ -18,6 +17,7 @@ import {
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
 
 import { Badge } from "@/components/ui/badge";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
@@ -116,15 +116,7 @@ export default async function ProjectHubPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/accounts/${a}`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/accounts/${a}`} label={channel.name} />
 
       <header className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
@@ -184,14 +176,18 @@ export default async function ProjectHubPage({ params }: Props) {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              还没有选用的 Bible（{poetBibleCount?.c ?? 0} 本可选）。
+              还没有选用的圣经（{poetBibleCount?.c ?? 0} 本可选）。
             </p>
           )}
         </CardContent>
       </Card>
 
       <div id="competitors" className="scroll-mt-20">
-        <ProjectCompetitorsCard projectId={project.id} />
+        <ProjectCompetitorsCard
+          projectId={project.id}
+          accountSlug={channel.slug}
+          projectSlug={project.slug}
+        />
       </div>
     </div>
   );

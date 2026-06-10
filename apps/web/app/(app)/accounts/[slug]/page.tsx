@@ -1,12 +1,12 @@
 import { count, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import { channels, clerkSops, clerkVideos, poetBible, projects } from "@singularity/db";
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
 
 import { Badge } from "@/components/ui/badge";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -90,15 +90,7 @@ export default async function AccountDetailPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href="/accounts" />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        账号列表
-      </Button>
+      <BackLink href="/accounts" label="账号" />
 
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-4">

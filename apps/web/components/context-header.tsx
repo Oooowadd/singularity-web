@@ -9,16 +9,18 @@ import { formatDurationLabel } from "@singularity/shared/schemas/poet";
 import { trpc } from "@/lib/trpc";
 
 // Route shapes that carry account/project context (§5). Clerk is account-level (no project).
-function parseContext(pathname: string): { accountSlug: string; projectSlug?: string } | null {
+function parseContext(
+  pathname: string,
+): { kind: "accounts" | "clerk"; accountSlug: string; projectSlug?: string } | null {
   const seg = pathname.split("/").filter(Boolean).map((s) => decodeURIComponent(s));
   if (seg[0] === "accounts" && seg[1] && seg[1] !== "new") {
     if (seg[2] === "projects" && seg[3] && seg[3] !== "new") {
-      return { accountSlug: seg[1], projectSlug: seg[3] };
+      return { kind: "accounts", accountSlug: seg[1], projectSlug: seg[3] };
     }
-    return { accountSlug: seg[1] };
+    return { kind: "accounts", accountSlug: seg[1] };
   }
   if (seg[0] === "clerk" && seg[1]) {
-    return { accountSlug: seg[1] };
+    return { kind: "clerk", accountSlug: seg[1] };
   }
   return null;
 }
@@ -36,6 +38,17 @@ export function ContextHeader() {
   const a = encodeURIComponent(data.account.slug);
   return (
     <nav className="flex min-w-0 items-center gap-1.5 text-xs">
+      {parsed.kind === "clerk" ? (
+        <>
+          <Link
+            href="/clerk"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            Clerk · 分析师
+          </Link>
+          <ChevronRight className="size-3 shrink-0 text-muted-foreground opacity-50" />
+        </>
+      ) : null}
       <Link
         href={`/accounts/${a}`}
         className="flex min-w-0 items-center gap-1.5 text-muted-foreground hover:text-foreground"

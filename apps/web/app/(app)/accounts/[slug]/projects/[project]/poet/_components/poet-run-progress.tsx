@@ -37,6 +37,8 @@ type ActiveRun = {
 
 type Props = {
   initialActive?: (ActiveRun & { startedAt?: Date | string }) | null;
+  accountSlug: string;
+  projectSlug: string;
 };
 
 type ProgressPayload = {
@@ -86,7 +88,7 @@ function runStatusLabel(status: string): string {
   return map[status] ?? status.toLowerCase().replace(/_/g, " ");
 }
 
-export function PoetRunProgress({ initialActive }: Props) {
+export function PoetRunProgress({ initialActive, accountSlug, projectSlug }: Props) {
   const router = useRouter();
   const utils = trpc.useUtils();
   // Remember IDs we've already seen settle so a stale server prop (briefly
@@ -112,10 +114,23 @@ export function PoetRunProgress({ initialActive }: Props) {
         utils.invalidate();
         router.refresh();
       }}
-      onSettled={(ok, message) => {
+      onSettled={(ok, message, scriptId) => {
         setSettledIds((prev) => new Set(prev).add(active.triggerRunId));
         if (ok) {
-          toast.success(message ?? (active.kind === "bible" ? "圣经已生成" : "脚本已生成"));
+          const text = message ?? (active.kind === "bible" ? "圣经已生成" : "脚本已生成");
+          if (scriptId) {
+            toast.success(text, {
+              action: {
+                label: "查看脚本",
+                onClick: () =>
+                  router.push(
+                    `/accounts/${encodeURIComponent(accountSlug)}/projects/${encodeURIComponent(projectSlug)}/poet/scripts/${scriptId}`,
+                  ),
+              },
+            });
+          } else {
+            toast.success(text);
+          }
           utils.invalidate();
           router.refresh();
         } else {
@@ -134,7 +149,7 @@ function ProgressCard({
 }: {
   active: ActiveRun;
   startedAt: number;
-  onSettled: (ok: boolean, message?: string) => void;
+  onSettled: (ok: boolean, message?: string, scriptId?: string) => void;
   onProgressTick: (phase: string | undefined) => void;
 }) {
   const { run, error } = useRealtimeRun(active.triggerRunId, {
@@ -192,13 +207,18 @@ function ProgressCard({
               targetWordCount?: number;
               path?: "short" | "long";
               humanized?: boolean;
+              scriptId?: string | null;
             }
           | undefined;
         const bits: string[] = [];
         if (out?.path) bits.push(out.path === "long" ? "长稿" : "短稿");
         if (out?.wordCount) bits.push(`${out.wordCount} 字`);
         if (out?.humanized) bits.push("已口语化");
-        onSettled(true, bits.length > 0 ? `脚本已生成 · ${bits.join(" · ")}` : "脚本已生成");
+        onSettled(
+          true,
+          bits.length > 0 ? `脚本已生成 · ${bits.join(" · ")}` : "脚本已生成",
+          out?.scriptId ?? undefined,
+        );
       }
     } else if (
       run.status === "FAILED" ||

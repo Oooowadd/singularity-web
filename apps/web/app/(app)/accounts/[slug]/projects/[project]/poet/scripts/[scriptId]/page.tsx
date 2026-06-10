@@ -1,7 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import {
   channels,
@@ -15,7 +13,7 @@ import {
 
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { BackLink } from "@/components/back-link";
 import { formatDateTime } from "@/lib/datetime";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
@@ -82,15 +80,7 @@ export default async function ScriptDetailPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}/poet`} />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        {channel.name}
-      </Button>
+      <BackLink href={`/accounts/${encodeURIComponent(slug)}/projects/${encodeURIComponent(project)}/poet`} label="Poet · 写手" />
 
       <header className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">

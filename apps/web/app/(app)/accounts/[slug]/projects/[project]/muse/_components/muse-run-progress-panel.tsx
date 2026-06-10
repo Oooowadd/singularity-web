@@ -12,7 +12,7 @@ import { trpc } from "@/lib/trpc";
 
 const MUSE_STAGES: Stage[] = [
   {
-    label: "解析对标频道",
+    label: "解析对标账号",
     matches: (p) => p === "resolving competitors" || p === "fetching competitor videos",
   },
   {
@@ -66,7 +66,7 @@ function formatElapsed(ms: number): string {
 function translatePhase(phase: string | undefined): string {
   if (!phase) return "准备中…";
   const map: Record<string, string> = {
-    "resolving competitors": "解析对标频道",
+    "resolving competitors": "解析对标账号",
     "fetching competitor videos": "抓取对标视频列表",
     "fetching video metadata": "获取视频元数据",
     "transcribing audio": "音频转写中",
@@ -166,7 +166,13 @@ export function MuseRunProgressPanel({
       if (out?.newCandidates != null) bits.push(`新视频 ${out.newCandidates}`);
       if (out?.relevant != null) bits.push(`相关 ${out.relevant}`);
       if (out?.ideasGenerated != null) bits.push(`选题 ${out.ideasGenerated}`);
-      toast.success(bits.length > 0 ? bits.join(" · ") : "巡视完成");
+      toast.success(bits.length > 0 ? bits.join(" · ") : "巡视完成", {
+        action: {
+          label: "审选题",
+          onClick: () =>
+            document.getElementById("muse-ideas")?.scrollIntoView({ behavior: "smooth" }),
+        },
+      });
       router.refresh();
     } else if (TERMINAL_STATUS.has(run.status)) {
       toast.error(run.error?.message ?? `运行${STATUS_LABEL[run.status] ?? run.status}`);

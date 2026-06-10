@@ -1,11 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import { channels, channelSeries, clerkSops, clerkVideos } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -95,15 +95,7 @@ export default async function ClerkChannelPage({ params }: Props) {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href="/clerk" />}
-        className="w-fit text-muted-foreground"
-      >
-        <ChevronLeft data-icon="inline-start" />
-        Clerk · 分析师
-      </Button>
+      <BackLink href="/clerk" label="Clerk · 分析师" />
 
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
