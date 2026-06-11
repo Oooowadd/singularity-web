@@ -74,7 +74,7 @@ export default async function DashboardPage() {
         <DashboardRefresher />
       </header>
 
-      <ActiveNowStrip activity={snapshot.activity} />
+      <ActiveNowStrip active={snapshot.activeNow} />
 
       <NextStepCard
         channelCount={snapshot.channelCount}

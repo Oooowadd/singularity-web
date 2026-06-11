@@ -49,6 +49,9 @@ export type DashboardSnapshot = {
   channelCount: number;
   totals: { clerk: number; muse: number; poet: number };
   activity: ActivityRow[];
+  // Running rows plus fresh pendings (same 30-min orphan cutoff as every other
+  // active-run surface).
+  activeNow: ActivityRow[];
   pendingMuseIdeas: number;
   competitorCount: number;
   accounts: AccountSummary[];
@@ -196,10 +199,18 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
 
   const sum = (rows: Array<{ c: number }>) => rows.reduce((s, r) => s + r.c, 0);
 
+  const orphanCutoff = Date.now() - 30 * 60 * 1000;
+  const activeNow = activityRows.filter(
+    (r) =>
+      r.status === "running" ||
+      (r.status === "pending" && new Date(r.startedAt).getTime() >= orphanCutoff),
+  );
+
   return {
     channelCount: accountRows.length,
     totals: { clerk: sum(clerkByAccount), muse: sum(museByAccount), poet: sum(poetByAccount) },
     activity: activityRows,
+    activeNow,
     pendingMuseIdeas: sum(pendingByAccount),
     competitorCount: sum(boundByAccount),
     accounts,

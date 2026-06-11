@@ -6,15 +6,8 @@ import { AGENT_LABEL, COMMAND_LABEL } from "@/lib/run-labels";
 
 import { agentDeepLink } from "./activity-feed";
 
-// One-line "what's running right now" strip; pending rows respect the same
-// 30-min orphan cutoff as every other active-run surface.
-export function ActiveNowStrip({ activity }: { activity: ActivityRow[] }) {
-  const cutoff = Date.now() - 30 * 60 * 1000;
-  const active = activity.filter(
-    (r) =>
-      r.status === "running" ||
-      (r.status === "pending" && new Date(r.startedAt).getTime() >= cutoff),
-  );
+// One-line "what's running right now" strip (rows pre-filtered in dashboard-data).
+export function ActiveNowStrip({ active }: { active: ActivityRow[] }) {
   if (active.length === 0) return null;
   return (
     <div className="flex flex-col gap-2 rounded-lg border bg-card p-4">
