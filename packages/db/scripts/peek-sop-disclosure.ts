@@ -10,10 +10,12 @@ dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
 const slug = process.argv[2] ?? "linyi";
 try {
+  // NB: regex backslashes must be doubled — a JS template literal eats \[ and \d,
+  // turning the pattern into a match-anything bracket class (caused a false positive).
   const rows = await sql`
     SELECT cs.sop_type, cs.generated_at, length(cs.content_md) AS len,
-      (cs.content_md ~ '\[\d+:\d+\]') AS has_timecodes,
-      (cs.content_md LIKE '%字幕%' OR cs.content_md LIKE '%转写%' OR cs.content_md LIKE '%口述%') AS mentions_transcript
+      (cs.content_md ~ '\\[\\d+:\\d+\\]') AS has_timecodes,
+      (cs.content_md LIKE '%字幕%' OR cs.content_md LIKE '%转写%' OR cs.content_md LIKE '%transcript%') AS mentions_transcript
     FROM clerk_sops cs JOIN channels ch ON ch.id = cs.channel_id
     WHERE ch.slug = ${slug} ORDER BY cs.generated_at DESC`;
   for (const r of rows)
