@@ -8,6 +8,7 @@ import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { CopyButton } from "@/components/copy-button";
+import { ContentTypeBadge } from "../../_components/content-type-badge";
 import {
   Table,
   TableBody,
@@ -141,6 +142,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>标题</TableHead>
+                <TableHead className="w-20">类型</TableHead>
                 <TableHead className="w-24">{isXhs ? "文本来源" : "字幕来源"}</TableHead>
                 <TableHead className="hidden w-28 md:table-cell">开场钩子</TableHead>
                 <TableHead className="w-20">{isXhs ? "互动分" : "播放量"}</TableHead>
@@ -160,6 +162,9 @@ export default async function ClerkCompetitorPage({ params }: Props) {
                     >
                       {v.title}
                     </a>
+                  </TableCell>
+                  <TableCell>
+                    <ContentTypeBadge contentType={v.contentType} />
                   </TableCell>
                   <TableCell>
                     {v.transcript ? (

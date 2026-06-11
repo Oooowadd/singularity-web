@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/copy-button";
+import { ContentTypeBadge } from "../_components/content-type-badge";
 import {
   Table,
   TableBody,
@@ -272,16 +273,6 @@ function TranscriptSourceBadge({
     return <Badge variant="secondary" className="text-[10px]">正文</Badge>;
   }
   return <span className="font-mono text-[10px] text-muted-foreground">无字幕</span>;
-}
-
-function ContentTypeBadge({ contentType }: { contentType: string }) {
-  if (contentType === "xhs_image") {
-    return <Badge variant="outline" className="text-[10px]">图文</Badge>;
-  }
-  if (contentType === "xhs_video") {
-    return <Badge variant="outline" className="text-[10px]">短视频</Badge>;
-  }
-  return <Badge variant="secondary" className="text-[10px]">视频</Badge>;
 }
 
 function SopCard({

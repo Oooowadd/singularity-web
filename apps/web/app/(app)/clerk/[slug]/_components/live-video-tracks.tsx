@@ -24,17 +24,16 @@ function formatDuration(ms: number): string {
 export function LiveVideoTracks({ tracks, now }: Props) {
   const entries = Object.entries(tracks);
   if (entries.length === 0) return null;
-  // Show active first, then recently done, cap to 6 rows.
-  const sorted = entries.sort(([, a], [, b]) => {
+  // Show active first, then recently done; all rows visible, container scrolls.
+  const visible = entries.sort(([, a], [, b]) => {
     const aActive = ACTIVE_PHASES.has(a.phase) ? 0 : 1;
     const bActive = ACTIVE_PHASES.has(b.phase) ? 0 : 1;
     if (aActive !== bActive) return aActive - bActive;
     return b.startedAt - a.startedAt;
   });
-  const visible = sorted.slice(0, 6);
 
   return (
-    <div className="grid grid-cols-1 gap-1 rounded-md border bg-muted/30 px-2 py-2 sm:grid-cols-2">
+    <div className="grid max-h-44 grid-cols-1 gap-1 overflow-y-auto rounded-md border bg-muted/30 px-2 py-2 sm:grid-cols-2">
       {visible.map(([id, t]) => {
         const elapsed = now - t.startedAt;
         const isActive = ACTIVE_PHASES.has(t.phase);
