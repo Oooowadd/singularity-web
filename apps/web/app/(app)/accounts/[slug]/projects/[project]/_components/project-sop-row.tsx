@@ -24,6 +24,7 @@ export type CurrentSop = {
   generatedAt: Date | string | null;
   // false = no explicit binding; the writer falls back to this account's latest SOP.
   pinned: boolean;
+  sourceKind: "own" | "competitor";
 } | null;
 
 export function ProjectSopRow({
@@ -98,7 +99,9 @@ export function ProjectSopRow({
       {current ? (
         <span className="min-w-0 truncate">
           <span className="text-muted-foreground">写稿 SOP：</span>
-          <span className="font-medium">来自「{current.sourceName}」</span>
+          <span className="font-medium">
+            {current.sourceKind === "competitor" ? "🎯 来自对标" : "来自"}「{current.sourceName}」
+          </span>
           {current.generatedAt ? (
             <span className="text-xs text-muted-foreground"> · {formatDate(current.generatedAt)} 生成</span>
           ) : null}

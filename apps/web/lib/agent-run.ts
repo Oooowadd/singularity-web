@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
 import { auth } from "@trigger.dev/sdk";
 
 import { channels, competitorAccounts, pipelineRuns } from "@singularity/db";
@@ -43,6 +43,12 @@ export async function getActiveAgentRun(
         or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)),
         eq(pipelineRuns.agent, agent),
         inArray(pipelineRuns.status, ["pending", "running"]),
+        // Same 30-min orphan cutoff as assertNoActiveRun: stale pending rows
+        // (failed/expired trigger, seeded row) must not show as active forever.
+        or(
+          eq(pipelineRuns.status, "running"),
+          gte(pipelineRuns.startedAt, new Date(Date.now() - 30 * 60 * 1000)),
+        ),
       ),
     )
     .orderBy(desc(pipelineRuns.startedAt))

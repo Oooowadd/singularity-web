@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { auth, runs, tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
@@ -111,6 +111,16 @@ async function assertNoActiveRun(owner: string | RunOwner, agent: "clerk" | "mus
       message: "该目标当前已有运行中的任务，请等其完成后再启动",
     });
   }
+}
+
+// Display-side twin of assertNoActiveRun's orphan cutoff: a "pending" row that never
+// started within 30 min (failed/expired trigger, seeded row) must not haunt the runs
+// indicator/banners forever. "running" rows are never filtered — the job owns them.
+function freshActiveRunCond() {
+  return or(
+    eq(pipelineRuns.status, "running"),
+    gte(pipelineRuns.startedAt, new Date(Date.now() - 30 * 60 * 1000)),
+  );
 }
 
 async function uniqueSlug(userId: string, base: string): Promise<string> {
@@ -854,6 +864,7 @@ export const appRouter = router({
               ownerCond,
               or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
               inArray(pipelineRuns.status, ["pending", "running"]),
+              freshActiveRunCond(),
             ),
           )
           .orderBy(desc(pipelineRuns.startedAt));
@@ -881,6 +892,7 @@ export const appRouter = router({
           and(
             or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
             inArray(pipelineRuns.status, ["pending", "running"]),
+            freshActiveRunCond(),
           ),
         )
         .orderBy(desc(pipelineRuns.startedAt));
@@ -1063,6 +1075,7 @@ export const appRouter = router({
               ownerCond,
               or(eq(channels.userId, ctx.user.id), eq(competitorAccounts.userId, ctx.user.id)),
               inArray(pipelineRuns.status, ["pending", "running"]),
+              freshActiveRunCond(),
             ),
           )
           .orderBy(desc(pipelineRuns.startedAt))
@@ -1313,6 +1326,7 @@ export const appRouter = router({
               eq(channels.userId, ctx.user.id),
               eq(pipelineRuns.agent, "muse"),
               inArray(pipelineRuns.status, ["pending", "running"]),
+              freshActiveRunCond(),
             ),
           )
           .orderBy(desc(pipelineRuns.startedAt))
@@ -1606,6 +1620,7 @@ export const appRouter = router({
               eq(channels.userId, ctx.user.id),
               eq(pipelineRuns.agent, "poet"),
               inArray(pipelineRuns.status, ["pending", "running"]),
+              freshActiveRunCond(),
             ),
           )
           .orderBy(desc(pipelineRuns.startedAt))

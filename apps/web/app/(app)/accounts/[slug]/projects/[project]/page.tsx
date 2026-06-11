@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -91,15 +91,27 @@ export default async function ProjectHubPage({ params }: Props) {
 
   // Current writing SOP: explicit primary binding wins, else mirror the resolver's
   // fallback (this account's latest ai_reference) so the row shows what writing will use.
+  // SOPs are owned by an own channel OR a competitor (one-owner XOR, 0018) — must
+  // leftJoin both sides; an innerJoin(channels) silently drops competitor SOPs.
   const [pinnedSop] = await db
-    .select({ generatedAt: clerkSops.generatedAt, sourceName: channels.name })
+    .select({
+      generatedAt: clerkSops.generatedAt,
+      sourceName: sql<string>`coalesce(${channels.name}, ${competitorAccounts.name}, ${competitorAccounts.url}, '未知来源')`,
+      sourceKind: sql<"own" | "competitor">`case when ${clerkSops.channelId} is not null then 'own' else 'competitor' end`,
+    })
     .from(projectSops)
     .innerJoin(clerkSops, eq(clerkSops.id, projectSops.sopId))
-    .innerJoin(channels, eq(channels.id, clerkSops.channelId))
+    .leftJoin(channels, eq(channels.id, clerkSops.channelId))
+    .leftJoin(competitorAccounts, eq(competitorAccounts.id, clerkSops.competitorAccountId))
     .where(and(eq(projectSops.projectId, project.id), eq(projectSops.role, "primary")))
     .limit(1);
   let currentSop: CurrentSop = pinnedSop
-    ? { sourceName: pinnedSop.sourceName, generatedAt: pinnedSop.generatedAt, pinned: true }
+    ? {
+        sourceName: pinnedSop.sourceName,
+        generatedAt: pinnedSop.generatedAt,
+        pinned: true,
+        sourceKind: pinnedSop.sourceKind,
+      }
     : null;
   if (!currentSop) {
     const [fallbackSop] = await db
@@ -109,7 +121,12 @@ export default async function ProjectHubPage({ params }: Props) {
       .orderBy(desc(clerkSops.generatedAt))
       .limit(1);
     if (fallbackSop) {
-      currentSop = { sourceName: channel.name, generatedAt: fallbackSop.generatedAt, pinned: false };
+      currentSop = {
+        sourceName: channel.name,
+        generatedAt: fallbackSop.generatedAt,
+        pinned: false,
+        sourceKind: "own",
+      };
     }
   }
 
@@ -136,7 +153,9 @@ export default async function ProjectHubPage({ params }: Props) {
 
   const setupSteps = [
     { label: "绑定对标账号", href: "#competitors", done: (boundCount?.c ?? 0) > 0 },
-    { label: "用 Clerk 拆解频道生成 SOP", href: `/clerk/${a}`, done: (clerkSopCount?.c ?? 0) > 0 },
+    // A pinned competitor SOP satisfies this step too — what matters is that
+    // writing has a SOP to follow, not where it came from.
+    { label: "用 Clerk 拆解频道生成 SOP", href: `/clerk/${a}`, done: !!currentSop },
     { label: "生成并选用频道圣经", href: `/accounts/${a}/bible`, done: !!activeBible },
     { label: "Muse 出选题", href: `/accounts/${a}/projects/${p}/muse`, done: (museIdeaCount?.c ?? 0) > 0 },
     { label: "Poet 写稿", href: `/accounts/${a}/projects/${p}/poet`, done: (poetScriptCount?.c ?? 0) > 0 },
