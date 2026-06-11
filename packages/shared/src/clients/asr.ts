@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
-import { createWriteStream, readFileSync, statSync, unlinkSync } from "node:fs";
+import { createWriteStream, readdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
@@ -196,6 +196,12 @@ export function renderTranscriptWithTimestamps(
 
 export type AsrPhase = "selecting" | "downloading" | "transcribing";
 
+// Rough CJK detector for qwenFirst routing: ≥4 Han chars in a video title means the
+// spoken language is almost certainly Mandarin (Deepgram empties/garbles those).
+export function likelyChineseText(s: string | null | undefined): boolean {
+  return ((s ?? "").match(/[一-鿿]/g)?.length ?? 0) >= 4;
+}
+
 // Below this chars/sec rate Deepgram is almost certainly garbled (observed on
 // CN+EN code-switching audio). Real speech is 5-15 chars/sec for both langs.
 const MIN_CHARS_PER_SEC = 1;
@@ -213,6 +219,9 @@ export type TranscribeOpts = {
   logger?: { info: (msg: string) => void; warn: (msg: string) => void };
   durationSec?: number;
   tag?: string;
+  // Try Qwen before Deepgram (e.g. CJK-titled videos — Deepgram returns empty or
+  // garbled Mandarin). Deepgram still runs as fallback if Qwen yields nothing.
+  qwenFirst?: boolean;
 };
 
 // Extract a compact mono 16kHz MP3 so Qwen's base64 request body stays well under
@@ -267,19 +276,109 @@ async function extractAudioForQwen(
 // base64 inflates ~37%, plus JSON/data-URI overhead — keep the encoded body < ~10MB.
 const QWEN_BODY_SAFE_BYTES = 7_300_000;
 
+// qwen3-asr-flash rejects clips beyond ~3 minutes ("The audio is too long").
+// At the 48kbps mono AAC we extract, ~170s ≈ 1.05MB — above that, segment and stitch.
+const QWEN_CHUNK_SECONDS = 170;
+const QWEN_SINGLE_SHOT_BYTES = 1_100_000;
+
+// Split the extracted audio into Qwen-sized segments (stream copy, fast). Returns
+// the ordered chunk paths, or null if ffmpeg is unavailable/fails.
+async function segmentAudioForQwen(
+  srcPath: string,
+  logger?: { warn: (msg: string) => void },
+): Promise<string[] | null> {
+  const stem = join(
+    tmpdir(),
+    `singularity-asr-seg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
+  const bin = process.env.FFMPEG_PATH || "ffmpeg";
+  return await new Promise((resolve) => {
+    let stderr = "";
+    const ff = spawn(
+      bin,
+      [
+        "-y", "-i", srcPath, "-vn", "-c", "copy",
+        "-f", "segment", "-segment_time", String(QWEN_CHUNK_SECONDS),
+        "-reset_timestamps", "1",
+        // Same reason as extractAudioForQwen: Qwen's m4a parser needs moov up front.
+        "-segment_format_options", "movflags=+faststart",
+        `${stem}-%03d.m4a`,
+      ],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+    ff.stderr?.on("data", (d) => {
+      if (stderr.length < 4000) stderr += d.toString();
+    });
+    ff.on("error", (e) => {
+      logger?.warn(`ffmpeg segment spawn failed (bin=${bin}): ${(e as Error).message}`);
+      resolve(null);
+    });
+    ff.on("close", (code) => {
+      const prefix = `${basename(stem)}-`;
+      let files: string[] = [];
+      try {
+        files = readdirSync(tmpdir())
+          .filter((f) => f.startsWith(prefix))
+          .sort()
+          .map((f) => join(tmpdir(), f));
+      } catch {
+        /* readdir failed */
+      }
+      if (code === 0 && files.length > 0) return resolve(files);
+      logger?.warn(`ffmpeg segment exit ${code} (bin=${bin}): ${stderr.trim().slice(-240)}`);
+      for (const f of files) {
+        try {
+          unlinkSync(f);
+        } catch {
+          /* already gone */
+        }
+      }
+      resolve(null);
+    });
+  });
+}
+
 // Qwen3-ASR-Flash (Alibaba Model Studio, Singapore) — Chinese-native ASR, far better
 // Mandarin than Deepgram, ~1-5s. OpenAI-compatible chat endpoint, base64 audio input.
 // We extract audio first (XHS ships full video); pass language to force it (XHS ->
 // "zh"), omit for auto-detect (enable_lid).
-async function transcribeWithQwen(
+async function qwenRequest(
+  sendPath: string,
+  mediaType: string,
+  language?: string,
+): Promise<string | null> {
+  const key = process.env.DASHSCOPE_API_KEY;
+  const base = process.env.DASHSCOPE_ASR_BASE_URL;
+  if (!key || !base) return null; // not configured
+  const b64 = readFileSync(sendPath).toString("base64");
+  const asrOptions: Record<string, unknown> = { enable_lid: true, enable_itn: false };
+  if (language) asrOptions.language = language;
+  const res = await fetch(`${base}/compatible-mode/v1/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "qwen3-asr-flash",
+      messages: [{ role: "user", content: [{ type: "input_audio", input_audio: { data: `data:${mediaType};base64,${b64}` } }] }],
+      stream: false,
+      asr_options: asrOptions,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Qwen ASR HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+  }
+  const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return (j.choices?.[0]?.message?.content ?? "").trim() || null;
+}
+
+// Exported for the asr-chunk smoke test; production callers go through
+// transcribeYoutubeVideo / transcribeFromStreams.
+export async function transcribeWithQwen(
   tempPath: string,
   mime: string,
   language?: string,
   logger?: { warn: (msg: string) => void },
 ): Promise<{ text: string; detectedLanguage?: string; words: Array<{ w: string; t: number }> } | null> {
-  const key = process.env.DASHSCOPE_API_KEY;
-  const base = process.env.DASHSCOPE_ASR_BASE_URL;
-  if (!key || !base) return null; // not configured
+  if (!process.env.DASHSCOPE_API_KEY || !process.env.DASHSCOPE_ASR_BASE_URL) return null;
 
   const audioPath = await extractAudioForQwen(tempPath, logger);
   const sendPath = audioPath ?? tempPath;
@@ -288,37 +387,52 @@ async function transcribeWithQwen(
     : /^(audio|video)\//.test(mime)
       ? mime
       : "audio/mp4";
+  const cleanup: string[] = audioPath ? [audioPath] : [];
   try {
     const sendBytes = statSync(sendPath).size;
+    // Long audio: qwen3-asr-flash rejects ~3min+ clips outright — segment and stitch.
+    // Only possible on the extracted (known-bitrate) audio; raw fallback keeps the cap.
+    if (audioPath && sendBytes > QWEN_SINGLE_SHOT_BYTES) {
+      const chunks = await segmentAudioForQwen(sendPath, logger);
+      if (!chunks) {
+        throw new Error(`audio ${sendBytes}B needs chunking but ffmpeg segmentation failed`);
+      }
+      cleanup.push(...chunks);
+      const parts: string[] = [];
+      let failures = 0;
+      for (let i = 0; i < chunks.length; i++) {
+        try {
+          const t = await qwenRequest(chunks[i]!, "audio/mp4", language);
+          if (t) parts.push(t);
+          else failures++;
+        } catch (err) {
+          failures++;
+          logger?.warn(
+            `Qwen chunk ${i + 1}/${chunks.length} failed: ${(err as Error).message?.slice(0, 120)}`,
+          );
+        }
+      }
+      if (parts.length === 0) {
+        throw new Error(`all ${chunks.length} Qwen chunks failed`);
+      }
+      if (failures > 0) {
+        logger?.warn(`Qwen chunked: ${parts.length}/${chunks.length} segments transcribed`);
+      }
+      return { text: parts.join("\n"), words: [], detectedLanguage: language ?? "auto" };
+    }
+
     if (sendBytes > QWEN_BODY_SAFE_BYTES) {
       throw new Error(
         `audio ${sendBytes}B over Qwen body-safe cap${audioPath ? " after extraction" : " (ffmpeg unavailable)"}`,
       );
     }
-    const b64 = readFileSync(sendPath).toString("base64");
-    const asrOptions: Record<string, unknown> = { enable_lid: true, enable_itn: false };
-    if (language) asrOptions.language = language;
-    const res = await fetch(`${base}/compatible-mode/v1/chat/completions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "qwen3-asr-flash",
-        messages: [{ role: "user", content: [{ type: "input_audio", input_audio: { data: `data:${mediaType};base64,${b64}` } }] }],
-        stream: false,
-        asr_options: asrOptions,
-      }),
-    });
-    if (!res.ok) {
-      throw new Error(`Qwen ASR HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    }
-    const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const text = (j.choices?.[0]?.message?.content ?? "").trim();
+    const text = await qwenRequest(sendPath, mediaType, language);
     if (!text) return null;
     return { text, words: [], detectedLanguage: language ?? "auto" };
   } finally {
-    if (audioPath) {
+    for (const f of cleanup) {
       try {
-        unlinkSync(audioPath);
+        unlinkSync(f);
       } catch {
         /* already gone */
       }
@@ -354,40 +468,52 @@ async function transcribeAtPath(
     return null;
   }
 
-  // YouTube / English: Deepgram primary (fast, handles long audio); Qwen as fallback
-  // (auto language, audio extracted) for Chinese audio Deepgram garbles.
-  onPhase?.("transcribing", { bytes: sizeBytes, provider: "deepgram" });
-  try {
-    const bytes = readFileSync(tempPath);
-    const dg = await transcribeWithDeepgram(bytes, mime);
-    if (dg) {
-      const effectiveDur = durationSec ?? dg.durationSec;
-      const ratio = effectiveDur && effectiveDur > 0 ? dg.text.length / effectiveDur : Infinity;
-      if (effectiveDur && effectiveDur > 30 && ratio < MIN_CHARS_PER_SEC) {
-        logger?.warn(
-          `${tag}: Deepgram returned ${dg.text.length} chars for ${effectiveDur}s audio (${ratio.toFixed(2)} chars/sec, likely garbled), trying Qwen`,
-        );
+  // YouTube: Deepgram primary (fast, word timestamps); chunked Qwen as fallback for
+  // Chinese audio Deepgram empties/garbles. qwenFirst flips the order (CJK-titled
+  // videos) — whichever runs second is still the safety net.
+  const attemptDeepgram = async (): Promise<AsrResult | null> => {
+    onPhase?.("transcribing", { bytes: sizeBytes, provider: "deepgram" });
+    try {
+      const bytes = readFileSync(tempPath);
+      const dg = await transcribeWithDeepgram(bytes, mime);
+      if (dg) {
+        const effectiveDur = durationSec ?? dg.durationSec;
+        const ratio = effectiveDur && effectiveDur > 0 ? dg.text.length / effectiveDur : Infinity;
+        if (effectiveDur && effectiveDur > 30 && ratio < MIN_CHARS_PER_SEC) {
+          logger?.warn(
+            `${tag}: Deepgram returned ${dg.text.length} chars for ${effectiveDur}s audio (${ratio.toFixed(2)} chars/sec, likely garbled)`,
+          );
+        } else {
+          logger?.info(`${tag}: Deepgram OK (${dg.text.length} chars, ${dg.words.length} words)`);
+          return { ...dg, provider: "deepgram" };
+        }
       } else {
-        logger?.info(`${tag}: Deepgram OK (${dg.text.length} chars, ${dg.words.length} words)`);
-        return { ...dg, provider: "deepgram" };
+        logger?.warn(`${tag}: Deepgram returned empty`);
       }
-    } else {
-      logger?.warn(`${tag}: Deepgram returned empty, trying Qwen`);
+    } catch (err) {
+      logger?.warn(`${tag}: Deepgram failed (${(err as Error).message?.slice(0, 120)})`);
     }
-  } catch (err) {
-    logger?.warn(`${tag}: Deepgram failed (${(err as Error).message?.slice(0, 120)}), trying Qwen`);
-  }
+    return null;
+  };
+  const attemptQwen = async (): Promise<AsrResult | null> => {
+    onPhase?.("transcribing", { bytes: sizeBytes, provider: "qwen" });
+    try {
+      const qwen = await transcribeWithQwen(tempPath, mime, undefined, logger);
+      if (qwen) {
+        logger?.info(`${tag}: Qwen OK (${qwen.text.length} chars)`);
+        return { ...qwen, provider: "qwen" };
+      }
+      logger?.warn(`${tag}: Qwen returned empty`);
+    } catch (err) {
+      logger?.warn(`${tag}: Qwen failed (${(err as Error).message?.slice(0, 160)})`);
+    }
+    return null;
+  };
 
-  onPhase?.("transcribing", { bytes: sizeBytes, provider: "qwen" });
-  try {
-    const qwen = await transcribeWithQwen(tempPath, mime, undefined, logger);
-    if (qwen) {
-      logger?.info(`${tag}: Qwen fallback OK (${qwen.text.length} chars)`);
-      return { ...qwen, provider: "qwen" };
-    }
-    logger?.warn(`${tag}: Qwen fallback returned empty`);
-  } catch (err) {
-    logger?.warn(`${tag}: Qwen fallback failed (${(err as Error).message?.slice(0, 160)})`);
+  const order = opts.qwenFirst ? [attemptQwen, attemptDeepgram] : [attemptDeepgram, attemptQwen];
+  for (const attempt of order) {
+    const result = await attempt();
+    if (result) return result;
   }
   return null;
 }

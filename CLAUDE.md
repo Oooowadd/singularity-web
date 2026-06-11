@@ -26,7 +26,7 @@ AI 内容教练 web SaaS。目标用户：中国小型创作者（主战 XHS + Y
 | DB | Supabase Pro（Postgres ap-southeast-1 + Drizzle ORM，不用 Realtime/Auth/Storage SDK）|
 | LLM 主链 | DeepSeek V4 Pro + Flash |
 | LLM vision | Claude Sonnet 4.6（`@ai-sdk/anthropic`）|
-| ASR | Deepgram Nova-3 主 + Groq Whisper 备 |
+| ASR | Deepgram Nova-3 主 + Qwen3-ASR-Flash 备（中文标题 qwenFirst、长音频 ffmpeg 分片拼接）|
 | 视频元数据 | YouTube Data API v3 |
 | 数据层 | TikHub（YouTube + XHS 全套）|
 | Monorepo | pnpm + Turborepo |

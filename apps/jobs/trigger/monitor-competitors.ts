@@ -14,6 +14,7 @@ import {
   projectCompetitors,
 } from "@singularity/db";
 import {
+  likelyChineseText,
   renderTranscriptWithTimestamps,
   transcribeFromStreams,
   transcribeYoutubeVideo,
@@ -396,6 +397,7 @@ export const monitorCompetitors = task({
               const asr = await transcribeYoutubeVideo(ref.videoId, proxyPool, {
                 logger,
                 durationSec: candidateDuration || undefined,
+                qwenFirst: likelyChineseText(ref.title),
               });
               if (asr) {
                 finalTranscript = renderTranscriptWithTimestamps(asr.text, asr.words);
