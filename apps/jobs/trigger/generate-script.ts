@@ -1,7 +1,5 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { and, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 
 import {
   channels,
@@ -16,6 +14,7 @@ import {
   resolvePrimarySop,
   type CheckedFact,
   type CustomTopicReference,
+  withRunDb,
 } from "@singularity/db";
 import { factCheckVerbatim } from "@singularity/shared/services/poet/fact-check";
 import { humanizeChinese } from "@singularity/shared/services/poet/humanizer";
@@ -25,6 +24,7 @@ import {
   writeScript,
 } from "@singularity/shared/services/poet/script-writer";
 import { computeTargetWordCount, isLongForm } from "@singularity/shared/schemas/poet";
+import { safeText } from "@singularity/shared/utils";
 
 type Payload = {
   channelId: string;
@@ -36,21 +36,13 @@ type Payload = {
   durationSeconds?: number;
 };
 
-function safeText(v: string | null | undefined): string | null {
-  if (v == null) return null;
-  const cleaned = v.replace(/\u0000/g, "");
-  return cleaned === "" ? null : cleaned;
-}
 
 export const generateScript = task({
   id: "poet-generate-script",
   maxDuration: 3600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
-    const db = drizzle(client);
-
-    try {
+    return withRunDb(payload.runId, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)
@@ -350,16 +342,6 @@ export const generateScript = task({
         path: draft.path,
         humanized: language === "zh",
       };
-    } catch (err) {
-      const message = (err as Error).message;
-      logger.error(`Script run ${payload.runId} failed: ${message}`);
-      await db
-        .update(pipelineRuns)
-        .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
-      throw err;
-    } finally {
-      await client.end();
-    }
+    });
   },
 });

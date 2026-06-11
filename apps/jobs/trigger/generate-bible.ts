@@ -1,12 +1,11 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { and, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { generateText } from "ai";
 
-import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects } from "@singularity/db";
+import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects, withRunDb } from "@singularity/db";
 import { generateChannelBible } from "@singularity/shared/services/poet/bible";
 import { llm } from "@singularity/shared/clients/llm";
+import { safeText } from "@singularity/shared/utils";
 
 type Payload = {
   channelId: string;
@@ -16,21 +15,13 @@ type Payload = {
   language?: "en" | "zh";
 };
 
-function safeText(v: string | null | undefined): string | null {
-  if (v == null) return null;
-  const cleaned = v.replace(/\u0000/g, "");
-  return cleaned === "" ? null : cleaned;
-}
 
 export const generateBible = task({
   id: "poet-generate-bible",
   maxDuration: 600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
-    const db = drizzle(client);
-
-    try {
+    return withRunDb(payload.runId, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)
@@ -159,16 +150,6 @@ export const generateBible = task({
         driftReason: bible.driftWarning?.reason ?? null,
         topicClaimed: bible.topicClaimed,
       };
-    } catch (err) {
-      const message = (err as Error).message;
-      logger.error(`Bible run ${payload.runId} failed: ${message}`);
-      await db
-        .update(pipelineRuns)
-        .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
-      throw err;
-    } finally {
-      await client.end();
-    }
+    });
   },
 });

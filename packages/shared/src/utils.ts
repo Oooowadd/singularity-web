@@ -1,0 +1,51 @@
+// Cross-task utilities previously copy-pasted into each Trigger task file.
+
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Strip NULL bytes — Postgres TEXT rejects them.
+export function safeText(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const cleaned = v.replace(/\u0000/g, "");
+  return cleaned === "" ? null : cleaned;
+}
+
+export function asPositiveNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v.replace(/,/g, ""));
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+}
+
+// "m:ss" / "h:mm:ss" / plain seconds → seconds (0 on anything unparsable).
+export function parseDurationToSec(text: string | number | undefined): number {
+  if (text == null || text === "") return 0;
+  if (typeof text === "number") return text;
+  const parts = text.split(":").map((p) => Number(p));
+  if (parts.some((p) => Number.isNaN(p))) return 0;
+  if (parts.length === 2) return parts[0]! * 60 + parts[1]!;
+  if (parts.length === 3) return parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
+  return 0;
+}
+
+// Lenient parser for LLM JSON output: strip ``` fences, slice to the outermost
+// object/array, JSON.parse, then jsonrepair as the last resort. Callers validate
+// the resulting unknown with their own zod schema.
+export async function parseLlmJson(raw: string, kind: "object" | "array" = "object"): Promise<unknown> {
+  const open = kind === "object" ? "{" : "[";
+  const close = kind === "object" ? "}" : "]";
+  let text = raw.trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  }
+  const start = text.indexOf(open);
+  const end = text.lastIndexOf(close);
+  if (start >= 0 && end > start) text = text.slice(start, end + 1);
+  try {
+    return JSON.parse(text);
+  } catch {
+    const { jsonrepair } = await import("jsonrepair");
+    return JSON.parse(jsonrepair(text));
+  }
+}

@@ -1,7 +1,5 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 
 import {
   channels,
@@ -12,12 +10,14 @@ import {
   resolveActiveBible,
   resolvePrimarySop,
   type CustomTopicReference,
+  withRunDb,
 } from "@singularity/db";
 import {
   fetchReferences,
   type FetchedReference,
 } from "@singularity/shared/clients/references";
 import { analyzeTopic } from "@singularity/shared/services/poet/topic-analyzer";
+import { safeText } from "@singularity/shared/utils";
 
 type Payload = {
   channelId: string;
@@ -26,21 +26,13 @@ type Payload = {
   language?: "en" | "zh";
 };
 
-function safeText(v: string | null | undefined): string | null {
-  if (v == null) return null;
-  const cleaned = v.replace(/\u0000/g, "");
-  return cleaned === "" ? null : cleaned;
-}
 
 export const analyzeCustomTopic = task({
   id: "poet-analyze-custom-topic",
   maxDuration: 1800,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
-    const db = drizzle(client);
-
-    try {
+    return withRunDb(payload.runId, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)
@@ -173,16 +165,6 @@ export const analyzeCustomTopic = task({
         refsFetched: fetched.length,
         refsFailed: failedCount,
       };
-    } catch (err) {
-      const message = (err as Error).message;
-      logger.error(`Custom-topic analyze ${payload.runId} failed: ${message}`);
-      await db
-        .update(pipelineRuns)
-        .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
-      throw err;
-    } finally {
-      await client.end();
-    }
+    });
   },
 });

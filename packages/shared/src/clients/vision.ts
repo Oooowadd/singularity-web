@@ -2,7 +2,7 @@
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
-import { jsonrepair } from "jsonrepair";
+import { parseLlmJson } from "../utils";
 
 let _anthropic: ReturnType<typeof createAnthropic> | null = null;
 
@@ -56,31 +56,16 @@ async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
   }
 }
 
-function parseLenient(raw: string): {
+async function parseLenient(raw: string): Promise<{
   description?: unknown;
   why_it_works?: unknown;
   diagnosis?: unknown;
   title_suggestions?: unknown;
-} | null {
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) return null;
-  const slice = cleaned.slice(start, end + 1);
+} | null> {
   try {
-    return JSON.parse(slice);
+    return (await parseLlmJson(raw)) as Record<string, unknown>;
   } catch {
-    // Claude occasionally emits unescaped " inside Chinese descriptions
-    // (e.g. 白色"Johnson"字样); jsonrepair fixes it without losing content.
-    try {
-      return JSON.parse(jsonrepair(slice));
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -155,7 +140,7 @@ export async function analyzeImageStack(
         },
       ],
     });
-    const parsed = parseLenient(result.text);
+    const parsed = await parseLenient(result.text);
     if (!parsed) {
       logger?.warn(`vision parse failed (${clipped.length} imgs): ${result.text.slice(0, 200)}`);
       return null;

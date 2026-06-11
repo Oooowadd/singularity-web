@@ -29,6 +29,7 @@
     "./clients/youtube-data": "./src/clients/youtube-data.ts",
     "./clients/xhs": "./src/clients/xhs.ts",
     "./clients/ytdlp": "./src/clients/ytdlp.ts",
+    "./utils": "./src/utils.ts",
     "./proxy": "./src/proxy/index.ts"
   },
   "scripts": {

@@ -1,4 +1,5 @@
 import { generateTextWithFallback } from "../../clients/llm";
+import { parseLlmJson } from "../../utils";
 import { buildFactCheckPrompt, type FactCheckItem } from "../../prompts/poet";
 
 // Mirror of @singularity/db CheckedFact (this repo keeps equivalent types per package
@@ -24,22 +25,6 @@ function parseVerbatim(verbatimFacts: string): { fact: string; src: string }[] {
   return out;
 }
 
-function parseJsonArray(text: string): unknown[] | null {
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const start = cleaned.indexOf("[");
-  const end = cleaned.lastIndexOf("]");
-  if (start === -1 || end === -1) return null;
-  try {
-    const v = JSON.parse(cleaned.slice(start, end + 1));
-    return Array.isArray(v) ? v : null;
-  } catch {
-    return null;
-  }
-}
 
 // Per-fact verification at topic-analysis time. Catches "sourced but wrong" facts that
 // the grounding pass keeps (it trusts cited sources). Marks only — never edits the fact.
@@ -72,7 +57,7 @@ export async function factCheckVerbatim(args: {
       args.logger?.warn?.("fact-check truncated (length cap); marking all verified");
       return fallback();
     }
-    const arr = parseJsonArray(text);
+    const arr = (await parseLlmJson(text, "array").catch(() => null)) as unknown[] | null;
     if (!arr) {
       args.logger?.warn?.("fact-check output unparseable; marking all verified");
       return fallback();

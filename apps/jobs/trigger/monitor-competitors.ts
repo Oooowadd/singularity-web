@@ -1,7 +1,5 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 
 import {
   channels,
@@ -12,6 +10,7 @@ import {
   museMonitorVideos,
   pipelineRuns,
   projectCompetitors,
+  withRunDb,
 } from "@singularity/db";
 import {
   likelyChineseText,
@@ -19,7 +18,7 @@ import {
   transcribeFromStreams,
   transcribeYoutubeVideo,
 } from "@singularity/shared/clients/asr";
-import { classifyError, type ProxyPool } from "@singularity/shared/proxy";
+import { withProxyRetry, type ProxyPool } from "@singularity/shared/proxy";
 import {
   getVideoMetadataYtdlp,
   listChannelVideos,
@@ -34,6 +33,7 @@ import {
   classifyVideo,
   generateIdeas,
 } from "@singularity/shared/services/muse";
+import { asPositiveNumber, parseDurationToSec, safeText, sleep } from "@singularity/shared/utils";
 
 const ASR_MAX_DURATION_SEC = 60 * 60;
 const DEFAULT_NUM_IDEAS = 5;
@@ -50,33 +50,9 @@ type Payload = {
   xhsContentType?: "all" | "video" | "image";
 };
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-function asPositiveNumber(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v.replace(/,/g, ""));
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  return null;
-}
 
-function safeText(v: string | null | undefined): string | null {
-  if (v == null) return null;
-  // Strip NULL bytes — DeepSeek occasionally emits U+0000 which Postgres rejects.
-  const cleaned = v.replace(/\u0000/g, "");
-  return cleaned === "" ? null : cleaned;
-}
 
-function parseDurationToSec(text: string | number | undefined): number {
-  if (text == null || text === "") return 0;
-  if (typeof text === "number") return text;
-  const parts = text.split(":").map((p) => Number(p));
-  if (parts.some((p) => Number.isNaN(p))) return 0;
-  if (parts.length === 2) return parts[0]! * 60 + parts[1]!;
-  if (parts.length === 3) return parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
-  return 0;
-}
 
 export const monitorCompetitors = task({
   id: "muse-monitor-competitors",
@@ -91,10 +67,7 @@ export const monitorCompetitors = task({
     const numIdeasPerVideo = payload.numIdeasPerVideo ?? DEFAULT_NUM_IDEAS;
     const language = payload.language ?? "zh";
 
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
-    const db = drizzle(client);
-
-    try {
+    return withRunDb(payload.runId, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)
@@ -208,42 +181,21 @@ export const monitorCompetitors = task({
               logger.warn(`Competitor ${comp.url}: YouTube path needs proxyPool — skipping`);
               continue;
             }
-            const scoutAttempts = 4;
-            let listed = false;
-            for (let attempt = 1; attempt <= scoutAttempts; attempt++) {
-              const session = proxyPool.checkout();
-              try {
-                const videos = await listChannelVideos(
-                  comp.url,
-                  maxVideosPerCompetitor,
-                  session.url,
-                  logger,
-                );
-                proxyPool.reportOk(session, 5_000);
-                for (const v of videos) {
-                  candidates.push({
-                    competitorIndex: ci,
-                    competitorUrl: comp.url,
-                    competitorAccountId: comp.competitorAccountId,
-                    platform: "youtube",
-                    videoId: v.video_id,
-                    title: v.title,
-                    viewCount: v.views,
-                    duration: v.duration_sec ? String(v.duration_sec) : undefined,
-                  });
-                }
-                listed = true;
-                break;
-              } catch (err) {
-                const kind = classifyError(err, (err as Error & { status?: number }).status);
-                proxyPool.reportErr(session, (err as Error).message, kind);
-                if (attempt < scoutAttempts && (kind === "bot_check" || kind === "consecutive_403")) {
-                  continue;
-                }
-                throw err;
-              }
+            const videos = await withProxyRetry(proxyPool, (session) =>
+              listChannelVideos(comp.url, maxVideosPerCompetitor, session.url, logger),
+            );
+            for (const v of videos) {
+              candidates.push({
+                competitorIndex: ci,
+                competitorUrl: comp.url,
+                competitorAccountId: comp.competitorAccountId,
+                platform: "youtube",
+                videoId: v.video_id,
+                title: v.title,
+                viewCount: v.views,
+                duration: v.duration_sec ? String(v.duration_sec) : undefined,
+              });
             }
-            if (!listed) continue;
           }
         } catch (err) {
           logger.warn(`Competitor ${comp.url} failed: ${(err as Error).message}`);
@@ -364,24 +316,15 @@ export const monitorCompetitors = task({
             if (!proxyPool) {
               throw new Error("YouTube path requires proxyPool — not loaded");
             }
-            let info: Awaited<ReturnType<typeof getVideoMetadataYtdlp>> | null = null;
-            const metaAttempts = 3;
-            for (let attempt = 1; attempt <= metaAttempts; attempt++) {
-              const metaSession = proxyPool.checkout();
-              try {
-                info = await getVideoMetadataYtdlp(ref.videoId, metaSession.url);
-                proxyPool.reportOk(metaSession, 10_000);
-                break;
-              } catch (err) {
-                const kind = classifyError(err, (err as Error & { status?: number }).status);
-                proxyPool.reportErr(metaSession, (err as Error).message, kind);
-                if (attempt < metaAttempts && (kind === "bot_check" || kind === "consecutive_403")) {
-                  continue;
-                }
-                logger.warn(`yt-dlp metadata failed for ${ref.videoId}: ${(err as Error).message?.slice(0, 120)}`);
-                break;
-              }
-            }
+            // Metadata is enrichment only — degrade to null instead of failing the video.
+            const info = await withProxyRetry(
+              proxyPool,
+              (session) => getVideoMetadataYtdlp(ref.videoId, session.url),
+              { attempts: 3, okBytes: 10_000 },
+            ).catch((err: Error) => {
+              logger.warn(`yt-dlp metadata failed for ${ref.videoId}: ${err.message?.slice(0, 120)}`);
+              return null;
+            });
 
             const candidateDuration =
               asPositiveNumber(info?.duration_sec ?? null) ??
@@ -651,16 +594,6 @@ export const monitorCompetitors = task({
         newCandidates: fresh.length,
         competitors: competitors.length,
       };
-    } catch (err) {
-      const message = (err as Error).message;
-      logger.error(`Run ${payload.runId} failed: ${message}`);
-      await db
-        .update(pipelineRuns)
-        .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
-      throw err;
-    } finally {
-      await client.end();
-    }
+    });
   },
 });

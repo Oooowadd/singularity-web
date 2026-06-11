@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 
 import { generateTextWithFallback, llm } from "../../clients/llm";
+import { parseLlmJson } from "../../utils";
 import { redactUngrounded } from "../grounding";
 import {
   buildLongFormOutlinePrompt,
@@ -117,21 +118,6 @@ export type Outline = {
   sections: OutlineSection[];
 };
 
-function parseLenientJson(rawText: string): unknown {
-  const cleaned = rawText
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1) return null;
-  try {
-    return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-  } catch {
-    return null;
-  }
-}
 
 function normalizeOutline(parsed: unknown, fallbackTargetCount: number, targetTotal: number): Outline | null {
   if (!parsed || typeof parsed !== "object") return null;
@@ -211,7 +197,7 @@ async function writeScriptLong(
 
   const lengthUnit = language === "zh" ? "characters (字)" : "words";
   const outline = normalizeOutline(
-    parseLenientJson(outlineResult.text),
+    await parseLlmJson(outlineResult.text),
     Math.max(200, Math.round(targetWordCount / 5)),
     targetWordCount,
   );

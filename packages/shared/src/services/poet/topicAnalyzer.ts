@@ -1,4 +1,5 @@
 import { generateTextWithFallback } from "../../clients/llm";
+import { parseLlmJson } from "../../utils";
 import { redactUngrounded } from "../grounding";
 import { buildTopicAnalysisPrompt } from "../../prompts/poet";
 import { factCheckVerbatim, type CheckedFact } from "./factCheck";
@@ -21,21 +22,6 @@ export type AnalyzeTopicArgs = {
   language: "en" | "zh";
 };
 
-function parseLenientJson(rawText: string): unknown {
-  const cleaned = rawText
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1) return null;
-  try {
-    return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-  } catch {
-    return null;
-  }
-}
 
 function toText(value: unknown): string {
   if (value == null) return "";
@@ -68,7 +54,7 @@ export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysi
       maxOutputTokens: 6144,
       maxRetries: 2,
     });
-    const parsed = parseLenientJson(result.text);
+    const parsed = await parseLlmJson(result.text);
     if (parsed && typeof parsed === "object") {
       data = parsed as Record<string, unknown>;
       break;

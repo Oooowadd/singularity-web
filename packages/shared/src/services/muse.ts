@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { jsonrepair } from "jsonrepair";
+import { parseLlmJson } from "../utils";
 
 import { generateTextWithFallback, llm } from "../clients/llm";
 import {
@@ -18,26 +18,6 @@ const TRANSCRIPT_PREVIEW_CHARS = 2000;
 
 // DeepSeek V4 Pro reasoning preamble sometimes emits trailing commas or
 // unescaped " inside Chinese values — jsonrepair recovers without losing data.
-function parseLenientJson(rawText: string): unknown {
-  const cleaned = rawText
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1) return null;
-  const slice = cleaned.slice(firstBrace, lastBrace + 1);
-  try {
-    return JSON.parse(slice);
-  } catch {
-    try {
-      return JSON.parse(jsonrepair(slice));
-    } catch {
-      return null;
-    }
-  }
-}
 
 export type ClassifyArgs = {
   channelDescription: string;
@@ -71,7 +51,7 @@ export async function classifyVideo(args: ClassifyArgs): Promise<Classification>
       maxOutputTokens: 1500,
       maxRetries: 2,
     });
-    const parsed = parseLenientJson(result.text);
+    const parsed = await parseLlmJson(result.text);
     const valid = classificationSchema.safeParse(parsed);
     if (valid.success) return valid.data;
   }
@@ -143,7 +123,7 @@ export async function generateIdeas(args: GenerateIdeasArgs): Promise<GenerateId
       maxRetries: 2,
     });
     lastText = result.text;
-    const parsed = parseLenientJson(result.text);
+    const parsed = await parseLlmJson(result.text);
     const valid = ideasResponseSchema.safeParse(parsed);
     if (valid.success) {
       const complete = valid.data.ideas.filter(

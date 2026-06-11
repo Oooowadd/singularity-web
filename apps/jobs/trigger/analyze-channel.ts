@@ -1,10 +1,7 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { generateText } from "ai";
 import { and, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
-import { jsonrepair } from "jsonrepair";
-import { drizzle } from "drizzle-orm/postgres-js";
 import pLimit from "p-limit";
-import postgres from "postgres";
 
 import {
   channels,
@@ -15,10 +12,11 @@ import {
   loadProxyPool,
   pipelineRuns,
   projectSops,
+  withRunDb,
 } from "@singularity/db";
 import { llm } from "@singularity/shared/clients/llm";
 import { redactUngrounded } from "@singularity/shared/services/grounding";
-import { classifyError, type ProxyPool } from "@singularity/shared/proxy";
+import { withProxyRetry, type ProxyPool } from "@singularity/shared/proxy";
 import {
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
@@ -55,6 +53,7 @@ import {
   getXhsUserNotes,
   type XhsNote,
 } from "@singularity/shared/clients/xhs";
+import { asPositiveNumber, parseDurationToSec, parseLlmJson, safeText, sleep } from "@singularity/shared/utils";
 
 // Skip ASR for videos > 60 min: audio nearly always exceeds Groq's 25 MB cap.
 const ASR_MAX_DURATION_SEC = 60 * 60;
@@ -103,33 +102,9 @@ function extractYoutubeVideoIdLocal(input: string): string | null {
   return null;
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-function parseDurationToSec(text: string | number | undefined): number {
-  if (text == null || text === "") return 0;
-  if (typeof text === "number") return text;
-  const parts = text.split(":").map((p) => Number(p));
-  if (parts.some((p) => Number.isNaN(p))) return 0;
-  if (parts.length === 2) return parts[0]! * 60 + parts[1]!;
-  if (parts.length === 3) return parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
-  return 0;
-}
 
-function asPositiveNumber(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v.replace(/,/g, ""));
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  return null;
-}
 
-// Strip NULL bytes — postgres TEXT rejects them.
-function safeText(v: string | null | undefined): string | null {
-  if (v == null) return null;
-  const cleaned = v.replace(/\u0000/g, "");
-  return cleaned === "" ? null : cleaned;
-}
 
 type SelectedVideoRef = {
   video_id: string;
@@ -234,24 +209,11 @@ function buildVideosDataText(videos: Array<typeof clerkVideos.$inferSelect>): st
   return note + blocks.join("\n\n");
 }
 
-function parseCommentsSummaryJson(raw: string): CommentsSummary | null {
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) return null;
-  const slice = cleaned.slice(start, end + 1);
+async function parseCommentsSummaryJson(raw: string): Promise<CommentsSummary | null> {
   try {
-    return JSON.parse(slice) as CommentsSummary;
+    return (await parseLlmJson(raw)) as CommentsSummary;
   } catch {
-    try {
-      return JSON.parse(jsonrepair(slice)) as CommentsSummary;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -286,27 +248,12 @@ function summarizeAnalysis(v: typeof clerkVideos.$inferSelect): string {
 
 // Lenient — DeepSeek may wrap JSON in markdown or leave inner quotes
 // unescaped in CJK values; jsonrepair recovers both.
-function parseAnalysis(rawText: string): ReturnType<typeof clerkAnalysisToDbRow> | null {
-  const cleaned = rawText
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1) return null;
-  const jsonSlice = cleaned.slice(firstBrace, lastBrace + 1);
-
+async function parseAnalysis(rawText: string): Promise<ReturnType<typeof clerkAnalysisToDbRow> | null> {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(jsonSlice);
+    parsed = await parseLlmJson(rawText);
   } catch {
-    try {
-      parsed = JSON.parse(jsonrepair(jsonSlice));
-    } catch {
-      return null;
-    }
+    return null;
   }
   if (!parsed || typeof parsed !== "object") return null;
 
@@ -359,8 +306,7 @@ export const analyzeChannel = task({
     const limit = payload.limit ?? 5;
     const language = payload.language ?? "en";
 
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
-    const db = drizzle(client);
+    return withRunDb(payload.runId, async (db) => {
 
     // Activity log + per-video tracks for the live progress panel. metadata.append
     // pushes to an array realtime; videoTracks is keyed by id so concurrent videos
@@ -373,7 +319,6 @@ export const analyzeChannel = task({
       void metadata.set("videoTracks", { ...tracks });
     };
 
-    try {
       if (!payload.channelId === !payload.competitorAccountId) {
         throw new Error("Exactly one of channelId or competitorAccountId must be provided");
       }
@@ -643,7 +588,7 @@ export const analyzeChannel = task({
             // Flash, not Pro: 4-7× faster and equally reliable on this prompt
             // (A/B verified). Retry once on parse failure so one bad response
             // doesn't drop the note. 16384 leaves generous headroom — never truncate.
-            let dbAnalysisRaw: ReturnType<typeof parseAnalysis> = null;
+            let dbAnalysisRaw: Awaited<ReturnType<typeof parseAnalysis>> = null;
             let lastHead = "";
             for (let attempt = 0; attempt < 2 && !dbAnalysisRaw; attempt++) {
               const result = await generateText({
@@ -653,7 +598,7 @@ export const analyzeChannel = task({
                 temperature: 0.3,
                 maxRetries: 2,
               });
-              dbAnalysisRaw = parseAnalysis(result.text);
+              dbAnalysisRaw = await parseAnalysis(result.text);
               // Reject parsed-but-near-empty analysis (e.g. {} recovered) so an empty
               // row isn't written; treat it as a parse failure and retry.
               if (dbAnalysisRaw) {
@@ -840,35 +785,22 @@ export const analyzeChannel = task({
         // Over-fetch so sort/recency filter has candidates; yt-dlp lazy-flat caps cost.
         const fetchN = source === "popular" || payload.recencyMonths ? 100 : Math.max(limit * 3, limit);
         let videos: YtdlpChannelVideo[] | null = null;
-        let scoutErr: Error | undefined;
-        const scoutAttempts = 4;
-        for (let attempt = 1; attempt <= scoutAttempts; attempt++) {
-          const scoutSession = proxyPool.checkout();
-          try {
-            videos = await listChannelVideos(channel.platformUrl, fetchN, scoutSession.url, logger);
-            proxyPool.reportOk(scoutSession, 5_000);
-            break;
-          } catch (err) {
-            scoutErr = err as Error;
-            const kind = classifyError(err, (err as Error & { status?: number }).status);
-            proxyPool.reportErr(scoutSession, scoutErr.message, kind);
-            if (attempt < scoutAttempts && (kind === "bot_check" || kind === "consecutive_403")) {
-              logger.warn(
-                `Channel list ${channel.platformUrl} attempt ${attempt}/${scoutAttempts} (${kind}) — retrying on fresh session`,
-              );
+        videos = await withProxyRetry(
+          proxyPool,
+          (session) => listChannelVideos(channel.platformUrl, fetchN, session.url, logger),
+          {
+            onRetry: (attempt, kind) => {
+              logger.warn(`Channel list ${channel.platformUrl} attempt ${attempt} (${kind}) — retrying on fresh session`);
               appendLog(`⚠ 频道列表第 ${attempt} 次被拦截（${kind}），换 IP 重试`);
-              continue;
-            }
-            break;
-          }
-        }
-        if (!videos) {
+            },
+          },
+        ).catch((err: Error) => {
           throw new Error(
             `Could not list videos for "${channel.platformUrl}". ` +
               `Make sure the URL points to a real channel page (e.g. https://www.youtube.com/@kai-w). ` +
-              `Underlying error: ${scoutErr?.message ?? "unknown"}`,
+              `Underlying error: ${err.message}`,
           );
-        }
+        });
 
         // yt-dlp flat mode returns null view_count + upload_date for YouTube. Enrich via
         // YT Data API (1 quota unit per 50 videos) so popular sort + recency filter work.
@@ -974,30 +906,22 @@ export const analyzeChannel = task({
         updateTrack(videoId, { title: ref.title, phase: "fetching metadata", startedAt: Date.now() });
         try {
           if (!proxyPool) throw new Error("YouTube path requires proxyPool — not loaded");
-          let info: YtdlpVideoMetadata | null = null;
-          const metaAttempts = 3;
-          for (let attempt = 1; attempt <= metaAttempts; attempt++) {
-            const metaSession = proxyPool.checkout();
-            try {
-              info = await getVideoMetadataYtdlp(videoId, metaSession.url);
-              proxyPool.reportOk(metaSession, 10_000);
-              break;
-            } catch (err) {
-              const kind = classifyError(err, (err as Error & { status?: number }).status);
-              proxyPool.reportErr(metaSession, (err as Error).message, kind);
-              if (attempt < metaAttempts && (kind === "bot_check" || kind === "consecutive_403")) {
-                logger.warn(
-                  `yt-dlp metadata ${videoId} attempt ${attempt}/${metaAttempts} (${kind}) — retrying on fresh session`,
-                );
-                continue;
-              }
-              logger.warn(
-                `yt-dlp metadata failed for ${videoId}: ${(err as Error).message?.slice(0, 120)} — falling back to YT Data API only`,
-              );
-              appendLog(`⚠ ${videoId} 元数据获取失败，改用 YT Data API`);
-              break;
-            }
-          }
+          const info: YtdlpVideoMetadata | null = await withProxyRetry(
+            proxyPool,
+            (session) => getVideoMetadataYtdlp(videoId, session.url),
+            {
+              attempts: 3,
+              okBytes: 10_000,
+              onRetry: (attempt, kind) =>
+                logger.warn(`yt-dlp metadata ${videoId} attempt ${attempt} (${kind}) — retrying on fresh session`),
+            },
+          ).catch((err: Error) => {
+            logger.warn(
+              `yt-dlp metadata failed for ${videoId}: ${err.message?.slice(0, 120)} — falling back to YT Data API only`,
+            );
+            appendLog(`⚠ ${videoId} 元数据获取失败，改用 YT Data API`);
+            return null;
+          });
           updateTrack(videoId, { phase: "transcribing" });
           const yt = ytMetaMap.get(videoId) ?? null;
           const meta = resolveVideoMeta({ yt, info, ref, videoId });
@@ -1069,7 +993,7 @@ export const analyzeChannel = task({
               : Promise.resolve(null),
           ]);
 
-          let dbAnalysisRaw = parseAnalysis(result.text);
+          let dbAnalysisRaw = await parseAnalysis(result.text);
           if (!dbAnalysisRaw) {
             const finish = result.finishReason ?? "unknown";
             logger.warn(
@@ -1088,7 +1012,7 @@ export const analyzeChannel = task({
               temperature: 0.2,
               maxRetries: 1,
             });
-            dbAnalysisRaw = parseAnalysis(retry.text);
+            dbAnalysisRaw = await parseAnalysis(retry.text);
             if (!dbAnalysisRaw) {
               throw new Error(
                 `Parse failed twice for ${videoId} (finish=${retry.finishReason ?? "unknown"}, len=${retry.text.length}). ` +
@@ -1263,7 +1187,7 @@ export const analyzeChannel = task({
                 temperature: 0.3,
                 maxRetries: 2,
               });
-              const parsed = parseCommentsSummaryJson(sumResult.text);
+              const parsed = await parseCommentsSummaryJson(sumResult.text);
               if (parsed) {
                 hottestCommentsSummary = formatCommentsSummary(parsed);
                 logger.info(
@@ -1475,16 +1399,6 @@ export const analyzeChannel = task({
         sopsGenerated,
         channelName: channel.name,
       };
-    } catch (err) {
-      const message = (err as Error).message;
-      logger.error(`Run ${payload.runId} failed: ${message}`);
-      await db
-        .update(pipelineRuns)
-        .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
-      throw err;
-    } finally {
-      await client.end();
-    }
+    });
   },
 });

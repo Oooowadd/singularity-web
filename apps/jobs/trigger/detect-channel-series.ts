@@ -1,9 +1,6 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { generateText } from "ai";
 import { eq } from "drizzle-orm";
-import { jsonrepair } from "jsonrepair";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 
 import {
   channels,
@@ -12,6 +9,7 @@ import {
   loadProxyPool,
   pipelineRuns,
   type SeriesVideoRef,
+  withRunDb,
 } from "@singularity/db";
 import { llm } from "@singularity/shared/clients/llm";
 import {
@@ -20,6 +18,7 @@ import {
 } from "@singularity/shared/prompts/clerk-series";
 import { listChannelVideos } from "@singularity/shared/clients/ytdlp";
 import { fetchVideoMetadataBatch } from "@singularity/shared/clients/youtube-data";
+import { parseLlmJson } from "@singularity/shared/utils";
 
 type Payload = {
   channelId: string;
@@ -29,26 +28,6 @@ type Payload = {
   language?: "en" | "zh";
 };
 
-function parseSeriesJson(raw: string): SeriesDetectResponse | null {
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) return null;
-  const slice = cleaned.slice(start, end + 1);
-  try {
-    return JSON.parse(slice) as SeriesDetectResponse;
-  } catch {
-    try {
-      return JSON.parse(jsonrepair(slice)) as SeriesDetectResponse;
-    } catch {
-      return null;
-    }
-  }
-}
 
 export const detectChannelSeries = task({
   id: "clerk-detect-channel-series",
@@ -57,10 +36,7 @@ export const detectChannelSeries = task({
     const videoCount = payload.videoCount ?? 100;
     const language = payload.language ?? "zh";
 
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
-    const db = drizzle(client);
-
-    try {
+    return withRunDb(payload.runId, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)
@@ -138,7 +114,7 @@ export const detectChannelSeries = task({
         });
       }
 
-      const parsed = parseSeriesJson(result.text);
+      const parsed = (await parseLlmJson(result.text).catch(() => null)) as SeriesDetectResponse | null;
       if (!parsed || !Array.isArray(parsed.series)) {
         throw new Error(
           `Series JSON parse failed. finish=${result.finishReason ?? "unknown"} len=${result.text.length} head=${result.text.slice(0, 300)}`,
@@ -203,16 +179,6 @@ export const detectChannelSeries = task({
         videosScanned: videos.length,
         seriesDetected: insertedSeriesCount,
       };
-    } catch (err) {
-      const message = (err as Error).message;
-      logger.error(`Run ${payload.runId} failed: ${message}`);
-      await db
-        .update(pipelineRuns)
-        .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
-      throw err;
-    } finally {
-      await client.end();
-    }
+    });
   },
 });
