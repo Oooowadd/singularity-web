@@ -779,7 +779,7 @@ export const appRouter = router({
             // SOPs are owned by an own channel OR a competitor (one-owner XOR, 0018).
             sourceName: sql<string>`coalesce(${channels.name}, ${competitorAccounts.name}, ${competitorAccounts.url}, '未知来源')`,
             sourceKind: sql<"own" | "competitor">`case when ${clerkSops.channelId} is not null then 'own' else 'competitor' end`,
-            usedBy: sql<number>`(SELECT count(*)::int FROM project_sops ps WHERE ps.sop_id = ${clerkSops.id} AND ps.role = 'primary')`,
+            usedBy: sql<number>`(SELECT count(*)::int FROM project_sops ps JOIN projects p ON p.id = ps.project_id WHERE ps.sop_id = ${clerkSops.id} AND ps.role = 'primary' AND p.user_id = ${ctx.user.id})`,
             isCurrent: sql<boolean>`EXISTS (SELECT 1 FROM project_sops ps WHERE ps.sop_id = ${clerkSops.id} AND ps.project_id = ${input.projectId} AND ps.role = 'primary')`,
           })
           .from(clerkSops)

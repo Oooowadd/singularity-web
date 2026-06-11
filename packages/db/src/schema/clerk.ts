@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   index,
@@ -8,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -68,8 +70,14 @@ export const clerkVideos = pgTable(
     channelVideoUnique: unique("clerk_videos_channel_video_unique").on(table.channelId, table.platformVideoId),
     // Owner-keyed twin of the channel unique; channel-scoped index retires with channel_id (契约末轮).
     ownerVideoUnique: unique("clerk_videos_owner_video_unique").on(table.ownAccountId, table.platformVideoId),
-    // Competitor-side dedup twin lives in 0018 as a partial unique index (NULLs make the
-    // own-side uniques vacuous for competitor rows).
+    // Competitor-side dedup twin: partial because NULLs make the own-side uniques
+    // vacuous for competitor rows (created in prod by 0018).
+    competitorVideoUnique: uniqueIndex("clerk_videos_competitor_video_unique")
+      .on(table.competitorAccountId, table.platformVideoId)
+      .where(sql`${table.competitorAccountId} is not null`),
+    competitorIdx: index("clerk_videos_competitor_idx")
+      .on(table.competitorAccountId)
+      .where(sql`${table.competitorAccountId} is not null`),
     channelIdx: index("clerk_videos_channel_id_idx").on(table.channelId),
   })
 );
@@ -94,6 +102,9 @@ export const clerkSops = pgTable(
   },
   (table) => ({
     channelIdx: index("clerk_sops_channel_id_idx").on(table.channelId),
+    competitorIdx: index("clerk_sops_competitor_idx")
+      .on(table.competitorAccountId)
+      .where(sql`${table.competitorAccountId} is not null`),
   })
 );
 

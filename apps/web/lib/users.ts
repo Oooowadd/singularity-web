@@ -1,7 +1,6 @@
 import "server-only";
 
 import { getLogtoContext } from "@logto/next/server-actions";
-import { eq } from "drizzle-orm";
 
 import { users, type User } from "@singularity/db";
 
@@ -19,30 +18,17 @@ async function upsertFromIdentity(identity: LogtoIdentity): Promise<User> {
   const email = identity.email ?? "";
   const displayName = identity.name ?? identity.username ?? null;
 
-  const existing = await db
-    .select()
-    .from(users)
-    .where(eq(users.logtoId, identity.sub))
-    .limit(1);
-
-  if (existing.length > 0) {
-    const current = existing[0]!;
-    if (current.email !== email || current.displayName !== displayName) {
-      const [updated] = await db
-        .update(users)
-        .set({ email, displayName })
-        .where(eq(users.logtoId, identity.sub))
-        .returning();
-      return updated!;
-    }
-    return current;
-  }
-
-  const [created] = await db
+  // Race-free single round trip: select-then-insert let concurrent first-login
+  // requests collide on the logto_id unique.
+  const [row] = await db
     .insert(users)
     .values({ logtoId: identity.sub, email, displayName })
+    .onConflictDoUpdate({
+      target: users.logtoId,
+      set: { email, displayName },
+    })
     .returning();
-  return created!;
+  return row!;
 }
 
 export async function ensureCurrentUser(): Promise<User | null> {

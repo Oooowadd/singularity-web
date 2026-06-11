@@ -1,7 +1,7 @@
-import { count, desc, eq, or } from "drizzle-orm";
+import { and, count, desc, eq, or } from "drizzle-orm";
 import Link from "next/link";
 
-import { channels, clerkSops, competitorAccounts, projectSops } from "@singularity/db";
+import { channels, clerkSops, competitorAccounts, projects, projectSops } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,10 +51,13 @@ export default async function SopsLibraryPage() {
     .where(or(eq(channels.userId, user.id), eq(competitorAccounts.userId, user.id)))
     .orderBy(desc(clerkSops.generatedAt));
 
+  // Scope to the viewer's projects — without the join the counts aggregate
+  // every user's bindings.
   const usage = await db
     .select({ sopId: projectSops.sopId, n: count() })
     .from(projectSops)
-    .where(eq(projectSops.role, "primary"))
+    .innerJoin(projects, eq(projects.id, projectSops.projectId))
+    .where(and(eq(projectSops.role, "primary"), eq(projects.userId, user.id)))
     .groupBy(projectSops.sopId);
   const usedByMap = new Map(usage.map((u) => [u.sopId, u.n]));
 

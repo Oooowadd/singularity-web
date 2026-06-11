@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { channels } from "./channels";
@@ -30,6 +31,9 @@ export const pipelineRuns = pgTable(
   },
   (table) => ({
     channelStatusIdx: index("pipeline_runs_channel_status_idx").on(table.channelId, table.status),
+    competitorStatusIdx: index("pipeline_runs_competitor_status_idx")
+      .on(table.competitorAccountId, table.status)
+      .where(sql`${table.competitorAccountId} is not null`),
   })
 );
 

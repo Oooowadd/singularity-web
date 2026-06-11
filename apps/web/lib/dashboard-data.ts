@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import {
   channels,
@@ -78,6 +78,7 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
     poetByAccount,
     projectsByAccount,
     activityRows,
+    runningAgentRows,
   ] = await Promise.all([
     db
       .select({ id: channels.id, name: channels.name, slug: channels.slug, platform: channels.platform })
@@ -183,11 +184,28 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
       .where(or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)))
       .orderBy(desc(pipelineRuns.startedAt))
       .limit(10),
+    // Dedicated active-agent query: deriving this from the latest-10 activity rows
+    // missed older still-running runs; pending rows get the 30-min orphan cutoff.
+    db
+      .selectDistinct({ agent: pipelineRuns.agent })
+      .from(pipelineRuns)
+      .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
+      .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
+      .where(
+        and(
+          or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)),
+          inArray(pipelineRuns.status, ["pending", "running"]),
+          or(
+            eq(pipelineRuns.status, "running"),
+            gte(pipelineRuns.startedAt, new Date(Date.now() - 30 * 60 * 1000)),
+          ),
+        ),
+      ),
   ]);
 
   const runningByAgent: RunningByAgent = { clerk: false, muse: false, poet: false };
-  for (const row of activityRows) {
-    if (row.status === "running" || row.status === "pending") {
+  for (const row of runningAgentRows) {
+    if (row.agent === "clerk" || row.agent === "muse" || row.agent === "poet") {
       runningByAgent[row.agent] = true;
     }
   }

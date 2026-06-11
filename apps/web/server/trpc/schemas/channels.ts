@@ -22,9 +22,10 @@ export const createChannelInput = z
     platformUrl: z.string().url("Must be a valid URL"),
     description: z.string().max(500).optional().nullable(),
   })
-  .refine((v) => validateChannelUrl(v.platform, v.platformUrl), {
-    message: PLATFORM_URL_HINT.youtube,
-    path: ["platformUrl"],
+  .superRefine((v, ctx) => {
+    if (!validateChannelUrl(v.platform, v.platformUrl)) {
+      ctx.addIssue({ code: "custom", message: PLATFORM_URL_HINT[v.platform], path: ["platformUrl"] });
+    }
   });
 
 export type CreateChannelInput = z.infer<typeof createChannelInput>;
@@ -47,9 +48,10 @@ export const updateChannelInput = z
     platformUrl: z.string().url("Must be a valid URL"),
     description: z.string().max(500).nullable().optional(),
   })
-  .refine((v) => validateChannelUrl(v.platform, v.platformUrl), {
-    message: PLATFORM_URL_HINT.youtube,
-    path: ["platformUrl"],
+  .superRefine((v, ctx) => {
+    if (!validateChannelUrl(v.platform, v.platformUrl)) {
+      ctx.addIssue({ code: "custom", message: PLATFORM_URL_HINT[v.platform], path: ["platformUrl"] });
+    }
   });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInput>;
