@@ -18,7 +18,7 @@ import {
   buildSeriesDetectPrompt,
   type SeriesDetectResponse,
 } from "@singularity/shared/prompts/clerk-series";
-import { listChannelVideosYtdlp } from "@singularity/shared/clients/ytdlp";
+import { listChannelVideos } from "@singularity/shared/clients/ytdlp";
 import { fetchVideoMetadataBatch } from "@singularity/shared/clients/youtube-data";
 
 type Payload = {
@@ -89,7 +89,7 @@ export const detectChannelSeries = task({
       const session = proxyPool.checkout();
       let videos;
       try {
-        videos = await listChannelVideosYtdlp(channel.platformUrl, videoCount, session.url);
+        videos = await listChannelVideos(channel.platformUrl, videoCount, session.url, logger);
         proxyPool.reportOk(session, 5_000);
       } catch (err) {
         proxyPool.reportErr(session, (err as Error).message, "other");

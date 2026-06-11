@@ -87,6 +87,7 @@ export type YoutubeChannelMeta = {
   videoCount: number | null;
   viewCount: number | null;
   country: string;
+  uploadsPlaylistId: string | null;
 };
 
 type ApiChannelItem = {
@@ -104,6 +105,9 @@ type ApiChannelItem = {
     videoCount?: string;
     viewCount?: string;
   };
+  contentDetails?: {
+    relatedPlaylists?: { uploads?: string };
+  };
 };
 
 function mapChannel(item: ApiChannelItem): YoutubeChannelMeta {
@@ -118,6 +122,7 @@ function mapChannel(item: ApiChannelItem): YoutubeChannelMeta {
     videoCount: asPositiveNumber(item.statistics?.videoCount),
     viewCount: asPositiveNumber(item.statistics?.viewCount),
     country: item.snippet?.country ?? "",
+    uploadsPlaylistId: item.contentDetails?.relatedPlaylists?.uploads ?? null,
   };
 }
 
@@ -126,7 +131,7 @@ async function fetchChannelMetaRaw(
 ): Promise<YoutubeChannelMeta | null> {
   try {
     const params = new URLSearchParams({
-      part: "snippet,statistics",
+      part: "snippet,statistics,contentDetails",
       ...(query.id ? { id: query.id } : {}),
       ...(query.forHandle ? { forHandle: query.forHandle } : {}),
       key: key(),
@@ -184,6 +189,51 @@ export async function fetchVideoMetadata(videoId: string): Promise<YoutubeVideoM
     const item = json.items?.[0];
     if (!item) return null;
     return mapItem(item);
+  } catch {
+    return null;
+  }
+}
+
+// Channel uploads via the Data API (no proxy): channels.list → playlistItems.list →
+// videos.list, ~3 quota units. Newest-first, Shorts (≤60s) filtered to mirror the
+// yt-dlp /videos-tab behavior. Returns null when the URL/key can't serve it so the
+// caller keeps its original error.
+export async function listChannelUploads(
+  channelUrl: string,
+  limit: number,
+): Promise<YoutubeVideoMeta[] | null> {
+  const parsed = parseYoutubeChannelUrl(channelUrl);
+  if (!parsed || parsed.type === "legacy") return null;
+  const channel =
+    parsed.type === "id"
+      ? await fetchChannelMetaById(parsed.channelId)
+      : await fetchChannelMetaByHandle(parsed.handle);
+  if (!channel?.uploadsPlaylistId) return null;
+  try {
+    // Over-fetch so the Shorts filter still leaves `limit` long-form rows.
+    const fetchCount = Math.min(50, Math.max(limit * 2, 10));
+    const params = new URLSearchParams({
+      part: "contentDetails",
+      playlistId: channel.uploadsPlaylistId,
+      maxResults: String(fetchCount),
+      key: key(),
+    });
+    const res = await fetch(`${BASE}/playlistItems?${params.toString()}`);
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      items?: Array<{ contentDetails?: { videoId?: string } }>;
+    };
+    const ids = (json.items ?? [])
+      .map((i) => i.contentDetails?.videoId)
+      .filter((v): v is string => !!v);
+    if (ids.length === 0) return null;
+    const metas = await fetchVideoMetadataBatch(ids);
+    const ordered = ids
+      .map((id) => metas.get(id))
+      .filter((m): m is YoutubeVideoMeta => !!m);
+    const longForm = ordered.filter((m) => (m.durationSec ?? 0) > 60);
+    // Shorts-only channels: better the unfiltered list than an empty one.
+    return (longForm.length > 0 ? longForm : ordered).slice(0, limit);
   } catch {
     return null;
   }

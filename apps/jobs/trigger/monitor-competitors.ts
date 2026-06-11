@@ -22,7 +22,7 @@ import {
 import { classifyError, type ProxyPool } from "@singularity/shared/proxy";
 import {
   getVideoMetadataYtdlp,
-  listChannelVideosYtdlp,
+  listChannelVideos,
 } from "@singularity/shared/clients/ytdlp";
 import {
   getXhsUserNotes,
@@ -215,10 +215,11 @@ export const monitorCompetitors = task({
             for (let attempt = 1; attempt <= scoutAttempts; attempt++) {
               const session = proxyPool.checkout();
               try {
-                const videos = await listChannelVideosYtdlp(
+                const videos = await listChannelVideos(
                   comp.url,
                   maxVideosPerCompetitor,
                   session.url,
+                  logger,
                 );
                 proxyPool.reportOk(session, 5_000);
                 for (const v of videos) {

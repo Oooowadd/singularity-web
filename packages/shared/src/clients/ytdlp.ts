@@ -3,6 +3,8 @@ import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { listChannelUploads } from "./youtube-data";
+
 const YTDLP_VERSION = "2026.03.17";
 // macOS gets its own universal binary; Linux gets the static one. Other platforms
 // (Windows) fall through to Linux — fine on WSL, will need extension elsewhere.
@@ -453,6 +455,37 @@ export async function listChannelVideosYtdlp(
       published_at: normalizeUploadDate(e.upload_date, e.timestamp),
     };
   });
+}
+
+// Resilient listing: yt-dlp through a proxy (fast path, exact /videos-tab semantics)
+// with a YouTube Data API fallback — proxy egress to www.youtube.com periodically
+// read-times-out (D5 family), which used to kill the whole run at its first step.
+export async function listChannelVideos(
+  channelUrl: string,
+  limit: number,
+  proxyUrl: string,
+  logger?: { info?: (m: string) => void; warn?: (m: string) => void },
+): Promise<YtdlpChannelVideo[]> {
+  try {
+    // 60s is plenty when the proxy works (~10s); fail fast into the fallback when not.
+    return await listChannelVideosYtdlp(channelUrl, limit, proxyUrl, 60_000);
+  } catch (err) {
+    logger?.warn?.(
+      `yt-dlp channel list failed (${(err as Error).message?.slice(0, 120)}), trying YouTube Data API`,
+    );
+    const metas = await listChannelUploads(channelUrl, limit);
+    if (!metas || metas.length === 0) throw err;
+    logger?.info?.(`channel list via YouTube Data API fallback: ${metas.length} videos`);
+    return metas.map((m) => ({
+      video_id: m.videoId,
+      title: m.title,
+      url: `https://www.youtube.com/watch?v=${m.videoId}`,
+      duration_sec: m.durationSec ?? 0,
+      views: m.viewCount ?? 0,
+      thumbnail_url: m.thumbnailUrl ?? "",
+      published_at: m.publishedAt || null,
+    }));
+  }
 }
 
 // === Channel ID resolution (replaces TikHub resolveChannelId) ===
