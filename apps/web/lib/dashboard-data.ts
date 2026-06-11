@@ -1,25 +1,21 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 import {
   channels,
+  clerkSops,
   clerkVideos,
   competitorAccounts,
   museIdeas,
   pipelineRuns,
+  poetBible,
   poetScripts,
   projectCompetitors,
   projects,
 } from "@singularity/db";
 
 import { db } from "./db";
-
-export type AgentStats = {
-  clerk: { total: number; deltaSevenDay: number };
-  muse: { total: number; deltaSevenDay: number };
-  poet: { total: number; deltaSevenDay: number };
-};
 
 export type ActivityRow = {
   id: string;
@@ -35,8 +31,6 @@ export type ActivityRow = {
   errorMessage: string | null;
 };
 
-export type RunningByAgent = Record<"clerk" | "muse" | "poet", boolean>;
-
 export type AccountSummary = {
   id: string;
   name: string;
@@ -46,102 +40,55 @@ export type AccountSummary = {
   clerkVideos: number;
   museIdeas: number;
   poetScripts: number;
+  // Per-account next action — mirrors the project-hub setup checklist, then the
+  // recurring loop (pending ideas → patrol) once setup is complete.
+  nextStep: { label: string; href: string };
 };
 
 export type DashboardSnapshot = {
   channelCount: number;
-  activeRunCount: number;
-  runningByAgent: RunningByAgent;
-  stats: AgentStats;
+  totals: { clerk: number; muse: number; poet: number };
   activity: ActivityRow[];
   pendingMuseIdeas: number;
   competitorCount: number;
   accounts: AccountSummary[];
 };
 
-export async function getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+function deriveNextStep(a: {
+  slug: string;
+  bound: number;
+  sops: number;
+  hasActiveBible: boolean;
+  pendingIdeas: number;
+}): { label: string; href: string } {
+  const s = encodeURIComponent(a.slug);
+  const hub = `/accounts/${s}/projects/${s}`;
+  if (a.bound === 0) return { label: "绑定对标账号", href: hub };
+  if (a.sops === 0) return { label: "用 Clerk 拆解生成 SOP", href: `/clerk/${s}` };
+  if (!a.hasActiveBible) return { label: "生成并选用频道圣经", href: `/accounts/${s}/bible` };
+  if (a.pendingIdeas > 0)
+    return { label: `${a.pendingIdeas} 个选题待处理`, href: `${hub}/muse` };
+  return { label: "让 Muse 巡视出新选题", href: `${hub}/muse` };
+}
 
+export async function getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
   const [
     accountRows,
-    [activeRunRow],
-    [clerkRow],
-    [clerkDeltaRow],
-    [museRow],
-    [museDeltaRow],
-    [poetRow],
-    [poetDeltaRow],
-    [pendingMuseRow],
-    [competitorRow],
     clerkByAccount,
     museByAccount,
     poetByAccount,
     projectsByAccount,
+    sopsByAccount,
+    activeBibleAccounts,
+    pendingByAccount,
+    boundByAccount,
     activityRows,
-    runningAgentRows,
   ] = await Promise.all([
     db
       .select({ id: channels.id, name: channels.name, slug: channels.slug, platform: channels.platform })
       .from(channels)
       .where(eq(channels.userId, userId))
       .orderBy(desc(channels.createdAt)),
-    db
-      .select({ c: count() })
-      .from(pipelineRuns)
-      .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
-      .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
-      .where(
-        and(
-          or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)),
-          eq(pipelineRuns.status, "running"),
-        ),
-      ),
-    db
-      .select({ c: count() })
-      .from(clerkVideos)
-      .innerJoin(channels, eq(channels.id, clerkVideos.channelId))
-      .where(eq(channels.userId, userId)),
-    db
-      .select({ c: count() })
-      .from(clerkVideos)
-      .innerJoin(channels, eq(channels.id, clerkVideos.channelId))
-      .where(and(eq(channels.userId, userId), gte(clerkVideos.analyzedAt, sevenDaysAgo))),
-    db
-      .select({ c: count() })
-      .from(museIdeas)
-      .innerJoin(channels, eq(channels.id, museIdeas.channelId))
-      .where(eq(channels.userId, userId)),
-    db
-      .select({ c: count() })
-      .from(museIdeas)
-      .innerJoin(channels, eq(channels.id, museIdeas.channelId))
-      .where(and(eq(channels.userId, userId), gte(museIdeas.generatedAt, sevenDaysAgo))),
-    db
-      .select({ c: count() })
-      .from(poetScripts)
-      .innerJoin(channels, eq(channels.id, poetScripts.channelId))
-      .where(eq(channels.userId, userId)),
-    db
-      .select({ c: count() })
-      .from(poetScripts)
-      .innerJoin(channels, eq(channels.id, poetScripts.channelId))
-      .where(and(eq(channels.userId, userId), gte(poetScripts.generatedAt, sevenDaysAgo))),
-    db
-      .select({ c: count() })
-      .from(museIdeas)
-      .innerJoin(channels, eq(channels.id, museIdeas.channelId))
-      .where(
-        and(
-          eq(channels.userId, userId),
-          eq(museIdeas.approved, false),
-          eq(museIdeas.scripted, false),
-        ),
-      ),
-    db
-      .select({ c: count() })
-      .from(projectCompetitors)
-      .innerJoin(projects, eq(projects.id, projectCompetitors.projectId))
-      .where(eq(projects.userId, userId)),
     db
       .select({ channelId: clerkVideos.channelId, c: count() })
       .from(clerkVideos)
@@ -166,6 +113,40 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
       .where(eq(projects.userId, userId))
       .groupBy(projects.ownAccountId),
     db
+      .select({ channelId: clerkSops.channelId, c: count() })
+      .from(clerkSops)
+      .innerJoin(channels, eq(channels.id, clerkSops.channelId))
+      .where(eq(channels.userId, userId))
+      .groupBy(clerkSops.channelId),
+    db
+      .selectDistinct({ channelId: poetBible.channelId })
+      .from(poetBible)
+      .innerJoin(channels, eq(channels.id, poetBible.channelId))
+      .where(and(eq(channels.userId, userId), eq(poetBible.isActive, true))),
+    db
+      .select({ channelId: museIdeas.channelId, c: count() })
+      .from(museIdeas)
+      .innerJoin(channels, eq(channels.id, museIdeas.channelId))
+      .where(
+        and(
+          eq(channels.userId, userId),
+          eq(museIdeas.approved, false),
+          eq(museIdeas.scripted, false),
+        ),
+      )
+      .groupBy(museIdeas.channelId),
+    // Per-account live competitor bindings (project.id == own_account.id spine).
+    db
+      .select({ ownAccountId: projects.ownAccountId, c: count() })
+      .from(projectCompetitors)
+      .innerJoin(projects, eq(projects.id, projectCompetitors.projectId))
+      .innerJoin(
+        competitorAccounts,
+        eq(competitorAccounts.id, projectCompetitors.competitorAccountId),
+      )
+      .where(and(eq(projects.userId, userId), isNull(competitorAccounts.deletedAt)))
+      .groupBy(projects.ownAccountId),
+    db
       .select({
         id: pipelineRuns.id,
         agent: pipelineRuns.agent,
@@ -184,36 +165,17 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
       .where(or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)))
       .orderBy(desc(pipelineRuns.startedAt))
       .limit(10),
-    // Dedicated active-agent query: deriving this from the latest-10 activity rows
-    // missed older still-running runs; pending rows get the 30-min orphan cutoff.
-    db
-      .selectDistinct({ agent: pipelineRuns.agent })
-      .from(pipelineRuns)
-      .leftJoin(channels, eq(channels.id, pipelineRuns.channelId))
-      .leftJoin(competitorAccounts, eq(competitorAccounts.id, pipelineRuns.competitorAccountId))
-      .where(
-        and(
-          or(eq(channels.userId, userId), eq(competitorAccounts.userId, userId)),
-          inArray(pipelineRuns.status, ["pending", "running"]),
-          or(
-            eq(pipelineRuns.status, "running"),
-            gte(pipelineRuns.startedAt, new Date(Date.now() - 30 * 60 * 1000)),
-          ),
-        ),
-      ),
   ]);
-
-  const runningByAgent: RunningByAgent = { clerk: false, muse: false, poet: false };
-  for (const row of runningAgentRows) {
-    if (row.agent === "clerk" || row.agent === "muse" || row.agent === "poet") {
-      runningByAgent[row.agent] = true;
-    }
-  }
 
   const clerkMap = new Map(clerkByAccount.map((r) => [r.channelId, r.c]));
   const museMap = new Map(museByAccount.map((r) => [r.channelId, r.c]));
   const poetMap = new Map(poetByAccount.map((r) => [r.channelId, r.c]));
   const projectMap = new Map(projectsByAccount.map((r) => [r.ownAccountId, r.c]));
+  const sopMap = new Map(sopsByAccount.map((r) => [r.channelId, r.c]));
+  const bibleSet = new Set(activeBibleAccounts.map((r) => r.channelId));
+  const pendingMap = new Map(pendingByAccount.map((r) => [r.channelId, r.c]));
+  const boundMap = new Map(boundByAccount.map((r) => [r.ownAccountId, r.c]));
+
   const accounts: AccountSummary[] = accountRows.map((a) => ({
     id: a.id,
     name: a.name,
@@ -223,20 +185,23 @@ export async function getDashboardSnapshot(userId: string): Promise<DashboardSna
     clerkVideos: clerkMap.get(a.id) ?? 0,
     museIdeas: museMap.get(a.id) ?? 0,
     poetScripts: poetMap.get(a.id) ?? 0,
+    nextStep: deriveNextStep({
+      slug: a.slug,
+      bound: boundMap.get(a.id) ?? 0,
+      sops: sopMap.get(a.id) ?? 0,
+      hasActiveBible: bibleSet.has(a.id),
+      pendingIdeas: pendingMap.get(a.id) ?? 0,
+    }),
   }));
+
+  const sum = (rows: Array<{ c: number }>) => rows.reduce((s, r) => s + r.c, 0);
 
   return {
     channelCount: accountRows.length,
-    activeRunCount: activeRunRow?.c ?? 0,
-    runningByAgent,
-    stats: {
-      clerk: { total: clerkRow?.c ?? 0, deltaSevenDay: clerkDeltaRow?.c ?? 0 },
-      muse: { total: museRow?.c ?? 0, deltaSevenDay: museDeltaRow?.c ?? 0 },
-      poet: { total: poetRow?.c ?? 0, deltaSevenDay: poetDeltaRow?.c ?? 0 },
-    },
+    totals: { clerk: sum(clerkByAccount), muse: sum(museByAccount), poet: sum(poetByAccount) },
     activity: activityRows,
-    pendingMuseIdeas: pendingMuseRow?.c ?? 0,
-    competitorCount: competitorRow?.c ?? 0,
+    pendingMuseIdeas: sum(pendingByAccount),
+    competitorCount: sum(boundByAccount),
     accounts,
   };
 }

@@ -3,8 +3,8 @@ import { ensureCurrentUser } from "@/lib/users";
 import { getDashboardSnapshot } from "@/lib/dashboard-data";
 
 import { AccountsOverview } from "./_components/accounts-overview";
+import { ActiveNowStrip } from "./_components/active-now-strip";
 import { ActivityFeed } from "./_components/activity-feed";
-import { AgentStatCards } from "./_components/agent-stat-cards";
 import { DashboardRefresher } from "./_components/dashboard-refresher";
 import { NextStepCard } from "./_components/next-step-card";
 import { OnboardingOverview } from "./_components/onboarding-overview";
@@ -74,20 +74,16 @@ export default async function DashboardPage() {
         <DashboardRefresher />
       </header>
 
+      <ActiveNowStrip activity={snapshot.activity} />
+
       <NextStepCard
         channelCount={snapshot.channelCount}
-        clerkTotal={snapshot.stats.clerk.total}
-        museTotal={snapshot.stats.muse.total}
-        poetTotal={snapshot.stats.poet.total}
+        clerkTotal={snapshot.totals.clerk}
+        museTotal={snapshot.totals.muse}
+        poetTotal={snapshot.totals.poet}
         pendingMuseIdeas={snapshot.pendingMuseIdeas}
         competitorCount={snapshot.competitorCount}
         links={links}
-      />
-
-      <AgentStatCards
-        stats={snapshot.stats}
-        runningByAgent={snapshot.runningByAgent}
-        hrefs={{ clerk: links.clerk, muse: links.muse, poet: links.poet }}
       />
 
       <AccountsOverview accounts={snapshot.accounts} />

@@ -60,7 +60,7 @@ function describeCommand(command: string): string {
 }
 
 // Default project slug == account slug; linking muse/poet's nested project route directly avoids the 308 hop off the bare route.
-function agentDeepLink(row: ActivityRow): string {
+export function agentDeepLink(row: ActivityRow): string {
   if (row.competitorAccountId) return `/clerk/competitor/${row.competitorAccountId}`;
   const s = encodeURIComponent(row.channelSlug ?? "");
   if (row.agent === "clerk") return `/clerk/${s}`;
@@ -121,7 +121,7 @@ export function ActivityFeed({ activity }: Props) {
             还没有任何活动 — 去任一频道启动 Clerk / Muse / Poet 开始
           </div>
         ) : (
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div>
             {BUCKET_ORDER.map((bucket) => {
               const rows = grouped.get(bucket);
               if (!rows || rows.length === 0) return null;

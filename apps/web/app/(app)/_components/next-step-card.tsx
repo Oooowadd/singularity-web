@@ -34,7 +34,7 @@ function pickStep({
   pendingMuseIdeas,
   competitorCount,
   links,
-}: Props): Step {
+}: Props): Step | null {
   if (channelCount === 0) {
     return {
       title: "先建一个自己的频道",
@@ -89,22 +89,8 @@ function pickStep({
       index: 6,
     };
   }
-  if (pendingMuseIdeas >= 5) {
-    return {
-      title: `你有 ${pendingMuseIdeas} 个未审选题`,
-      description: "处理一下选题积压，决定哪些值得写、哪些归档。审完就能直接派给 Poet 写稿。",
-      cta: "去审选题",
-      href: links.muse,
-      index: null,
-    };
-  }
-  return {
-    title: "继续推进",
-    description: `已经全员上线：${clerkTotal} 个分析、${museTotal} 个选题、${poetTotal} 个脚本。下一步可以扩对标账号或回到任一 agent 继续。`,
-    cta: "去 Muse",
-    href: links.muse,
-    index: null,
-  };
+  // Golden path complete — the per-account action cards take over from here.
+  return null;
 }
 
 function segmentClass(i: number, index: number | null): string {
@@ -116,6 +102,7 @@ function segmentClass(i: number, index: number | null): string {
 
 export function NextStepCard(props: Props) {
   const step = pickStep(props);
+  if (!step) return null;
   return (
     <div className="relative flex flex-col gap-3 overflow-hidden rounded-lg border bg-card p-5 shadow-sm">
       <span className="absolute inset-y-0 left-0 w-1 bg-poet" />
