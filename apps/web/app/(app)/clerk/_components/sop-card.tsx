@@ -1,0 +1,75 @@
+import { Badge } from "@/components/ui/badge";
+import { CopyButton } from "@/components/copy-button";
+import { formatDateTime } from "@/lib/datetime";
+
+import { DeleteSopButton } from "../[slug]/_components/delete-sop-button";
+
+// Single SOP card for all three surfaces (own channel / competitor / library) —
+// the previous three copies had already drifted apart.
+type SopLike = {
+  id: string;
+  sopType: string;
+  language: string;
+  contentMd: string;
+  generatedAt: Date | null;
+};
+
+export function SopCard({
+  sop,
+  defaultOpen = false,
+  sourceName,
+  usedBy = 0,
+  showDelete = false,
+}: {
+  sop: SopLike;
+  defaultOpen?: boolean;
+  // Competitor surfaces show provenance on the card itself.
+  sourceName?: string;
+  usedBy?: number;
+  showDelete?: boolean;
+}) {
+  const label = sop.sopType.replace(/_/g, " ");
+  return (
+    <details open={defaultOpen} className="flex flex-col gap-3 rounded-lg border bg-card p-5">
+      <summary className="flex cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="font-mono text-[10px] uppercase">
+            {label}
+          </Badge>
+          {sourceName ? (
+            <Badge variant="outline" className="text-[10px]">
+              🎯 来自对标 · {sourceName.slice(0, 16)}
+            </Badge>
+          ) : null}
+          {usedBy > 0 ? (
+            <Badge variant="outline" className="text-[10px]">
+              已用于 {usedBy} 个项目
+            </Badge>
+          ) : null}
+          <span className="font-mono text-xs text-muted-foreground uppercase">{sop.language}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {(sop.contentMd?.length ?? 0).toLocaleString("en-US")} chars
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            {formatDateTime(sop.generatedAt)}
+          </span>
+          <CopyButton text={sop.contentMd} label="复制" />
+          {showDelete ? <DeleteSopButton sopId={sop.id} sopLabel={label} /> : null}
+        </div>
+      </summary>
+      <SopContent text={sop.contentMd} />
+    </details>
+  );
+}
+
+export async function SopContent({ text }: { text: string }) {
+  const { default: ReactMarkdown } = await import("react-markdown");
+  const { default: remarkGfm } = await import("remark-gfm");
+  return (
+    <article className="prose-clerk max-w-3xl border-t pt-4 text-sm leading-relaxed">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </article>
+  );
+}

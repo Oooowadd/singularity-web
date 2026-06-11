@@ -16,6 +16,7 @@ import {
 import { channels, clerkVideos } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
+import { formatDuration, formatViews } from "@/lib/format-count";
 import { BackLink } from "@/components/back-link";
 import {
   Card,
@@ -32,20 +33,6 @@ import { ensureCurrentUser } from "@/lib/users";
 import { VideoTimelineBar } from "./_components/video-timeline-bar";
 
 type Props = { params: Promise<{ slug: string; videoId: string }> };
-
-function formatViews(views: number | null): string {
-  if (views == null) return "—";
-  if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M`;
-  if (views >= 1_000) return `${(views / 1_000).toFixed(1)}K`;
-  return String(views);
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 function Field({ label, body }: { label: string; body: string | null }) {
   if (!body) return null;

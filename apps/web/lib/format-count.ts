@@ -9,3 +9,22 @@ export function formatFollowerCount(n: number | null | undefined): string {
 export function followerNoun(platform: "youtube" | "xhs"): string {
   return platform === "xhs" ? "粉丝" : "订阅";
 }
+
+export function platformLabel(platform: "youtube" | "xhs"): string {
+  return platform === "xhs" ? "小红书" : "YouTube";
+}
+
+export function formatViews(views: number | null): string {
+  if (views == null) return "—";
+  if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M`;
+  if (views >= 1_000) return `${(views / 1_000).toFixed(1)}K`;
+  return String(views);
+}
+
+// m:ss from whole seconds (video durations, not wall-clock elapsed).
+export function formatDuration(seconds: number | null): string {
+  if (seconds == null) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}

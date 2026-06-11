@@ -7,25 +7,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { AGENT_LABEL, COMMAND_LABEL } from "@/lib/run-labels";
 
 type Props = {
   channelId?: string;
   competitorAccountId?: string;
-};
-
-const AGENT_LABEL: Record<"clerk" | "muse" | "poet", string> = {
-  clerk: "Clerk",
-  muse: "Muse",
-  poet: "Poet",
-};
-
-const COMMAND_LABEL: Record<string, string> = {
-  "clerk-analyze-channel": "频道分析",
-  "clerk-detect-channel-series": "系列归类",
-  "muse-monitor-competitors": "巡视对标",
-  "poet-generate-bible": "频道圣经",
-  "poet-analyze-custom-topic": "选题拆解",
-  "poet-generate-script": "脚本生成",
 };
 
 function elapsed(now: number, startedAt: Date | string): string {

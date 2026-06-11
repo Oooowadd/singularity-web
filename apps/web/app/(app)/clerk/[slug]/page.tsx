@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { channels, channelSeries, clerkSops, clerkVideos } from "@singularity/db";
 
 import { Badge } from "@/components/ui/badge";
+import { formatDuration, formatViews } from "@/lib/format-count";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
-import { CopyButton } from "@/components/copy-button";
 import { ContentTypeBadge } from "../_components/content-type-badge";
+import { SopCard } from "../_components/sop-card";
+import { TranscriptSourceBadge } from "../_components/transcript-source-badge";
 import {
   Table,
   TableBody,
@@ -24,24 +26,9 @@ import { ensureCurrentUser } from "@/lib/users";
 
 
 import { ClerkRunButton } from "./_components/clerk-run-button";
-import { DeleteSopButton } from "./_components/delete-sop-button";
 import { ClerkSeriesPanel } from "./_components/clerk-series-panel";
 
 type Props = { params: Promise<{ slug: string }> };
-
-function formatViews(views: number | null): string {
-  if (views == null) return "—";
-  if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M`;
-  if (views >= 1_000) return `${(views / 1_000).toFixed(1)}K`;
-  return String(views);
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 export default async function ClerkChannelPage({ params }: Props) {
   const { slug: rawSlug } = await params;
@@ -208,7 +195,7 @@ export default async function ClerkChannelPage({ params }: Props) {
           <h2 className="text-sm font-medium text-muted-foreground">脚本撰写 SOP</h2>
           <div className="flex flex-col gap-4">
             {primarySops.map((sop) => (
-              <SopCard key={sop.id} sop={sop} defaultOpen={primarySops.length <= 3} />
+              <SopCard key={sop.id} sop={sop} defaultOpen={primarySops.length <= 3} showDelete />
             ))}
           </div>
           <div className="flex flex-col gap-3 rounded-lg border-2 border-dashed border-poet/40 bg-poet/5 p-5">
@@ -244,7 +231,7 @@ export default async function ClerkChannelPage({ params }: Props) {
           </summary>
           <div className="mt-3 flex flex-col gap-4">
             {aiReferenceSops.map((sop) => (
-              <SopCard key={sop.id} sop={sop} />
+              <SopCard key={sop.id} sop={sop} showDelete />
             ))}
           </div>
         </details>
@@ -253,67 +240,3 @@ export default async function ClerkChannelPage({ params }: Props) {
   );
 }
 
-function TranscriptSourceBadge({
-  source,
-  hasTranscript,
-}: {
-  source: string | null;
-  hasTranscript: boolean;
-}) {
-  if (!hasTranscript) {
-    return <span className="font-mono text-[10px] text-muted-foreground">无字幕</span>;
-  }
-  if (source === "caption") {
-    return <Badge variant="secondary" className="text-[10px]">字幕</Badge>;
-  }
-  if (source === "asr" || source === "xhs_asr") {
-    return <Badge variant="outline" className="text-[10px]">AI 转写</Badge>;
-  }
-  if (source === "xhs_text") {
-    return <Badge variant="secondary" className="text-[10px]">正文</Badge>;
-  }
-  return <span className="font-mono text-[10px] text-muted-foreground">无字幕</span>;
-}
-
-function SopCard({
-  sop,
-  defaultOpen = false,
-}: {
-  sop: typeof clerkSops.$inferSelect;
-  defaultOpen?: boolean;
-}) {
-  const label = sop.sopType.replace(/_/g, " ");
-  return (
-    <details open={defaultOpen} className="flex flex-col gap-3 rounded-lg border bg-card p-5">
-      <summary className="flex cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
-        <div className="flex items-center gap-3">
-          <Badge variant="secondary" className="font-mono text-[10px] uppercase">
-            {label}
-          </Badge>
-          <span className="font-mono text-xs text-muted-foreground uppercase">{sop.language}</span>
-          <span className="font-mono text-xs text-muted-foreground">
-            {(sop.contentMd?.length ?? 0).toLocaleString("en-US")} chars
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            {formatDateTime(sop.generatedAt)}
-          </span>
-          <CopyButton text={sop.contentMd} label="复制" />
-          <DeleteSopButton sopId={sop.id} sopLabel={label} />
-        </div>
-      </summary>
-      <SopContent text={sop.contentMd} />
-    </details>
-  );
-}
-
-async function SopContent({ text }: { text: string }) {
-  const { default: ReactMarkdown } = await import("react-markdown");
-  const { default: remarkGfm } = await import("remark-gfm");
-  return (
-    <article className="prose-clerk max-w-3xl border-t pt-4 text-sm leading-relaxed">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-    </article>
-  );
-}

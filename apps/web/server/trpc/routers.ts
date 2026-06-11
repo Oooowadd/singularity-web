@@ -160,6 +160,39 @@ async function triggerOrFailRun(
   }
 }
 
+// The staged-run dance shared by every agent-start mutation: insert the pending run
+// row, trigger the task (triggerOrFailRun fails the row if the trigger throws), then
+// stamp triggerRunId into configJson so realtime tokens can be reissued later.
+async function stageAndTriggerRun(args: {
+  owner: { channelId: string } | { competitorAccountId: string };
+  agent: "clerk" | "muse" | "poet";
+  taskId: string;
+  config: Record<string, unknown>;
+  payload: Record<string, unknown>;
+}) {
+  const [run] = await db
+    .insert(pipelineRuns)
+    .values({
+      ...args.owner,
+      agent: args.agent,
+      command: args.taskId,
+      status: "pending",
+      configJson: args.config,
+    })
+    .returning();
+  if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const handle = await triggerOrFailRun(run.id, args.taskId, {
+    ...args.owner,
+    runId: run.id,
+    ...args.payload,
+  });
+  await db
+    .update(pipelineRuns)
+    .set({ configJson: { ...args.config, triggerRunId: handle.id } })
+    .where(eq(pipelineRuns.id, run.id));
+  return { runId: run.id, triggerRunId: handle.id, publicAccessToken: handle.publicAccessToken };
+}
+
 // Project spine: each channel owns a same-id own_account + default project. Idempotent
 // so it can also heal channels created before the project layer existed.
 async function ensureProjectSpine(c: {
@@ -993,56 +1026,21 @@ export const appRouter = router({
 
         await assertNoActiveRun(owner, "clerk");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            ...owner,
-            agent: "clerk",
-            command: "clerk-analyze-channel",
-            status: "pending",
-            configJson: {
-              limit: input.limit,
-              language: input.language,
-              mode: input.mode,
-              source: input.source,
-              videoIds: input.videoIds,
-              recencyMonths: input.recencyMonths,
-            },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"clerk-analyze-channel", {
-          ...owner,
-          runId: run.id,
+        const config = {
           limit: input.limit,
           language: input.language,
           mode: input.mode,
           source: input.source,
           videoIds: input.videoIds,
           recencyMonths: input.recencyMonths,
-        });
-
-        await db
-          .update(pipelineRuns)
-          .set({
-            configJson: {
-              limit: input.limit,
-              language: input.language,
-              mode: input.mode,
-              source: input.source,
-              videoIds: input.videoIds,
-              recencyMonths: input.recencyMonths,
-              triggerRunId: handle.id,
-            },
-          })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
         };
+        return stageAndTriggerRun({
+          owner,
+          agent: "clerk",
+          taskId: "clerk-analyze-channel",
+          config,
+          payload: config,
+        });
       }),
 
     // Reissues a scoped token so the client can re-attach useRealtimeRun after a page refresh.
@@ -1184,41 +1182,13 @@ export const appRouter = router({
 
         await assertNoActiveRun(channel.id, "clerk");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            channelId: channel.id,
-            agent: "clerk",
-            command: "clerk-detect-channel-series",
-            status: "pending",
-            configJson: { videoCount: input.videoCount, language: input.language },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"clerk-detect-channel-series", {
-          channelId: channel.id,
-          runId: run.id,
-          videoCount: input.videoCount,
-          language: input.language,
+        return stageAndTriggerRun({
+          owner: { channelId: channel.id },
+          agent: "clerk",
+          taskId: "clerk-detect-channel-series",
+          config: { videoCount: input.videoCount, language: input.language },
+          payload: { videoCount: input.videoCount, language: input.language },
         });
-
-        await db
-          .update(pipelineRuns)
-          .set({
-            configJson: {
-              videoCount: input.videoCount,
-              language: input.language,
-              triggerRunId: handle.id,
-            },
-          })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
-        };
       }),
   }),
 
@@ -1263,53 +1233,25 @@ export const appRouter = router({
 
         await assertNoActiveRun(channel.id, "muse");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            channelId: channel.id,
-            agent: "muse",
-            command: "muse-monitor-competitors",
-            status: "pending",
-            configJson: {
-              maxVideosPerCompetitor: input.maxVideosPerCompetitor,
-              numIdeasPerVideo: input.numIdeasPerVideo,
-              language: input.language,
-              ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
-              xhsContentType: input.xhsContentType,
-            },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"muse-monitor-competitors", {
-          channelId: channel.id,
-          runId: run.id,
-          maxVideosPerCompetitor: input.maxVideosPerCompetitor,
-          numIdeasPerVideo: input.numIdeasPerVideo,
-          language: input.language,
-          competitorAccountIds: selectedIds,
-          xhsContentType: input.xhsContentType,
+        return stageAndTriggerRun({
+          owner: { channelId: channel.id },
+          agent: "muse",
+          taskId: "muse-monitor-competitors",
+          config: {
+            maxVideosPerCompetitor: input.maxVideosPerCompetitor,
+            numIdeasPerVideo: input.numIdeasPerVideo,
+            language: input.language,
+            ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
+            xhsContentType: input.xhsContentType,
+          },
+          payload: {
+            maxVideosPerCompetitor: input.maxVideosPerCompetitor,
+            numIdeasPerVideo: input.numIdeasPerVideo,
+            language: input.language,
+            competitorAccountIds: selectedIds,
+            xhsContentType: input.xhsContentType,
+          },
         });
-
-        await db
-          .update(pipelineRuns)
-          .set({
-            configJson: {
-              maxVideosPerCompetitor: input.maxVideosPerCompetitor,
-              numIdeasPerVideo: input.numIdeasPerVideo,
-              language: input.language,
-              ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
-              xhsContentType: input.xhsContentType,
-              triggerRunId: handle.id,
-            },
-          })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
-        };
       }),
 
     activeRun: protectedProcedure
@@ -1428,36 +1370,13 @@ export const appRouter = router({
 
         await assertNoActiveRun(channel.id, "poet");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            channelId: channel.id,
-            agent: "poet",
-            command: "poet-generate-bible",
-            status: "pending",
-            configJson: { language: input.language, kind: "bible" },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"poet-generate-bible", {
-          channelId: channel.id,
-          runId: run.id,
-          ideaText: input.ideaText,
-          name: input.name,
-          language: input.language,
+        return stageAndTriggerRun({
+          owner: { channelId: channel.id },
+          agent: "poet",
+          taskId: "poet-generate-bible",
+          config: { language: input.language, kind: "bible" },
+          payload: { ideaText: input.ideaText, name: input.name, language: input.language },
         });
-
-        await db
-          .update(pipelineRuns)
-          .set({ configJson: { language: input.language, kind: "bible", triggerRunId: handle.id } })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
-        };
       }),
 
     updateBible: protectedProcedure
@@ -1557,49 +1476,22 @@ export const appRouter = router({
 
         await assertNoActiveRun(channel.id, "poet");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            channelId: channel.id,
-            agent: "poet",
-            command: "poet-generate-script",
-            status: "pending",
-            configJson: {
-              kind: "script",
-              ideaId: input.ideaId,
-              language: input.language,
-              durationSeconds: input.durationSeconds,
-            },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"poet-generate-script", {
-          channelId: channel.id,
-          runId: run.id,
-          ideaId: input.ideaId,
-          language: input.language,
-          durationSeconds: input.durationSeconds,
+        return stageAndTriggerRun({
+          owner: { channelId: channel.id },
+          agent: "poet",
+          taskId: "poet-generate-script",
+          config: {
+            kind: "script",
+            ideaId: input.ideaId,
+            language: input.language,
+            durationSeconds: input.durationSeconds,
+          },
+          payload: {
+            ideaId: input.ideaId,
+            language: input.language,
+            durationSeconds: input.durationSeconds,
+          },
         });
-
-        await db
-          .update(pipelineRuns)
-          .set({
-            configJson: {
-              kind: "script",
-              ideaId: input.ideaId,
-              language: input.language,
-              durationSeconds: input.durationSeconds,
-              triggerRunId: handle.id,
-            },
-          })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
-        };
       }),
 
     activeRun: protectedProcedure
@@ -1770,42 +1662,13 @@ export const appRouter = router({
 
         await assertNoActiveRun(channel.id, "poet");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            channelId: channel.id,
-            agent: "poet",
-            command: "poet-analyze-custom-topic",
-            status: "pending",
-            configJson: { kind: "analyze", topicId: input.topicId, language: input.language },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"poet-analyze-custom-topic", {
-          channelId: channel.id,
-          runId: run.id,
-          topicId: input.topicId,
-          language: input.language,
+        return stageAndTriggerRun({
+          owner: { channelId: channel.id },
+          agent: "poet",
+          taskId: "poet-analyze-custom-topic",
+          config: { kind: "analyze", topicId: input.topicId, language: input.language },
+          payload: { topicId: input.topicId, language: input.language },
         });
-
-        await db
-          .update(pipelineRuns)
-          .set({
-            configJson: {
-              kind: "analyze",
-              topicId: input.topicId,
-              language: input.language,
-              triggerRunId: handle.id,
-            },
-          })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
-        };
       }),
 
     deleteBible: protectedProcedure
@@ -1906,49 +1769,22 @@ export const appRouter = router({
 
         await assertNoActiveRun(channel.id, "poet");
 
-        const [run] = await db
-          .insert(pipelineRuns)
-          .values({
-            channelId: channel.id,
-            agent: "poet",
-            command: "poet-generate-script",
-            status: "pending",
-            configJson: {
-              kind: "script",
-              customTopicId: input.topicId,
-              language: input.language,
-              durationSeconds: input.durationSeconds,
-            },
-          })
-          .returning();
-        if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-        const handle = await triggerOrFailRun(run.id,"poet-generate-script", {
-          channelId: channel.id,
-          runId: run.id,
-          customTopicId: input.topicId,
-          language: input.language,
-          durationSeconds: input.durationSeconds,
+        return stageAndTriggerRun({
+          owner: { channelId: channel.id },
+          agent: "poet",
+          taskId: "poet-generate-script",
+          config: {
+            kind: "script",
+            customTopicId: input.topicId,
+            language: input.language,
+            durationSeconds: input.durationSeconds,
+          },
+          payload: {
+            customTopicId: input.topicId,
+            language: input.language,
+            durationSeconds: input.durationSeconds,
+          },
         });
-
-        await db
-          .update(pipelineRuns)
-          .set({
-            configJson: {
-              kind: "script",
-              customTopicId: input.topicId,
-              language: input.language,
-              durationSeconds: input.durationSeconds,
-              triggerRunId: handle.id,
-            },
-          })
-          .where(eq(pipelineRuns.id, run.id));
-
-        return {
-          runId: run.id,
-          triggerRunId: handle.id,
-          publicAccessToken: handle.publicAccessToken,
-        };
       }),
   }),
 });

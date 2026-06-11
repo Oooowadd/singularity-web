@@ -5,8 +5,7 @@ import { channels, clerkSops, competitorAccounts, projects, projectSops } from "
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CopyButton } from "@/components/copy-button";
-import { formatDateTime } from "@/lib/datetime";
+import { SopCard } from "../clerk/_components/sop-card";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
@@ -191,51 +190,3 @@ function SourceSection({
   );
 }
 
-function SopCard({
-  sop,
-  usedBy = 0,
-  defaultOpen = false,
-}: {
-  sop: SopRow;
-  usedBy?: number;
-  defaultOpen?: boolean;
-}) {
-  const label = sop.sopType.replace(/_/g, " ");
-  return (
-    <details open={defaultOpen} className="flex flex-col gap-3 rounded-lg border bg-card p-5">
-      <summary className="flex cursor-pointer items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
-        <div className="flex items-center gap-3">
-          <Badge variant="secondary" className="font-mono text-[10px] uppercase">
-            {label}
-          </Badge>
-          {usedBy > 0 ? (
-            <Badge variant="outline" className="text-[10px]">
-              已用于 {usedBy} 个项目
-            </Badge>
-          ) : null}
-          <span className="font-mono text-xs text-muted-foreground uppercase">{sop.language}</span>
-          <span className="font-mono text-xs text-muted-foreground">
-            {(sop.contentMd?.length ?? 0).toLocaleString("en-US")} chars
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            {formatDateTime(sop.generatedAt)}
-          </span>
-          <CopyButton text={sop.contentMd} label="复制" />
-        </div>
-      </summary>
-      <SopContent text={sop.contentMd} />
-    </details>
-  );
-}
-
-async function SopContent({ text }: { text: string }) {
-  const { default: ReactMarkdown } = await import("react-markdown");
-  const { default: remarkGfm } = await import("remark-gfm");
-  return (
-    <article className="prose-clerk max-w-3xl border-t pt-4 text-sm leading-relaxed">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-    </article>
-  );
-}

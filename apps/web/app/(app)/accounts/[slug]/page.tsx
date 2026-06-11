@@ -6,6 +6,7 @@ import { channels, clerkSops, clerkVideos, poetBible, projects } from "@singular
 import { formatDurationLabel } from "@singularity/shared/schemas/poet";
 
 import { Badge } from "@/components/ui/badge";
+import { formatDuration, formatViews } from "@/lib/format-count";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,20 +24,6 @@ import { ensureCurrentUser } from "@/lib/users";
 import { EditChannelSheet } from "../_components/edit-channel-sheet";
 
 type Props = { params: Promise<{ slug: string }> };
-
-function formatViews(views: number | null): string {
-  if (views == null) return "—";
-  if (views >= 1_000_000) return `${(views / 1_000_000).toFixed(1)}M`;
-  if (views >= 1_000) return `${(views / 1_000).toFixed(1)}K`;
-  return String(views);
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 export default async function AccountDetailPage({ params }: Props) {
   const { slug: rawSlug } = await params;
