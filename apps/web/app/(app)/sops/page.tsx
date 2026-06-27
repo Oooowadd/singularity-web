@@ -108,7 +108,7 @@ export default async function SopsLibraryPage() {
         <>
           {competitorGroups.length > 0 ? (
             <SourceSection
-              title="来自对标账号 — 学来的打法"
+              title="来自对标账号"
               groups={competitorGroups}
               chip="🎯 对标"
               usedByMap={usedByMap}
@@ -116,7 +116,7 @@ export default async function SopsLibraryPage() {
           ) : null}
           {ownGroups.length > 0 ? (
             <SourceSection
-              title="来自我的账号 — 自己的规律"
+              title="来自我的账号"
               groups={ownGroups}
               chip="📺 我的"
               usedByMap={usedByMap}

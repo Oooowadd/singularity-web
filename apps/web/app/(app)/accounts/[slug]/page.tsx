@@ -12,7 +12,6 @@ import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
 import { EditChannelSheet } from "../_components/edit-channel-sheet";
-import { ConvertToCompetitorButton } from "./projects/[project]/_components/convert-to-competitor-button";
 import { BibleGenerateSheet } from "./projects/[project]/poet/_components/bible-generate-sheet";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -70,10 +69,7 @@ export default async function AccountDetailPage({ params }: Props) {
             ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <ConvertToCompetitorButton channelId={channel.id} channelName={channel.name} />
-          <EditChannelSheet channel={channel} />
-        </div>
+        <EditChannelSheet channel={channel} />
       </header>
 
       <section className="flex flex-col gap-3">

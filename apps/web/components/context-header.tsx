@@ -7,6 +7,7 @@ import { ChevronRight } from "lucide-react";
 import { formatDurationLabel } from "@singularity/domain/schemas/poet";
 
 import { trpc } from "@/lib/trpc";
+import { BibleChip } from "@/components/bible-chip";
 
 // Route shapes that carry account/project context. Clerk is account-level (no project).
 function parseContext(
@@ -56,6 +57,10 @@ export function ContextHeader() {
         <span className="truncate font-medium text-foreground">{data.account.name}</span>
         <span className="font-mono text-[10px] uppercase opacity-70">{data.account.platform}</span>
       </Link>
+      <BibleChip
+        name={data.account.activeBible?.name ?? null}
+        manageHref={`/accounts/${a}/bible`}
+      />
       {data.project && data.project.slug !== data.account.slug ? (
         // Default project shares the account's slug AND name — a second crumb would
         // just repeat it. Only named (future multi-) projects get their own crumb.

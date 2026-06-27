@@ -139,15 +139,6 @@ export default async function PoetChannelPage({ params }: Props) {
         }
       />
 
-      <Link
-        href={`/accounts/${encodeURIComponent(slug)}/bible`}
-        className="flex w-fit items-center gap-2 rounded-md border bg-card/40 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
-      >
-        <span className="size-[7px] rounded-full bg-poet" />
-        写稿依据 · 账号圣经：
-        <span className="font-medium text-foreground">{activeBible ? activeBible.name : "未设置"}</span>
-        {activeBible ? null : <span>· 去账号页生成 →</span>}
-      </Link>
 
       {approvedIdeas.length > 0 ? (
         <section className="flex flex-col gap-3">

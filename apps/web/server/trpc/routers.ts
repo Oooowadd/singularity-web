@@ -381,6 +381,12 @@ export const appRouter = router({
           .where(and(eq(channels.userId, ctx.user.id), eq(channels.slug, input.accountSlug)))
           .limit(1);
         if (!account) return null;
+        // Account-level active Bible — surfaced as the persistent top-bar chip.
+        const [activeBible] = await db
+          .select({ id: poetBible.id, name: poetBible.name })
+          .from(poetBible)
+          .where(and(eq(poetBible.channelId, account.id), eq(poetBible.isActive, true)))
+          .limit(1);
         let project: {
           name: string;
           slug: string;
@@ -401,7 +407,12 @@ export const appRouter = router({
           project = p ?? null;
         }
         return {
-          account: { name: account.name, slug: account.slug, platform: account.platform },
+          account: {
+            name: account.name,
+            slug: account.slug,
+            platform: account.platform,
+            activeBible: activeBible ?? null,
+          },
           project,
         };
       }),
