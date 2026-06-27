@@ -51,7 +51,9 @@ AI 内容教练 web SaaS。目标用户：中国小型创作者（主战 XHS + Y
 - 文档输出统一 HTML + PDF（不做 `.docx`，npm `docx` 功能弱于 `python-docx`，2026-05-15 决策放弃）
 - 长稿阈值：中文 ≥2000 字 / 英文 ≥1500 词（约 10 min+）触发 outline → section expand 路径（即走 Trigger.dev）。来源 archive `script_writer.py:_write_script_long_form()`
 - 用词避免"拍死""完胜""硬伤"等口语化措辞
+- **注释最简**：只写非常重要的（非显然的 WHY）；其余一律不写，保持代码文件简洁。注释用英文
 - commit message 用简洁英文，**不**加 Co-Authored-By trailer
+- commit 后**不要**自动 `git push`；push 由用户自己执行，除非用户在当前消息里明确要求 push
 - 改完 `packages/shared/**` 或 `apps/jobs/**` 后**必须**重新部署 Trigger.dev（Vercel 自动部署，Trigger.dev 不会）
 
 ## 核心 IP（已从 archive 移植到 `packages/shared/src/`）
