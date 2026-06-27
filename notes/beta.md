@@ -1,12 +1,12 @@
 # Singularity Web — 功能 运维
 
-**Last revised**: 2026-05-21
+**Last revised**: 2026-06-11
 
 ---
 
-
-
 目标：Closed beta 目标 Q3 2026。
+
+**进度**：三轮 feedback 已收口并上线 —— IA 三层重构、Clerk 拆对标解耦、防编造、ASR 转写修复、进度条/ETA、工作台调度台、UIUX motion 层。各轮执行文档见 `notes/archive/`。
 
 ---
 
@@ -24,7 +24,7 @@
 | DB         | Supabase Pro (Postgres only) + Drizzle       |
 | LLM 主链   | DeepSeek V4 Pro + Flash（reasoning enabled） |
 | LLM vision | Claude Sonnet 4.6                            |
-| ASR        | Deepgram Nova-3 主 / Groq Whisper 备         |
+| ASR        | Deepgram Nova-3 主 / Qwen3-ASR-Flash 备      |
 | 视频元数据 | YouTube Data API v3                          |
 | 数据层     | TikHub（YouTube + XHS 全套）                 |
 | Monorepo   | pnpm + Turborepo                             |

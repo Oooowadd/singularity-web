@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 已 scaffold 并部署到生产：Vercel（`hkg1` 函数）+ Trigger.dev cloud（`us-east-1` worker）+ Supabase（Singapore）+ Logto Cloud（Tokyo）。Closed beta 目标 Q3 2026。
 
+三轮 feedback 已收口：IA 三层重构（账号/对标/项目 + SOP/Bible 跨项目复用）、Clerk 拆对标解耦、防编造、转写修复、进度条/ETA、工作台调度台、UIUX motion 层全部上线。各轮执行文档归档在 `notes/archive/`。
+
 功能模块、运维注意、未来优化见 `notes/beta.md`；架构图与决策依据见 `notes/architecture_final.md`。
 
 ## 它是什么
