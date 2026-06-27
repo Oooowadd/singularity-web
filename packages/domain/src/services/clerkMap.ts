@@ -1,12 +1,16 @@
 import { generateText } from "ai";
 
-import { llm } from "@singularity/integrations/clients/llm";
+import { llm, type LlmTier } from "@singularity/integrations/clients/llm";
 import { buildVideoMapSummaryPrompt } from "@singularity/prompts/clerk";
 
+// A valid summary is 300-550 words; anything this short is a flaky/empty/truncated generation.
+const MIN_SUMMARY_CHARS = 120;
+
 // MAP step of the SOP map-reduce: distill one video (transcript + structured analysis)
-// into a compact reusable-pattern summary. Flash is enough for per-video distillation
-// (matches the per-video analysis tier) and keeps the fan-out cheap. Throws on failure
-// so the caller can fall back to a structured-field render for just that video.
+// into a compact reusable-pattern summary. Flash is cheap for the per-video fan-out, but
+// it occasionally returns empty/truncated text — on a thin flash result, retry once on Pro
+// before giving up so the caller's structured-field fallback only fires on a genuine double
+// failure. The summary is cached on the row, so the Pro retry is at most once per video.
 export async function summarizeVideoForSop(args: {
   title: string;
   views: number | null;
@@ -26,15 +30,27 @@ export async function summarizeVideoForSop(args: {
     analysis: args.analysis,
     language: args.language,
   });
-  const result = await generateText({
-    model: llm("flash"),
-    prompt,
-    maxOutputTokens: 800,
-    temperature: 0.3,
-    maxRetries: 2,
-  });
-  const out = result.text.trim();
-  if (!out) throw new Error("map summary returned empty");
+  const run = async (tier: LlmTier) => {
+    const result = await generateText({
+      model: llm(tier),
+      prompt,
+      maxOutputTokens: 1200,
+      temperature: 0.3,
+      maxRetries: 2,
+    });
+    return result.text.trim();
+  };
+  let out = await run("flash");
+  if (out.length < MIN_SUMMARY_CHARS) {
+    args.logger?.warn?.(
+      `SOP map summary thin on flash (${out.length} chars) for "${args.title.slice(0, 50)}" — retrying on pro`,
+    );
+    const pro = await run("pro");
+    if (pro.length > out.length) out = pro;
+  }
+  if (out.length < MIN_SUMMARY_CHARS) {
+    throw new Error(`map summary too short (${out.length} chars)`);
+  }
   args.logger?.info?.(`SOP map summary: ${args.title.slice(0, 50)} → ${out.length} chars`);
   return out;
 }
