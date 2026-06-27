@@ -10,6 +10,7 @@
     "./schemas/poet": "./src/schemas/poet.ts",
     "./services/muse": "./src/services/muse.ts",
     "./services/competitors": "./src/services/competitors.ts",
+    "./services/clerk-map": "./src/services/clerkMap.ts",
     "./services/grounding": "./src/services/grounding.ts",
     "./services/poet/bible": "./src/services/poet/bible.ts",
     "./services/poet/script-writer": "./src/services/poet/scriptWriter.ts",

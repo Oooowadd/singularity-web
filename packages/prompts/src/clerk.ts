@@ -178,6 +178,67 @@ Return ONLY valid JSON. No markdown code fences.
   );
 }
 
+type VideoMapSummaryArgs = {
+  title: string;
+  views: number | null;
+  durationSec: number | null;
+  contentType?: 'video' | 'xhs_image' | 'xhs_video';
+  transcript: string | null;
+  // Pre-rendered compact block of this video's structured analysis fields.
+  analysis: string;
+  language?: 'en' | 'zh';
+};
+
+// MAP step of the SOP map-reduce: distill ONE video into a compact, reusable
+// "playbook contribution" so the SOP reduce synthesizes over summaries, not raw
+// transcripts (bounded context). Output stays grounded in the provided source.
+export function buildVideoMapSummaryPrompt(args: VideoMapSummaryArgs): string {
+  const language = args.language ?? 'en';
+  const contentType = args.contentType ?? 'video';
+  const isVideo = contentType === 'video';
+  const hasTimestamps = !!args.transcript && /\[\d+:\d{2}\]/.test(args.transcript);
+
+  const tcRule = !args.transcript
+    ? 'There is NO transcript for this video — work only from the title, cover signals, and the structured analysis below. Do NOT quote spoken lines, cite [m:ss], or invent a beat-by-beat structure; keep claims at the title/cover-pattern level and label inferences.'
+    : hasTimestamps
+      ? 'When you cite a moment, use the [m:ss] markers that actually appear in the transcript. Never invent a timecode.'
+      : 'This transcript carries NO [m:ss] markers — locate moments approximately (opening / early / mid / late). Do NOT fabricate timecodes.';
+
+  const transcriptBlock = args.transcript
+    ? args.transcript.slice(0, 12000)
+    : '[No transcript available — use title, cover signals, and the structured analysis only]';
+
+  const inner = `You are an expert content analyst distilling ONE ${
+    isVideo ? 'video' : 'post'
+  } into a compact "playbook contribution" for a creator's scriptwriting SOP. Extract the TRANSFERABLE techniques this single piece demonstrates — the reusable patterns a writer could apply to a new piece — each backed by brief concrete evidence from the source.
+
+## Source Information
+- **Title:** ${args.title}
+- **${isVideo ? 'Views' : 'Engagement score'}:** ${args.views?.toLocaleString('en-US') ?? 'unknown'}
+- **Duration:** ${args.durationSec ?? 'unknown'} seconds
+
+## Structured Analysis
+${args.analysis || '(no structured analysis available)'}
+
+## Transcript${args.transcript ? '' : ' (unavailable)'}
+${transcriptBlock}
+
+## Instructions
+Write compact markdown bullets (no headers above ###) covering, where the source supports it:
+- **Opening hook**: the hook type used and why it works, with the opening line as brief evidence.
+- **Structure / framework**: the overall content framework and the shape of the script.
+- **Retention & re-hooks**: open loops, rehook phrases, specificity spikes, pattern breaks, and pacing.
+- **CTA**: where and how the call-to-action appears.
+- **Signature moves**: any distinctive recurring devices, catchphrases, or structural tics.
+
+Constraints:
+- ${tcRule}
+- Ground EVERY claim in the title, structured analysis, or transcript above — do NOT invent specifics (prices, names, stats, quotes, timecodes) that are not present.
+- Keep it tight: ~300-550 words, compact bullets, NO preamble and NO closing summary. Start directly with the first bullet.`;
+
+  return language === 'zh' ? CHINESE_WRAPPER(inner) : inner;
+}
+
 type SopArgs = {
   channelName: string;
   videoCount: number;
@@ -209,6 +270,8 @@ export function buildHumanSopPrompt(args: SopArgs): string {
       ? `Total views: ${args.totalViews.toLocaleString('en-US')}`
       : 'View counts unavailable';
   const inner = `You are an expert YouTube content strategist. Based on the analysis of the top ${args.videoCount} most-viewed videos from the channel "${args.channelName}" (${viewsClause}), create a comprehensive Scriptwriting Standard Operating Procedure that a writer could pick up and use to produce a new video in this channel's voice.
+
+The data below is a set of per-video pattern summaries — each one distills a single video's reusable techniques (hook, structure, retention, CTA, signature moves). Synthesize ACROSS them to find the channel's repeated patterns; do not just restate one video.
 
 ## Analyzed Videos Data
 ${args.videosData}
@@ -282,7 +345,9 @@ export function buildAiSopReferencePrompt(args: SopArgs): string {
 
 Write the ENTIRE document in English (it is read by an AI scriptwriter, not an end user). Keep verbatim quotes and example lines in their original language, but all headers, definitions, and explanations must be English.
 
-GROUNDING (critical): Use ONLY facts, numbers, prices, product/model names, handles, quotes, and [m:ss] timestamps that appear in the Analyzed Videos Data above. Never invent specifics not in the source — omit them, generalize, or tag "[unverified]" instead. Every [m:ss] you cite must actually exist in the provided transcripts; if a transcript carries no timestamps, do not fabricate them — describe position approximately (early / mid / late) instead.
+The data below is a set of per-video pattern summaries — each distills one video's reusable techniques (hook, structure, retention, CTA, signature moves). Synthesize ACROSS them into the channel's repeated patterns.
+
+GROUNDING (critical): Use ONLY facts, numbers, prices, product/model names, handles, quotes, and [m:ss] timestamps that appear in the Analyzed Videos Data above. Never invent specifics not in the source — omit them, generalize, or tag "[unverified]" instead. Every [m:ss] you cite must actually exist in the provided summaries; if a summary carries no timestamps, do not fabricate them — describe position approximately (early / mid / late) instead.
 
 ## Analyzed Videos Data
 ${args.videosData}

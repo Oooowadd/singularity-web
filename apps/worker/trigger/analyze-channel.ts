@@ -15,6 +15,7 @@ import {
   withRunDb,
 } from "@singularity/db";
 import { llm } from "@singularity/integrations/clients/llm";
+import { summarizeVideoForSop } from "@singularity/domain/services/clerk-map";
 import { redactUngrounded } from "@singularity/domain/services/grounding";
 import { withProxyRetry, type ProxyPool } from "@singularity/integrations/proxy";
 import {
@@ -162,50 +163,50 @@ function resolveVideoMeta(args: {
   };
 }
 
-function buildVideosDataText(videos: Array<typeof clerkVideos.$inferSelect>): string {
+// Compact render of a video's structured analysis fields — fed to the MAP prompt as its
+// `analysis` arg and reused as the per-video fallback summary when the map LLM call fails.
+function renderVideoAnalysisFields(v: typeof clerkVideos.$inferSelect): string {
+  const fields: Array<[string, string | null]> = [
+    ["opening_hook_type", v.openingHookType],
+    ["opening_hook", v.openingHook],
+    ["hooks_throughout", v.hooksThroughout],
+    ["all_hook_types", v.allHookTypes],
+    ["text_hook", v.textHook],
+    ["framework", v.framework],
+    ["opening_structure", v.openingStructure],
+    ["script_structure", v.scriptStructure],
+    ["storytelling_framework", v.storytellingFramework],
+    ["rehooks_used", v.rehooksUsed],
+    ["retention_pattern", v.retentionPattern],
+    ["cta_placement", v.ctaPlacement],
+    ["key_takeaways", v.keyTakeaways],
+    ["cover_diagnosis", v.coverDiagnosis],
+  ];
+  const lines = fields.filter(([, val]) => val).map(([k, val]) => `- ${k}: ${val}`);
+  if (v.coverTitleSuggestions && v.coverTitleSuggestions.length > 0) {
+    lines.push(`- cover_title_suggestions: ${v.coverTitleSuggestions.join(" | ")}`);
+  }
+  return lines.join("\n");
+}
+
+// REDUCE-side context: render each video as its cached map summary (NOT the raw transcript),
+// so the SOP prompts get a bounded string regardless of transcript length or video count.
+function buildVideosSummaryText(
+  videos: Array<typeof clerkVideos.$inferSelect>,
+  summaries: Map<string, string>,
+): string {
   const blocks = videos.map((v, i) => {
     const lines: string[] = [];
     lines.push(`### Video ${i + 1}: "${v.title || "(untitled)"}"`);
     lines.push(`- Views: ${v.views?.toLocaleString("en-US") ?? "unknown"}`);
     lines.push(`- Duration: ${v.durationSec ?? "unknown"}s`);
-    lines.push(`- URL: ${v.url}`);
-    const fields: Array<[string, string | null]> = [
-      ["opening_hook_type", v.openingHookType],
-      ["opening_hook", v.openingHook],
-      ["hooks_throughout", v.hooksThroughout],
-      ["all_hook_types", v.allHookTypes],
-      ["text_hook", v.textHook],
-      ["framework", v.framework],
-      ["opening_structure", v.openingStructure],
-      ["script_structure", v.scriptStructure],
-      ["storytelling_framework", v.storytellingFramework],
-      ["rehooks_used", v.rehooksUsed],
-      ["retention_pattern", v.retentionPattern],
-      ["cta_placement", v.ctaPlacement],
-      ["key_takeaways", v.keyTakeaways],
-      ["cover_diagnosis", v.coverDiagnosis],
-    ];
-    for (const [k, val] of fields) {
-      if (val) lines.push(`- ${k}: ${val}`);
-    }
-    if (v.coverTitleSuggestions && v.coverTitleSuggestions.length > 0) {
-      lines.push(`- cover_title_suggestions: ${v.coverTitleSuggestions.join(" | ")}`);
-    }
-    const src = v.transcriptSource ?? "";
-    const isSpoken = !!v.transcript && (src === "xhs_asr" || src === "caption" || src === "asr");
-    if (isSpoken) {
-      // DeepSeek V4 Pro context is 64k; 8k per video × 20 videos = 160k worst-case.
-      lines.push(`- Transcript (excerpt): ${v.transcript!.slice(0, 8000)}`);
-    } else if (v.transcript && src === "xhs_text") {
-      lines.push(`- Title/description text only — NO spoken transcript: ${v.transcript.slice(0, 1200)}`);
-      lines.push(`- ⚠️ NO AUDIO TRANSCRIPT: do NOT quote spoken lines or cite [m:ss] for this video; infer only from title/cover/description and label inferences.`);
-    } else {
-      lines.push(`- ⚠️ NO TRANSCRIPT (audio/captions unavailable): only the title${v.coverDiagnosis ? " + cover" : ""} is known. Do NOT quote lines, cite timestamps, or invent a beat-by-beat structure for this video; infer only from title/cover and label it as inference.`);
-    }
+    lines.push(`- Transcript source: ${v.transcriptSource ?? "none"}`);
+    const summary = summaries.get(v.id);
+    lines.push(summary ? `\n${summary}` : "- (no pattern summary available for this video)");
     return lines.join("\n");
   });
   const note =
-    `GROUNDING — write the SOP only from the data below. Videos marked "NO TRANSCRIPT" / "NO AUDIO TRANSCRIPT" have no spoken source: never quote lines, cite [m:ss], invent a beat-by-beat structure, or assert per-video frequency counts for them — infer only from title/cover and label it inference. If most videos lack a transcript, say so plainly and keep the SOP at the title/cover-pattern level instead of fabricating depth.\n\n`;
+    `GROUNDING — write the SOP only from the per-video pattern summaries below. Each summary already distills one video's grounded techniques; never quote lines, cite [m:ss], invent a beat-by-beat structure, or assert per-video frequency counts beyond what the summaries state. If a video has no pattern summary, infer only from its title and label it inference. If most videos lack spoken detail, say so plainly and keep the SOP at the title/cover-pattern level instead of fabricating depth.\n\n`;
   return note + blocks.join("\n\n");
 }
 
@@ -1160,10 +1161,73 @@ export const analyzeChannel = task({
         // instead of misleadingly writing "Total views: 0".
         const totalViews = summedViews > 0 ? summedViews : null;
         const date = new Date().toISOString().split("T")[0]!;
-        const videosData = buildVideosDataText(channelVideos);
         const transcriptCount = channelVideos.filter(
           (v) => !!v.transcript && ["xhs_asr", "caption", "asr"].includes(v.transcriptSource ?? ""),
         ).length;
+
+        // MAP step: distill each video into a compact reusable-pattern summary so the SOP
+        // reduce works over summaries, not full transcripts (bounded context at any scale).
+        // Cached on the row; only videos missing a summary are (re)computed.
+        const mapContentType = (v: typeof clerkVideos.$inferSelect) =>
+          v.contentType === "xhs_video" || v.contentType === "xhs_image"
+            ? (v.contentType as "xhs_video" | "xhs_image")
+            : ("video" as const);
+        const summaries = new Map<string, string>();
+        let mapComputed = 0;
+        let mapFailed = 0;
+        const mapLimit = pLimit(VIDEO_CONCURRENCY);
+        await Promise.all(
+          channelVideos.map((v) =>
+            mapLimit(async () => {
+              const cached = safeText(v.sopMapSummary);
+              if (cached) {
+                summaries.set(v.id, cached);
+                return;
+              }
+              try {
+                const summary = await summarizeVideoForSop({
+                  title: v.title,
+                  views: v.views,
+                  durationSec: v.durationSec,
+                  contentType: mapContentType(v),
+                  transcript: v.transcript,
+                  analysis: renderVideoAnalysisFields(v),
+                  language,
+                  logger,
+                });
+                summaries.set(v.id, summary);
+                await db
+                  .update(clerkVideos)
+                  .set({ sopMapSummary: summary })
+                  .where(eq(clerkVideos.id, v.id));
+                mapComputed++;
+              } catch (err) {
+                // One failing video must not abort SOP generation: use a structured-field
+                // render transiently this run and leave the column null so it retries next time.
+                mapFailed++;
+                logger.warn(
+                  `SOP map summary failed for "${v.title.slice(0, 50)}" — using structured-field fallback: ${(err as Error).message?.slice(0, 120)}`,
+                );
+                const fallback = renderVideoAnalysisFields(v);
+                if (fallback) summaries.set(v.id, fallback);
+              }
+            }),
+          ),
+        );
+        logger.info(
+          `SOP map step: ${summaries.size}/${channelVideos.length} videos summarized (computed=${mapComputed}, cached=${summaries.size - mapComputed - mapFailed}, fallback=${mapFailed})`,
+        );
+
+        // BOUND the reduce: rank by views DESC (already ordered) and feed the SOP prompts at
+        // most the top 50 summaries (~25k tokens, safely under 64k). Aggregate stats stay whole.
+        const REDUCE_MAX = 50;
+        const reduceVideos = channelVideos.slice(0, REDUCE_MAX);
+        if (channelVideos.length > REDUCE_MAX) {
+          logger.info(
+            `SOP reduce: including top ${REDUCE_MAX} of ${channelVideos.length} videos by views in the SOP context (aggregate stats reflect all ${channelVideos.length}).`,
+          );
+        }
+        const videosData = buildVideosSummaryText(reduceVideos, summaries);
 
         // Fetch + summarize top comments for the #1 video to feed Hottest SOP.
         // Failures are non-blocking — SOP still runs without comments.

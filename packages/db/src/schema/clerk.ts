@@ -60,6 +60,9 @@ export const clerkVideos = pgTable(
     retentionPattern: text("retention_pattern"),
     ctaPlacement: text("cta_placement"),
     keyTakeaways: text("key_takeaways"),
+    // Cached map-step distillation of this video's reusable patterns; the SOP reduce reads
+    // these compact summaries instead of full transcripts (0021, bounded context at any scale).
+    sopMapSummary: text("sop_map_summary"),
     verbatimFacts: jsonb("verbatim_facts").$type<VerbatimFact[]>(),
     chapters: jsonb("chapters").$type<Array<{ start_time: number; end_time: number; title: string }>>(),
     sponsorChapters: jsonb("sponsor_chapters").$type<Array<{ start_time: number; end_time: number; category: string; type: string }>>(),
