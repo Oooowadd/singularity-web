@@ -23,7 +23,12 @@ const { summarizeVideoForSop } = await import("@singularity/domain/services/cler
 const { buildAiSopReferencePrompt } = await import("@singularity/prompts/clerk");
 const { llm } = await import("@singularity/integrations/clients/llm");
 
-const MAX_MAP = 8;
+// Optional channel-name override: argv[2] or CHANNEL_NAME selects an own (channel_id-bearing)
+// channel by exact name instead of the auto-pick (most clerk_videos). Reusable harness.
+const CHANNEL_NAME_OVERRIDE = process.argv[2] ?? process.env.CHANNEL_NAME ?? null;
+// When targeting a specific channel, map all its videos (stress the context-blowup case);
+// otherwise keep the gentle 8-video cap for the auto-pick.
+const MAX_MAP = CHANNEL_NAME_OVERRIDE ? 100 : 8;
 
 // Mirror of apps/worker/trigger/analyze-channel.ts renderVideoAnalysisFields — the
 // `analysis` arg the MAP prompt expects.
@@ -75,40 +80,64 @@ const client = postgres(process.env.DATABASE_URL!, { prepare: false });
 const db = drizzle(client);
 
 try {
-  // 1. Own channel with the most clerk_videos. Own rows carry channel_id (XOR with competitor).
-  const counts = await db
-    .select({
-      channelId: clerkVideos.channelId,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(clerkVideos)
-    .where(sql`${clerkVideos.channelId} is not null`)
-    .groupBy(clerkVideos.channelId)
-    .orderBy(desc(sql`count(*)`))
-    .limit(5);
+  let chosenChannelId: string;
+  let channelName: string;
+  let channelPlatform: string | null;
 
-  if (counts.length === 0) {
-    console.error("No own-account clerk_videos found (channel_id is null everywhere).");
-    process.exit(1);
+  if (CHANNEL_NAME_OVERRIDE) {
+    // Override: select an own (channel_id-bearing) channel by exact name.
+    const chan = await db
+      .select({ id: channels.id, name: channels.name, platform: channels.platform })
+      .from(channels)
+      .where(eq(channels.name, CHANNEL_NAME_OVERRIDE))
+      .limit(1);
+    if (chan.length === 0) {
+      console.error(`No channel found with name "${CHANNEL_NAME_OVERRIDE}".`);
+      process.exit(1);
+    }
+    chosenChannelId = chan[0].id;
+    channelName = chan[0].name;
+    channelPlatform = chan[0].platform;
+    console.log(`OVERRIDE: selecting channel by name "${CHANNEL_NAME_OVERRIDE}"`);
+  } else {
+    // 1. Own channel with the most clerk_videos. Own rows carry channel_id (XOR with competitor).
+    const counts = await db
+      .select({
+        channelId: clerkVideos.channelId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(clerkVideos)
+      .where(sql`${clerkVideos.channelId} is not null`)
+      .groupBy(clerkVideos.channelId)
+      .orderBy(desc(sql`count(*)`))
+      .limit(5);
+
+    if (counts.length === 0) {
+      console.error("No own-account clerk_videos found (channel_id is null everywhere).");
+      process.exit(1);
+    }
+
+    console.log("Top own channels by clerk_videos count:");
+    for (const c of counts) console.log(`  ${c.channelId} → ${c.n} videos`);
+
+    const chosen = counts[0];
+    const chan = await db
+      .select({ name: channels.name, platform: channels.platform })
+      .from(channels)
+      .where(eq(channels.id, chosen.channelId!))
+      .limit(1);
+    chosenChannelId = chosen.channelId!;
+    channelName = chan[0]?.name ?? "(unknown channel)";
+    channelPlatform = chan[0]?.platform ?? null;
   }
 
-  console.log("Top own channels by clerk_videos count:");
-  for (const c of counts) console.log(`  ${c.channelId} → ${c.n} videos`);
-
-  const chosen = counts[0];
-  const chan = await db
-    .select({ name: channels.name, platform: channels.platform })
-    .from(channels)
-    .where(eq(channels.id, chosen.channelId!))
-    .limit(1);
-  const channelName = chan[0]?.name ?? "(unknown channel)";
-  console.log(`\nCHOSEN: "${channelName}" (${chan[0]?.platform ?? "?"}) — ${chosen.n} videos`);
+  console.log(`\nCHOSEN: "${channelName}" (${channelPlatform ?? "?"})`);
 
   // 2. Load all videos for that owner, views DESC.
   const videos = await db
     .select()
     .from(clerkVideos)
-    .where(eq(clerkVideos.channelId, chosen.channelId!))
+    .where(eq(clerkVideos.channelId, chosenChannelId))
     .orderBy(desc(clerkVideos.views));
 
   console.log(`Loaded ${videos.length} videos.`);
@@ -127,7 +156,11 @@ try {
   const mapTargets = videos.slice(0, MAX_MAP);
   console.log(`\nMAP: summarizing ${mapTargets.length} of ${videos.length} videos…`);
   const summaries = new Map<string, string>();
+  let flashClean = 0;
+  let proRetry = 0;
+  let mapFailed = 0;
   for (const v of mapTargets) {
+    let retried = false;
     try {
       const summary = await summarizeVideoForSop({
         title: v.title,
@@ -137,13 +170,28 @@ try {
         transcript: v.transcript,
         analysis: renderVideoAnalysisFields(v),
         language: "zh",
+        logger: {
+          warn: (m: string) => {
+            retried = true;
+            console.log(`    ⤷ ${m}`);
+          },
+        },
       });
       summaries.set(v.id, summary);
-      console.log(`  ✓ ${v.title.slice(0, 48)} → ${summary.length} chars`);
+      if (retried) proRetry++;
+      else flashClean++;
+      const tlen = v.transcript?.length ?? 0;
+      console.log(
+        `  ✓ ${v.title.slice(0, 48)} → ${summary.length} chars [${retried ? "PRO-retry" : "flash"}, transcript=${tlen}]`,
+      );
     } catch (err) {
+      mapFailed++;
       console.log(`  ✗ ${v.title.slice(0, 48)} → MAP FAILED: ${(err as Error).message}`);
     }
   }
+  console.log(
+    `\nMAP reliability: ${flashClean} clean on flash, ${proRetry} needed pro-retry, ${mapFailed} failed (min-length throw).`,
+  );
 
   const newContextChars = [...summaries.values()].reduce((a, s) => a + s.length, 0);
   console.log(

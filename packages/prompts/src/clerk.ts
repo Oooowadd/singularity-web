@@ -382,7 +382,7 @@ PSYCHOLOGY: <one-sentence cognitive lever>
 ## SCRIPT_STRUCTURE
 
 ### BEAT_TEMPLATE
-A markdown table: | Beat # | Beat Name | Position | Purpose | Required Elements | — Position uses opening / early / mid / late (or an [m:ss] range ONLY if a summary actually cites one). Never invent absolute second ranges.
+A markdown table: | Beat # | Beat Name | Position | Purpose | Required Elements | — Position is a relative phase ONLY, one of: opening / early / mid / late / closing. Do NOT append any second-range or [m:ss] to it; this is a generalized cross-video template, not a per-video citation (cite real [m:ss] only in the example sections).
 
 ### ITEM_TEMPLATE
 The internal structure of one demonstration / item / segment (if the channel uses repeated items):
