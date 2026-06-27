@@ -38,35 +38,35 @@ AI 内容教练 web SaaS。目标用户：中国小型创作者（主战 XHS + Y
 任务时长 + 运行时决定写在哪个 workspace：
 
 - **Class A 短任务（< 800s）** → Next.js API 路由内 Vercel AI SDK：`streamText` / `useChat` / `streamObject` / `useObject`；多步 agent 用 `stopWhen: stepCountIs(N)`。Upload Critique（计划中）、Link Analysis、短脚本都走这条
-- **Class B 长任务（≥ 800s）** → `apps/jobs/trigger/` 下 Trigger.dev v4 任务，前端 `useRealtimeRun` 推进度。Clerk 频道分析、Muse 竞品监控、Poet 长稿、Bible 生成都走这条
+- **Class B 长任务（≥ 800s）** → `apps/worker/trigger/` 下 Trigger.dev v4 任务，前端 `useRealtimeRun` 推进度。Clerk 频道分析、Muse 竞品监控、Poet 长稿、Bible 生成都走这条
 
-数据抓取目前全走 TypeScript 调 TikHub REST（`packages/shared/src/clients/tikhub.ts` + `xhs.ts`），无 Python sidecar。
+数据抓取目前全走 TypeScript 调 TikHub REST（`packages/integrations/src/clients/tikhub.ts` + `xhs.ts`），无 Python sidecar。
 
 ## 约定
 
 - TS 一统天下，仓库当前**没有** Python。`apps/scraper/` 是未来选项（见 `notes/beta.md` 未来优化），尚未启用
 - **不**预装 Zustand。客户端状态用 tRPC + React Query + useState/Context；只有跨页面复杂共享状态出现时才引入
-- 所有 prompt 模板集中在 `packages/shared/src/prompts/`（核心 IP，从 archive 移植，见下方清单）
-- 所有 Trigger.dev 任务在 `apps/jobs/trigger/`
+- 所有 prompt 模板集中在 `packages/prompts/`（核心 IP，见下方清单）
+- 所有 Trigger.dev 任务在 `apps/worker/trigger/`
 - 文档输出统一 HTML + PDF（不做 `.docx`，npm `docx` 功能弱于 `python-docx`，2026-05-15 决策放弃）
 - 长稿阈值：中文 ≥2000 字 / 英文 ≥1500 词（约 10 min+）触发 outline → section expand 路径（即走 Trigger.dev）。来源 archive `script_writer.py:_write_script_long_form()`
 - 用词避免"拍死""完胜""硬伤"等口语化措辞
 - **注释最简**：只写非常重要的（非显然的 WHY）；其余一律不写，保持代码文件简洁。注释用英文
 - commit message 用简洁英文，**不**加 Co-Authored-By trailer
 - commit 后**不要**自动 `git push`；push 由用户自己执行，除非用户在当前消息里明确要求 push
-- 改完 `packages/shared/**` 或 `apps/jobs/**` 后**必须**重新部署 Trigger.dev（Vercel 自动部署，Trigger.dev 不会）
+- 改完 `packages/{domain,integrations,prompts}/**` 或 `apps/worker/**` 后**必须**重新部署 Trigger.dev（Vercel 自动部署，Trigger.dev 不会）
 
-## 核心 IP（已从 archive 移植到 `packages/shared/src/`）
+## 核心 IP（`packages/prompts` 提示词 + `packages/domain` 服务）
 
 这些 prompt 与算法是产品壁垒。当前已落位：
 
-- `prompts/clerk.ts` — 视频分析 / SOP 生成（human / ai_reference / hottest 三种）
-- `prompts/poet.ts` — SCRIPT_WRITING / LONG_FORM_OUTLINE / SECTION_EXPAND / CHANNEL_BIBLE / TOPIC_ANALYSIS / HUMANIZER
-- `prompts/muse.ts` — VIRAL_TRIGGER / IDEA_GENERATION
-- `services/poet/bible.ts` — drift detection（lexical overlap + stopwords，archive `bible_generator.py` 1:1 移植）
-- `services/poet/humanizer.ts` — humanize_chinese
-- `services/poet/scriptWriter.ts` — long-form thresholds
-- `services/muse.ts` — classify / extract / generate ideas
+- `packages/prompts/src/clerk.ts` — 视频分析 / SOP 生成（human / ai_reference / hottest 三种）
+- `packages/prompts/src/poet.ts` — SCRIPT_WRITING / LONG_FORM_OUTLINE / SECTION_EXPAND / CHANNEL_BIBLE / TOPIC_ANALYSIS / HUMANIZER
+- `packages/prompts/src/muse.ts` — VIRAL_TRIGGER / IDEA_GENERATION
+- `packages/domain/src/services/poet/bible.ts` — drift detection（lexical overlap + stopwords，archive `bible_generator.py` 1:1 移植）
+- `packages/domain/src/services/poet/humanizer.ts` — humanize_chinese
+- `packages/domain/src/services/poet/scriptWriter.ts` — long-form thresholds
+- `packages/domain/src/services/muse.ts` — classify / extract / generate ideas
 
 archive 路径见文末"前身仓库"，仅用于追溯原始逻辑、查 prompt 变更动机。
 
@@ -75,7 +75,7 @@ archive 路径见文末"前身仓库"，仅用于追溯原始逻辑、查 prompt
 ```bash
 pnpm install
 pnpm --filter @singularity/web dev          # Next.js dev
-pnpm --filter @singularity/jobs dev         # Trigger.dev worker（另开窗口）
+pnpm --filter @singularity/worker dev       # Trigger.dev worker（另开窗口）
 
 pnpm build                                  # 全仓 turbo build
 pnpm typecheck                              # 全仓 tsc --noEmit
@@ -92,7 +92,7 @@ pnpm --filter @singularity/db vision-and-verify-smoke
 pnpm --filter @singularity/db asr-fallback-smoke
 ```
 
-`.env.local` 只在仓库根目录维护一份；`apps/web/.env.local` 和 `apps/jobs/.env.local` 由 `scripts/link-env.js` postinstall 自动 symlink 过去。
+`.env.local` 只在仓库根目录维护一份；`apps/web/.env.local` 和 `apps/worker/.env.local` 由 `scripts/link-env.js` postinstall 自动 symlink 过去。
 
 ## 之后我们决定
 

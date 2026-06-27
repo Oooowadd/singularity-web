@@ -11,7 +11,7 @@
  *
  * Requires:
  *   - Trigger.dev worker running in another terminal:
- *     pnpm --filter @singularity/jobs dev
+ *     pnpm --filter @singularity/worker dev
  *
  * Run:
  *   pnpm --filter @singularity/db exec tsx scripts/test-clerk-pipeline.ts
