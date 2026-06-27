@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+**/.turbo
+.git
+.vercel
+**/.env*
+notes
+*.md
+**/*.md
