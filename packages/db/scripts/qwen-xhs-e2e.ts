@@ -8,8 +8,8 @@ import dotenv from "dotenv";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { getXhsUserNotes } from "@singularity/shared/clients/xhs";
-import { transcribeFromStreams } from "@singularity/shared/clients/asr";
+import { getXhsUserNotes } from "@singularity/integrations/clients/xhs";
+import { transcribeFromStreams } from "@singularity/integrations/clients/asr";
 import { clerkVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

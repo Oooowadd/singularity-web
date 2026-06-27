@@ -17,23 +17,23 @@ import {
   renderTranscriptWithTimestamps,
   transcribeFromStreams,
   transcribeYoutubeVideo,
-} from "@singularity/shared/clients/asr";
-import { withProxyRetry, type ProxyPool } from "@singularity/shared/proxy";
+} from "@singularity/integrations/clients/asr";
+import { withProxyRetry, type ProxyPool } from "@singularity/integrations/proxy";
 import {
   getVideoMetadataYtdlp,
   listChannelVideos,
-} from "@singularity/shared/clients/ytdlp";
+} from "@singularity/integrations/clients/ytdlp";
 import {
   getXhsUserNotes,
   type XhsNote,
-} from "@singularity/shared/clients/xhs";
-import { isRealTranscript } from "@singularity/shared/schemas/muse";
+} from "@singularity/integrations/clients/xhs";
+import { isRealTranscript } from "@singularity/domain/schemas/muse";
 import {
   analyzeViralTrigger,
   classifyVideo,
   generateIdeas,
-} from "@singularity/shared/services/muse";
-import { asPositiveNumber, parseDurationToSec, safeText, sleep } from "@singularity/shared/utils";
+} from "@singularity/domain/services/muse";
+import { asPositiveNumber, parseDurationToSec, safeText, sleep } from "@singularity/integrations/utils";
 
 const ASR_MAX_DURATION_SEC = 60 * 60;
 const DEFAULT_NUM_IDEAS = 5;

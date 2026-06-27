@@ -11,7 +11,7 @@ import {
   poetScripts,
 } from "@singularity/db";
 
-import { formatDurationLabel } from "@singularity/shared/schemas/poet";
+import { formatDurationLabel } from "@singularity/domain/schemas/poet";
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { formatDateTime } from "@/lib/datetime";

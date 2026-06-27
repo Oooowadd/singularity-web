@@ -6,8 +6,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { buildHottestSopPrompt } from "@singularity/shared/prompts/clerk";
-import { generateTextWithFallback } from "@singularity/shared/clients/llm";
+import { buildHottestSopPrompt } from "@singularity/prompts/clerk";
+import { generateTextWithFallback } from "@singularity/integrations/clients/llm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

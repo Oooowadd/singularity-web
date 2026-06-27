@@ -38,7 +38,9 @@
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
-    "@singularity/shared": "workspace:*",
+    "@singularity/domain": "workspace:*",
+    "@singularity/integrations": "workspace:*",
+    "@singularity/prompts": "workspace:*",
     "@trigger.dev/sdk": "^4.4.6",
     "ai": "^6.0.184",
     "dotenv": "^17.4.2",

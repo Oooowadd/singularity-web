@@ -25,17 +25,17 @@ import {
   getChannelInfo,
   isValidYoutubeChannelUrl,
   resolveChannelId,
-} from "@singularity/shared/clients/tikhub";
+} from "@singularity/integrations/clients/tikhub";
 import {
   isValidXhsProfileUrl,
   resolveXhsUser,
-} from "@singularity/shared/clients/xhs";
+} from "@singularity/integrations/clients/xhs";
 import {
   fetchChannelMetaById,
   fetchChannelMetaByHandle,
   parseYoutubeChannelUrl,
-} from "@singularity/shared/clients/youtube-data";
-import { provisionalCompetitorKey } from "@singularity/shared/services/competitors";
+} from "@singularity/integrations/clients/youtube-data";
+import { provisionalCompetitorKey } from "@singularity/domain/services/competitors";
 
 import { db } from "@/lib/db";
 import { ETA_JOB_COMMANDS } from "@/lib/eta-jobs";

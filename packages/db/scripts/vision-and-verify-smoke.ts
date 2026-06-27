@@ -13,15 +13,15 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { analyzeThumbnail } = await import("@singularity/shared/clients/vision");
+const { analyzeThumbnail } = await import("@singularity/integrations/clients/vision");
 const {
   fetchChannelMetaByHandle,
   fetchChannelMetaById,
   parseYoutubeChannelUrl,
-} = await import("@singularity/shared/clients/youtube-data");
-const { isValidYoutubeChannelUrl } = await import("@singularity/shared/clients/tikhub");
+} = await import("@singularity/integrations/clients/youtube-data");
+const { isValidYoutubeChannelUrl } = await import("@singularity/integrations/clients/tikhub");
 const { isValidXhsProfileUrl, resolveXhsUser } = await import(
-  "@singularity/shared/clients/xhs"
+  "@singularity/integrations/clients/xhs"
 );
 
 let pass = 0;

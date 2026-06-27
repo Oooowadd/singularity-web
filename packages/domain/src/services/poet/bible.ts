@@ -1,8 +1,8 @@
 import { streamText } from "ai";
 
-import { llm } from "../../clients/llm";
+import { llm } from "@singularity/integrations/clients/llm";
 import { redactUngrounded } from "../grounding";
-import { buildChannelBiblePrompt } from "../../prompts/poet";
+import { buildChannelBiblePrompt } from "@singularity/prompts/poet";
 import type { DriftWarning } from "../../schemas/poet";
 
 const BIAS_MARKERS = [

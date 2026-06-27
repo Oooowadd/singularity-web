@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { writeScriptShort } from "@singularity/shared/services/poet/script-writer";
+import { writeScriptShort } from "@singularity/domain/services/poet/script-writer";
 import { channels, clerkSops, museIdeas, museMonitorVideos, poetBible } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

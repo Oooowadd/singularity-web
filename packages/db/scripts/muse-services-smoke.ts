@@ -11,9 +11,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { analyzeViralTrigger, classifyVideo, generateIdeas } = await import(
-  "@singularity/shared/services/muse"
+  "@singularity/domain/services/muse"
 );
-const { isRealTranscript } = await import("@singularity/shared/schemas/muse");
+const { isRealTranscript } = await import("@singularity/domain/schemas/muse");
 
 const TARGET_CHANNEL_DESCRIPTION = `一个面向中国小型创作者的内容教练平台，目标用户是 1-2 人的 XHS + YouTube 团队，
 核心交付是 AI 辅助选题、爆款拆解、写稿与改稿。频道风格：严谨、信息密度高、偏教育向但有钩子。`;

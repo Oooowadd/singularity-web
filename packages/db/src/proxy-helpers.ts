@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 
-import { ProxyPool, type ProxySession } from "@singularity/shared/proxy";
+import { ProxyPool, type ProxySession } from "@singularity/integrations/proxy";
 
 import { proxySessions } from "./schema/proxy";
 

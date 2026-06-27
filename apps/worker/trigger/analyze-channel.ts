@@ -14,46 +14,46 @@ import {
   projectSops,
   withRunDb,
 } from "@singularity/db";
-import { llm } from "@singularity/shared/clients/llm";
-import { redactUngrounded } from "@singularity/shared/services/grounding";
-import { withProxyRetry, type ProxyPool } from "@singularity/shared/proxy";
+import { llm } from "@singularity/integrations/clients/llm";
+import { redactUngrounded } from "@singularity/domain/services/grounding";
+import { withProxyRetry, type ProxyPool } from "@singularity/integrations/proxy";
 import {
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
   buildHumanSopPrompt,
   buildVideoAnalysisPrompt,
-} from "@singularity/shared/prompts/clerk";
+} from "@singularity/prompts/clerk";
 import {
   buildCommentsSummaryPrompt,
   type CommentsSummary,
-} from "@singularity/shared/prompts/clerk-comments";
-import { clerkAnalysisSchema, clerkAnalysisToDbRow } from "@singularity/shared/schemas/clerk";
+} from "@singularity/prompts/clerk-comments";
+import { clerkAnalysisSchema, clerkAnalysisToDbRow } from "@singularity/domain/schemas/clerk";
 import {
   fetchVideoMetadataBatch,
   type YoutubeVideoMeta,
-} from "@singularity/shared/clients/youtube-data";
+} from "@singularity/integrations/clients/youtube-data";
 import {
   likelyChineseText,
   renderTranscriptWithTimestamps,
   stripAdSegments,
   transcribeFromStreams,
   transcribeYoutubeVideo,
-} from "@singularity/shared/clients/asr";
+} from "@singularity/integrations/clients/asr";
 import {
   getTopCommentsYtdlp,
   getVideoMetadataYtdlp,
   listChannelVideos,
   type YtdlpChannelVideo,
   type YtdlpVideoMetadata,
-} from "@singularity/shared/clients/ytdlp";
-import { analyzeImageStack, analyzeThumbnail } from "@singularity/shared/clients/vision";
+} from "@singularity/integrations/clients/ytdlp";
+import { analyzeImageStack, analyzeThumbnail } from "@singularity/integrations/clients/vision";
 import {
   extractXhsNoteId,
   getXhsNoteDetail,
   getXhsUserNotes,
   type XhsNote,
-} from "@singularity/shared/clients/xhs";
-import { asPositiveNumber, parseDurationToSec, parseLlmJson, safeText, sleep } from "@singularity/shared/utils";
+} from "@singularity/integrations/clients/xhs";
+import { asPositiveNumber, parseDurationToSec, parseLlmJson, safeText, sleep } from "@singularity/integrations/utils";
 
 // Skip ASR for videos > 60 min: audio nearly always exceeds Groq's 25 MB cap.
 const ASR_MAX_DURATION_SEC = 60 * 60;

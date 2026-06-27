@@ -1,14 +1,14 @@
 import { generateText } from "ai";
 
-import { generateTextWithFallback, llm } from "../../clients/llm";
-import { parseLlmJson } from "../../utils";
+import { generateTextWithFallback, llm } from "@singularity/integrations/clients/llm";
+import { parseLlmJson } from "@singularity/integrations/utils";
 import { redactUngrounded } from "../grounding";
 import {
   buildLongFormOutlinePrompt,
   buildScriptCompressPrompt,
   buildScriptWritingPrompt,
   buildSectionExpandPrompt,
-} from "../../prompts/poet";
+} from "@singularity/prompts/poet";
 import { isLongForm } from "../../schemas/poet";
 import type { CheckedFact } from "./factCheck";
 

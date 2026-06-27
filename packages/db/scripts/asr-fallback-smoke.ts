@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { transcribeYoutubeVideo } = await import("@singularity/shared/clients/asr");
+const { transcribeYoutubeVideo } = await import("@singularity/integrations/clients/asr");
 
 const PROBES: Array<{ label: string; videoId: string; expectAsr: "yes" | "no" }> = [
   { label: "Rick Astley (audio present)", videoId: "dQw4w9WgXcQ", expectAsr: "yes" },

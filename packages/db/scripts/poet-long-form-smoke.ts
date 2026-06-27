@@ -18,11 +18,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { writeScript, writeScriptShort } = await import(
-  "@singularity/shared/services/poet/script-writer"
+  "@singularity/domain/services/poet/script-writer"
 );
-const { humanizeChinese } = await import("@singularity/shared/services/poet/humanizer");
+const { humanizeChinese } = await import("@singularity/domain/services/poet/humanizer");
 const { computeTargetWordCount, isLongForm, LONG_FORM_THRESHOLD } = await import(
-  "@singularity/shared/schemas/poet"
+  "@singularity/domain/schemas/poet"
 );
 
 const FAKE_BIBLE = `TOPIC: 露营装备实测与避坑指南

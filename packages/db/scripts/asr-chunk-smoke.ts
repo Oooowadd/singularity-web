@@ -15,7 +15,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { transcribeWithQwen } = await import("@singularity/shared/clients/asr");
+const { transcribeWithQwen } = await import("@singularity/integrations/clients/asr");
 
 const log = {
   info: (m: string) => console.log(`  [info] ${m}`),

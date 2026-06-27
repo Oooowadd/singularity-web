@@ -1,0 +1,31 @@
+{
+  "name": "@singularity/integrations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "External integrations: data clients, proxy pool, shared LLM/util helpers.",
+  "exports": {
+    "./clients/references": "./src/clients/references.ts",
+    "./clients/llm": "./src/clients/llm.ts",
+    "./clients/tikhub": "./src/clients/tikhub.ts",
+    "./clients/asr": "./src/clients/asr.ts",
+    "./clients/vision": "./src/clients/vision.ts",
+    "./clients/youtube-data": "./src/clients/youtube-data.ts",
+    "./clients/xhs": "./src/clients/xhs.ts",
+    "./clients/ytdlp": "./src/clients/ytdlp.ts",
+    "./utils": "./src/utils.ts",
+    "./proxy": "./src/proxy/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/deepseek": "^2.0.35",
+    "ai": "^6.0.184",
+    "jsonrepair": "^3.14.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

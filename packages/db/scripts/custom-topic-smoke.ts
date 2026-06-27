@@ -19,8 +19,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { extractYoutubeVideoId, extractXhsNoteId, fetchReference, fetchReferences } =
-  await import("@singularity/shared/clients/references");
-const { analyzeTopic } = await import("@singularity/shared/services/poet/topic-analyzer");
+  await import("@singularity/integrations/clients/references");
+const { analyzeTopic } = await import("@singularity/domain/services/poet/topic-analyzer");
 
 function header(s: string) {
   console.log(`\n═══ ${s}`);

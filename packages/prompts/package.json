@@ -1,0 +1,20 @@
+{
+  "name": "@singularity/prompts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "LLM prompt templates (core IP).",
+  "exports": {
+    "./clerk": "./src/clerk.ts",
+    "./clerk-series": "./src/clerk-series.ts",
+    "./clerk-comments": "./src/clerk-comments.ts",
+    "./muse": "./src/muse.ts",
+    "./poet": "./src/poet.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

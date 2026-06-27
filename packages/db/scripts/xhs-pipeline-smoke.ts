@@ -15,22 +15,22 @@ config({ path: new URL("../../../.env.local", import.meta.url) });
 import { generateText } from "ai";
 import { jsonrepair } from "jsonrepair";
 
-import { transcribeFromStreams } from "@singularity/shared/clients/asr";
-import { llm } from "@singularity/shared/clients/llm";
-import { analyzeImageStack, analyzeThumbnail } from "@singularity/shared/clients/vision";
+import { transcribeFromStreams } from "@singularity/integrations/clients/asr";
+import { llm } from "@singularity/integrations/clients/llm";
+import { analyzeImageStack, analyzeThumbnail } from "@singularity/integrations/clients/vision";
 import {
   extractXhsNoteId,
   getXhsNoteDetail,
   getXhsUserNotes,
   type XhsNote,
-} from "@singularity/shared/clients/xhs";
+} from "@singularity/integrations/clients/xhs";
 import {
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
   buildHumanSopPrompt,
   buildVideoAnalysisPrompt,
-} from "@singularity/shared/prompts/clerk";
-import { clerkAnalysisSchema } from "@singularity/shared/schemas/clerk";
+} from "@singularity/prompts/clerk";
+import { clerkAnalysisSchema } from "@singularity/domain/schemas/clerk";
 
 // ── Test fixtures (from user-provided URLs) ─────────────────────────
 const ACCOUNTS = {

@@ -3,9 +3,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { generateText } from "ai";
 
 import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects, withRunDb } from "@singularity/db";
-import { generateChannelBible } from "@singularity/shared/services/poet/bible";
-import { llm } from "@singularity/shared/clients/llm";
-import { safeText } from "@singularity/shared/utils";
+import { generateChannelBible } from "@singularity/domain/services/poet/bible";
+import { llm } from "@singularity/integrations/clients/llm";
+import { safeText } from "@singularity/integrations/utils";
 
 type Payload = {
   channelId: string;

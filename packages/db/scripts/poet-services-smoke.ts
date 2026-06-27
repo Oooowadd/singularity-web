@@ -11,10 +11,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { generateChannelBible, tokenize, checkDrift, extractTopicLine } = await import(
-  "@singularity/shared/services/poet/bible"
+  "@singularity/domain/services/poet/bible"
 );
-const { writeScriptShort } = await import("@singularity/shared/services/poet/script-writer");
-const { humanizeChinese } = await import("@singularity/shared/services/poet/humanizer");
+const { writeScriptShort } = await import("@singularity/domain/services/poet/script-writer");
+const { humanizeChinese } = await import("@singularity/domain/services/poet/humanizer");
 
 const FAKE_BIBLE = `TOPIC: 露营装备实测与避坑指南
 

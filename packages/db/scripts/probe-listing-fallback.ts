@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { listChannelVideos } = await import("@singularity/shared/clients/ytdlp");
+const { listChannelVideos } = await import("@singularity/integrations/clients/ytdlp");
 
 const url = process.argv[2] ?? "https://www.youtube.com/@lyi";
 const t0 = Date.now();

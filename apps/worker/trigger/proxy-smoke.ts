@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { flushProxyPool, loadProxyPool } from "@singularity/db";
-import { transcribeYoutubeVideo } from "@singularity/shared/clients/asr";
+import { transcribeYoutubeVideo } from "@singularity/integrations/clients/asr";
 
 type Payload = {
   videoIds?: string[];

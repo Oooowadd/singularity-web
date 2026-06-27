@@ -11,15 +11,15 @@ import { generateText } from "ai";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { buildHumanSopPrompt } from "@singularity/shared/prompts/clerk";
-import { llm } from "@singularity/shared/clients/llm";
-import { generateChannelBible } from "@singularity/shared/services/poet/bible";
-import { generateIdeas } from "@singularity/shared/services/muse";
+import { buildHumanSopPrompt } from "@singularity/prompts/clerk";
+import { llm } from "@singularity/integrations/clients/llm";
+import { generateChannelBible } from "@singularity/domain/services/poet/bible";
+import { generateIdeas } from "@singularity/domain/services/muse";
 import {
   computeTargetWordCount,
   formatDurationLabel,
   isLongForm,
-} from "@singularity/shared/schemas/poet";
+} from "@singularity/domain/schemas/poet";
 import { channels, clerkVideos, museMonitorVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -11,9 +11,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import postgres from "postgres";
-import { extractXhsUserId, resolveXhsUser } from "@singularity/shared/clients/xhs";
-import { parseYoutubeChannelUrl } from "@singularity/shared/clients/youtube-data";
-import { getChannelInfo, resolveChannelId } from "@singularity/shared/clients/tikhub";
+import { extractXhsUserId, resolveXhsUser } from "@singularity/integrations/clients/xhs";
+import { parseYoutubeChannelUrl } from "@singularity/integrations/clients/youtube-data";
+import { getChannelInfo, resolveChannelId } from "@singularity/integrations/clients/tikhub";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

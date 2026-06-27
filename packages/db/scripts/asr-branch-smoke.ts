@@ -11,8 +11,8 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { getVideoWithTranscript } = await import("@singularity/shared/clients/tikhub");
-const { transcribeYoutubeVideo } = await import("@singularity/shared/clients/asr");
+const { getVideoWithTranscript } = await import("@singularity/integrations/clients/tikhub");
+const { transcribeYoutubeVideo } = await import("@singularity/integrations/clients/asr");
 
 const ASR_MAX_DURATION_SEC = 60 * 60;
 

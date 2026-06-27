@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 
-import { formatDurationLabel } from "@singularity/shared/schemas/poet";
+import { formatDurationLabel } from "@singularity/domain/schemas/poet";
 
 import { trpc } from "@/lib/trpc";
 

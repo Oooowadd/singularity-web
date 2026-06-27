@@ -6,7 +6,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { loadProxyPool } from "../src/proxy-helpers";
-import { getVideoMetadataYtdlp } from "@singularity/shared/clients/ytdlp";
+import { getVideoMetadataYtdlp } from "@singularity/integrations/clients/ytdlp";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

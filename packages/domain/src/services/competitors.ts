@@ -1,5 +1,5 @@
-import { extractXhsUserId } from "../clients/xhs";
-import { parseYoutubeChannelUrl } from "../clients/youtube-data";
+import { extractXhsUserId } from "@singularity/integrations/clients/xhs";
+import { parseYoutubeChannelUrl } from "@singularity/integrations/clients/youtube-data";
 
 export type CompetitorKey = { key: string; needsResolution: boolean };
 

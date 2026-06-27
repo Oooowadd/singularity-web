@@ -7,7 +7,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import postgres from "postgres";
-import { provisionalCompetitorKey } from "@singularity/shared/services/competitors";
+import { provisionalCompetitorKey } from "@singularity/domain/services/competitors";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

@@ -15,8 +15,8 @@ import {
   getXhsNoteDetail,
   getXhsUserNotes,
   resolveXhsUser,
-} from "@singularity/shared/clients/xhs";
-import { fetchReference } from "@singularity/shared/clients/references";
+} from "@singularity/integrations/clients/xhs";
+import { fetchReference } from "@singularity/integrations/clients/references";
 
 const ACCOUNTS = {
   redhead_witch:

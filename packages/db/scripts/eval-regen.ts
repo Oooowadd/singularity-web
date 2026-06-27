@@ -10,9 +10,9 @@ import { generateText } from "ai";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { llm } from "@singularity/shared/clients/llm";
-import { buildVideoAnalysisPrompt, buildHottestSopPrompt } from "@singularity/shared/prompts/clerk";
-import { analyzeTopic } from "@singularity/shared/services/poet/topic-analyzer";
+import { llm } from "@singularity/integrations/clients/llm";
+import { buildVideoAnalysisPrompt, buildHottestSopPrompt } from "@singularity/prompts/clerk";
+import { analyzeTopic } from "@singularity/domain/services/poet/topic-analyzer";
 import { channels, clerkSops, clerkVideos, poetBible } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

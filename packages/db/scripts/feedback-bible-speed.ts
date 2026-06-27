@@ -6,8 +6,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { generateText } from "ai";
-import { buildChannelBiblePrompt } from "@singularity/shared/prompts/poet";
-import { llm } from "@singularity/shared/clients/llm";
+import { buildChannelBiblePrompt } from "@singularity/prompts/poet";
+import { llm } from "@singularity/integrations/clients/llm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

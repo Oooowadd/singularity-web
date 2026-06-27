@@ -15,9 +15,9 @@ import {
 import {
   fetchReferences,
   type FetchedReference,
-} from "@singularity/shared/clients/references";
-import { analyzeTopic } from "@singularity/shared/services/poet/topic-analyzer";
-import { safeText } from "@singularity/shared/utils";
+} from "@singularity/integrations/clients/references";
+import { analyzeTopic } from "@singularity/domain/services/poet/topic-analyzer";
+import { safeText } from "@singularity/integrations/utils";
 
 type Payload = {
   channelId: string;

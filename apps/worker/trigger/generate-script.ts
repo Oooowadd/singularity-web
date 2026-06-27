@@ -16,15 +16,15 @@ import {
   type CustomTopicReference,
   withRunDb,
 } from "@singularity/db";
-import { factCheckVerbatim } from "@singularity/shared/services/poet/fact-check";
-import { humanizeChinese } from "@singularity/shared/services/poet/humanizer";
+import { factCheckVerbatim } from "@singularity/domain/services/poet/fact-check";
+import { humanizeChinese } from "@singularity/domain/services/poet/humanizer";
 import {
   formatVerbatimFacts,
   type ScriptReference,
   writeScript,
-} from "@singularity/shared/services/poet/script-writer";
-import { computeTargetWordCount, isLongForm } from "@singularity/shared/schemas/poet";
-import { safeText } from "@singularity/shared/utils";
+} from "@singularity/domain/services/poet/script-writer";
+import { computeTargetWordCount, isLongForm } from "@singularity/domain/schemas/poet";
+import { safeText } from "@singularity/integrations/utils";
 
 type Payload = {
   channelId: string;

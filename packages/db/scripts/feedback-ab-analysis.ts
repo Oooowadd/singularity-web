@@ -11,8 +11,8 @@ import { generateText } from "ai";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { buildVideoAnalysisPrompt } from "@singularity/shared/prompts/clerk";
-import { llm } from "@singularity/shared/clients/llm";
+import { buildVideoAnalysisPrompt } from "@singularity/prompts/clerk";
+import { llm } from "@singularity/integrations/clients/llm";
 import { channels, clerkVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

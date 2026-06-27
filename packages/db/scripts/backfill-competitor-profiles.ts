@@ -7,8 +7,8 @@ import postgres from "postgres";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { resolveXhsUser } = await import("@singularity/shared/clients/xhs");
-const { getChannelInfo } = await import("@singularity/shared/clients/tikhub");
+const { resolveXhsUser } = await import("@singularity/integrations/clients/xhs");
+const { getChannelInfo } = await import("@singularity/integrations/clients/tikhub");
 
 // Backfill avatar/follower metadata for competitor_accounts created before the import
 // path captured it. Idempotent; only touches rows missing data. YouTube rows still

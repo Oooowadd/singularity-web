@@ -11,14 +11,14 @@ import {
   type SeriesVideoRef,
   withRunDb,
 } from "@singularity/db";
-import { llm } from "@singularity/shared/clients/llm";
+import { llm } from "@singularity/integrations/clients/llm";
 import {
   buildSeriesDetectPrompt,
   type SeriesDetectResponse,
-} from "@singularity/shared/prompts/clerk-series";
-import { listChannelVideos } from "@singularity/shared/clients/ytdlp";
-import { fetchVideoMetadataBatch } from "@singularity/shared/clients/youtube-data";
-import { parseLlmJson } from "@singularity/shared/utils";
+} from "@singularity/prompts/clerk-series";
+import { listChannelVideos } from "@singularity/integrations/clients/ytdlp";
+import { fetchVideoMetadataBatch } from "@singularity/integrations/clients/youtube-data";
+import { parseLlmJson } from "@singularity/integrations/utils";
 
 type Payload = {
   channelId: string;

@@ -11,7 +11,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { ensureYtdlpBinary, runYtdlp } = await import("@singularity/shared/clients/ytdlp");
+const { ensureYtdlpBinary, runYtdlp } = await import("@singularity/integrations/clients/ytdlp");
 const { loadProxyPool } = await import("@singularity/db");
 
 const channelUrl = process.argv[2] ?? "https://www.youtube.com/@lyi";

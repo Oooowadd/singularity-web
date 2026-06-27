@@ -1,12 +1,12 @@
 import { generateText } from "ai";
-import { parseLlmJson } from "../utils";
+import { parseLlmJson } from "@singularity/integrations/utils";
 
-import { generateTextWithFallback, llm } from "../clients/llm";
+import { generateTextWithFallback, llm } from "@singularity/integrations/clients/llm";
 import {
   buildClassificationPrompt,
   buildIdeaGenerationPrompt,
   buildViralTriggerPrompt,
-} from "../prompts/muse";
+} from "@singularity/prompts/muse";
 import {
   type Classification,
   classificationSchema,

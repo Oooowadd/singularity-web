@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import { desc, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { generateIdeas } from "@singularity/shared/services/muse";
+import { generateIdeas } from "@singularity/domain/services/muse";
 import { channels, museMonitorVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

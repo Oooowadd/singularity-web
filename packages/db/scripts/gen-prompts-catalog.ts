@@ -9,14 +9,14 @@ import {
   buildHumanSopPrompt,
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
-} from "@singularity/shared/prompts/clerk";
-import { buildCommentsSummaryPrompt } from "@singularity/shared/prompts/clerk-comments";
-import { buildSeriesDetectPrompt } from "@singularity/shared/prompts/clerk-series";
+} from "@singularity/prompts/clerk";
+import { buildCommentsSummaryPrompt } from "@singularity/prompts/clerk-comments";
+import { buildSeriesDetectPrompt } from "@singularity/prompts/clerk-series";
 import {
   buildClassificationPrompt,
   buildViralTriggerPrompt,
   buildIdeaGenerationPrompt,
-} from "@singularity/shared/prompts/muse";
+} from "@singularity/prompts/muse";
 import {
   buildChannelBiblePrompt,
   buildScriptWritingPrompt,
@@ -24,7 +24,7 @@ import {
   buildSectionExpandPrompt,
   buildTopicAnalysisPrompt,
   buildChineseHumanizerPrompt,
-} from "@singularity/shared/prompts/poet";
+} from "@singularity/prompts/poet";
 
 type Entry = {
   fn: string;
@@ -77,7 +77,7 @@ const entries: Entry[] = [
     fn: "buildVideoAnalysisPrompt",
     title: "逐条视频 / 笔记拆解",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/clerk.ts#L58",
+    source: "../packages/prompts/src/clerk.ts#L58",
     flow: "Clerk 1.2 · 步骤 3.2",
     purpose: "把单条视频的文字稿 + 元数据拆成结构化「爆款 DNA」（钩子 / 框架 / 节奏 / 选题角度，带 [mm:ss] 引用）。",
     note: "展示 YouTube 视频版（中文）。小红书图文 / 视频会在最前面加一段说明；章节、赞助片段等可选段落有则插入。",
@@ -96,7 +96,7 @@ const entries: Entry[] = [
     fn: "buildHumanSopPrompt",
     title: "真人版 SOP（创作者手册）",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/clerk.ts#L156",
+    source: "../packages/prompts/src/clerk.ts#L156",
     flow: "Clerk 1.2 · 步骤 5",
     purpose: "把所有视频拆解汇总成给创作者本人看的创作手册（内容支柱 / 品牌嗓音 / 观众旅程 / 写作清单等）。",
     note: "中文 / 英文由 language 控制，此处中文版。",
@@ -114,7 +114,7 @@ const entries: Entry[] = [
     fn: "buildAiSopReferencePrompt",
     title: "AI 参考版 SOP",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/clerk.ts#L231",
+    source: "../packages/prompts/src/clerk.ts#L231",
     flow: "Clerk 1.2 · 步骤 5",
     purpose: "把汇总拆解整理成给 Poet 写稿 AI 读的结构化参考。",
     note: "强制英文输出（供 AI 阅读，不给终端用户看），与 language 无关。",
@@ -132,7 +132,7 @@ const entries: Entry[] = [
     fn: "buildHottestSopPrompt",
     title: "爆款版 SOP（最高播放深拆）",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/clerk.ts#L329",
+    source: "../packages/prompts/src/clerk.ts#L329",
     flow: "Clerk 1.2 · 步骤 5",
     purpose: "对播放量第一的视频做逐段深拆，提炼可复用套路；可叠加热门评论总结。",
     note: "中文 / 英文由 language 控制。评论总结为可选输入。",
@@ -153,7 +153,7 @@ const entries: Entry[] = [
     fn: "buildCommentsSummaryPrompt",
     title: "热门评论总结",
     model: "DeepSeek Flash",
-    source: "../packages/shared/src/prompts/clerk-comments.ts#L7",
+    source: "../packages/prompts/src/clerk-comments.ts#L7",
     flow: "Clerk 1.2 · 步骤 4",
     purpose: "把播放量第一视频的热门评论总结成观众反馈，喂给爆款版 SOP。",
     render: () =>
@@ -170,7 +170,7 @@ const entries: Entry[] = [
     fn: "buildSeriesDetectPrompt",
     title: "系列栏目检测",
     model: "DeepSeek Flash（空结果回退 Pro）",
-    source: "../packages/shared/src/prompts/clerk-series.ts#L7",
+    source: "../packages/prompts/src/clerk-series.ts#L7",
     flow: "Clerk 1.4（独立按钮）",
     purpose: "从视频标题 + 时长 + 播放量聚类，判断频道是否有固定系列栏目。",
     render: () =>
@@ -189,7 +189,7 @@ const entries: Entry[] = [
     fn: "buildClassificationPrompt",
     title: "竞品相关性判断",
     model: "DeepSeek Flash",
-    source: "../packages/shared/src/prompts/muse.ts#L15",
+    source: "../packages/prompts/src/muse.ts#L15",
     flow: "Muse 2.2 · 步骤 4",
     purpose: "判断竞品视频有没有可迁移的爆款机制（看钩子 / 情绪 / 叙事结构，不是题材是否相同）。",
     render: () =>
@@ -207,7 +207,7 @@ const entries: Entry[] = [
     fn: "buildViralTriggerPrompt",
     title: "爆款触发器提炼",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/muse.ts#L61",
+    source: "../packages/prompts/src/muse.ts#L61",
     flow: "Muse 2.2 · 步骤 5",
     purpose: "读完整文字稿，提炼「点击 / 观看 / 转发」三类触发点。",
     render: () =>
@@ -225,7 +225,7 @@ const entries: Entry[] = [
     fn: "buildIdeaGenerationPrompt",
     title: "选题生成",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/muse.ts#L101",
+    source: "../packages/prompts/src/muse.ts#L101",
     flow: "Muse 2.2 · 步骤 6",
     purpose: "基于触发器，为本频道生成 N 条选题（故事角度 / 事实数据 / 为何相似 / 封面概念 / 钩子类型 / 风险点）。",
     render: () =>
@@ -244,7 +244,7 @@ const entries: Entry[] = [
     fn: "buildChannelBiblePrompt",
     title: "频道圣经生成",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/poet.ts#L9",
+    source: "../packages/prompts/src/poet.ts#L9",
     flow: "Poet 3.1 · 步骤 2",
     purpose: "把频道想法固化成基准文档（TOPIC + 频道定位 / 信息源 / 选题框架），后续写稿围绕它防跑题。",
     render: () =>
@@ -258,7 +258,7 @@ const entries: Entry[] = [
     fn: "buildTopicAnalysisPrompt",
     title: "选题分析",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/poet.ts#L274",
+    source: "../packages/prompts/src/poet.ts#L274",
     flow: "Poet 3.2 · 步骤 2",
     purpose: "把用户给的选题 + 参考拆成结构化选题（与 Muse 选题同构）。",
     render: () =>
@@ -274,7 +274,7 @@ const entries: Entry[] = [
     fn: "buildScriptWritingPrompt",
     title: "短稿写作",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/poet.ts#L84",
+    source: "../packages/prompts/src/poet.ts#L84",
     flow: "Poet 3.3 · 短稿步骤 1",
     purpose: "结合选题 + 圣经 + SOP，一次性写出完整短稿。",
     render: () =>
@@ -295,7 +295,7 @@ const entries: Entry[] = [
     fn: "buildLongFormOutlinePrompt",
     title: "长稿大纲",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/poet.ts#L166",
+    source: "../packages/prompts/src/poet.ts#L166",
     flow: "Poet 3.3 · 长稿步骤 1",
     purpose: "长稿先列大纲，按比例分配各段字数（钩子 / 铺垫 / 正文 / CTA / 高潮 / 收尾）。",
     render: () =>
@@ -312,7 +312,7 @@ const entries: Entry[] = [
     fn: "buildSectionExpandPrompt",
     title: "长稿逐段扩写",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/poet.ts#L226",
+    source: "../packages/prompts/src/poet.ts#L226",
     flow: "Poet 3.3 · 长稿步骤 2",
     purpose: "按大纲把每一段扩写成正文，逐段调用后拼接。",
     render: () =>
@@ -334,7 +334,7 @@ const entries: Entry[] = [
     fn: "buildChineseHumanizerPrompt",
     title: "中文口语化改写",
     model: "DeepSeek Pro",
-    source: "../packages/shared/src/prompts/poet.ts#L327",
+    source: "../packages/prompts/src/poet.ts#L327",
     flow: "Poet 3.3 · 短/长稿口语化步骤",
     purpose: "把 AI 初稿改写成真人开口说话的口语（仅中文稿运行）。",
     render: () => buildChineseHumanizerPrompt(P.scriptText),
