@@ -92,6 +92,12 @@ export function buildScriptWritingPrompt(args: ScriptWritingArgs): string {
   const minWordCount = Math.round(args.targetWordCount * 0.9);
   const maxWordCount = Math.round(args.targetWordCount * 1.2);
   const isShort = args.targetWordCount < 300;
+  // A sub-90s script can't carry the full six-beat structure inside its word budget —
+  // forcing every marker is the biggest driver of short-form overshoot. Collapse to the
+  // three load-bearing beats so the model can actually land in-window.
+  const markerLine = isShort
+    ? "Output the script as plain text with ONLY these markers, in order: [HOOK], [ITEM 1], [CTA]. One or two short sentences each. Omit [TEASE], [CLIMAX], and [CLOSE] — a short video has no room for them."
+    : "Output the script as plain text, with section markers in this EXACT order: [HOOK], [TEASE], [ITEM 1], [CLIMAX], [CTA], [CLOSE]. Use each marker once; [CLIMAX] must come before [CTA]; [CLOSE] is the single final sign-off.";
 
   return withZhStyle(`You are a scriptwriter for a specific niche channel. Your job is to write a complete, ready-to-film script that sounds like a real human host speaking — not a polished AI document.
 
@@ -124,7 +130,7 @@ ${args.ideaText}
 
 ## Step 5: Write the Script
 
-Write a COMPLETE, ready-to-film script in **${languageName}**. Length is a HARD WINDOW: **${minWordCount}–${maxWordCount} ${lengthUnit}** (aim for ~${args.targetWordCount}). Do not fall below ${minWordCount} and do NOT exceed ${maxWordCount}.${isShort ? " This is a SHORT video — keep every section to 1-2 sentences, front-load the hook, and cut anything that doesn't earn its place. Do not pad to reach a higher count." : " If you finish all sections early, expand the ITEM sections with more specific detail until you reach the target — never pad with filler."}
+Write a COMPLETE, ready-to-film script in **${languageName}**. Length is a HARD WINDOW: **${minWordCount}–${maxWordCount} ${lengthUnit}** (aim for ~${args.targetWordCount}). Do not fall below ${minWordCount} and do NOT exceed ${maxWordCount}.${isShort ? " This is a SHORT video — keep every section to 1-2 sentences, front-load the hook, and cut anything that doesn't earn its place. Do not pad to reach a higher count." : ` If you finish all sections early, expand the ITEM sections with more specific detail until you reach ~${args.targetWordCount} — then STOP. Never pad with filler, and do not exceed ${maxWordCount}.`}
 
 Follow the SOP structure precisely:
 1. Open with one of the hook formulas from the SOP, adapted to this topic.
@@ -225,6 +231,7 @@ export function buildSectionExpandPrompt(args: SectionExpandArgs): string {
   const languageName = args.language === "zh" ? "Chinese (中文)" : "English";
   const lengthUnit = args.language === "zh" ? "characters (字)" : "words";
   const minCount = Math.round(args.targetCount * 0.85);
+  const maxCount = Math.round(args.targetCount * 1.2);
   return withZhStyle(`You are writing one section of a long-form YouTube script in **${languageName}**.
 
 ## SOP Reference (this is your VOICE MODEL — follow the tone, rhythm, and retention devices exactly)
@@ -249,15 +256,15 @@ ${args.prevTail}
 Marker: ${args.marker}
 Key points to cover:
 ${args.keyPoints}
-Target length: ${args.targetCount} ${lengthUnit}
-Minimum length: ${minCount} ${lengthUnit} — you MUST reach this before stopping
+Target length: ~${args.targetCount} ${lengthUnit}
+Length window: ${minCount}–${maxCount} ${lengthUnit} — stay inside this window.
 Tone/energy: ${args.emotionalNote}
 
 Write ONLY the content of this section. Do NOT include the section marker — it will be added automatically.
 Do NOT start the next section. End at a natural stopping point.
 Sound like a real human talking. Follow the SOP voice precisely.
 
-**LENGTH IS NON-NEGOTIABLE**: If you finish covering the key points but haven't reached ${minCount} ${lengthUnit}, keep going — add more specific examples, vivid detail, emotional depth, or a relevant story beat. Do not end early.
+**Length discipline**: Cover the key points fully. If you're below ${minCount} ${lengthUnit}, add specific examples, vivid detail, or emotional depth — never filler. But once the key points are covered and you're inside the window, STOP — do not exceed ${maxCount} ${lengthUnit} and do not pad or repeat to inflate length. A tight section that lands in-window beats a bloated one.
 `, args.language);
 }
 

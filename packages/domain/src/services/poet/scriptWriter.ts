@@ -11,10 +11,14 @@ import {
 } from "@singularity/prompts/poet";
 import { isLongForm } from "../../schemas/poet";
 import type { CheckedFact } from "./factCheck";
+import { humanizeChinese } from "./humanizer";
 
 const MAX_REFERENCE_CHARS = 24000;
 const MAX_SECTION_REFERENCE_CHARS = 10000;
 const PREV_TAIL_CHARS = 400;
+// Scripts may run up to 20% over the spoken-duration target before the budget gate
+// compresses them — a single window that holds for both paths and both languages.
+const OVERSHOOT_LIMIT = 1.2;
 
 export type ScriptReference = {
   type?: string;
@@ -145,10 +149,11 @@ function normalizeOutline(parsed: unknown, fallbackTargetCount: number, targetTo
     });
   }
   if (sections.length === 0) return null;
-  // Under-budgeted outlines silently yield a short script; if the section targets
-  // sum well below the requested total, scale them up to hit the requested length.
+  // Keep the section budgets near the requested total in BOTH directions: an
+  // under-budgeted outline silently yields a short script, an over-budgeted one
+  // drives the per-section overshoot the long path used to have no guard against.
   const sum = sections.reduce((a, s) => a + s.target_count, 0);
-  if (sum > 0 && sum < targetTotal * 0.8) {
+  if (sum > 0 && (sum < targetTotal * 0.8 || sum > targetTotal * OVERSHOOT_LIMIT)) {
     const scale = targetTotal / sum;
     for (const s of sections) s.target_count = Math.round(s.target_count * scale);
   }
@@ -162,6 +167,7 @@ export type LongFormHooks = {
   onOutlineDone?: (outline: Outline) => void | Promise<void>;
   onSectionStart?: (info: { index: number; total: number; marker: string }) => void | Promise<void>;
   onSectionDone?: (info: { index: number; total: number; marker: string; chars: number }) => void | Promise<void>;
+  onHumanizeStart?: () => void | Promise<void>;
 };
 
 async function writeScriptLong(
@@ -301,7 +307,7 @@ async function writeScriptLong(
 export async function writeScript(
   args: WriteScriptArgs,
   hooks: LongFormHooks = {},
-): Promise<ScriptResult & { path: "short" | "long" }> {
+): Promise<ScriptResult & { path: "short" | "long"; humanized: boolean }> {
   let result: ScriptResult & { path: "short" | "long" };
   if (isLongForm(args.targetWordCount, args.language)) {
     const long = await writeScriptLong(args, hooks);
@@ -340,17 +346,34 @@ export async function writeScript(
     };
   }
 
-  // Budget gate sits AFTER grounding so it catches overshoot from either the draft
-  // or the grounding rewrite; humanize (in the job) has its own cap with draft fallback.
-  if (
-    result.path === "short" &&
-    args.targetWordCount <= 600 &&
-    result.wordCount > args.targetWordCount * 1.35
-  ) {
-    const squeezed = await compressToBudget(result.scriptText, result.wordCount, args);
-    result = { ...result, ...squeezed };
+  // Humanize (zh short) runs on the writer's natural overshoot so its own colloquial trim
+  // lands near target; THEN one budget gate squeezes whatever still exceeds the window.
+  // Order matters: compressing BEFORE humanize shrinks the draft, and humanize's ~30% trim
+  // then undershoots — so length enforcement is the single last step, never before humanize.
+  let humanized = false;
+  if (args.language === "zh" && result.path === "short") {
+    await hooks.onHumanizeStart?.();
+    const rewritten = (
+      await humanizeChinese(result.scriptText, Math.round(args.targetWordCount * OVERSHOOT_LIMIT))
+    ).trim();
+    if (rewritten && rewritten !== result.scriptText) {
+      result = { ...result, scriptText: rewritten, wordCount: rewritten.length };
+    }
+    humanized = true;
   }
-  return result;
+
+  result = await enforceBudget(result, args);
+
+  return { ...result, humanized };
+}
+
+async function enforceBudget(
+  result: ScriptResult & { path: "short" | "long" },
+  args: Pick<WriteScriptArgs, "language" | "targetWordCount">,
+): Promise<ScriptResult & { path: "short" | "long" }> {
+  if (result.wordCount <= args.targetWordCount * OVERSHOOT_LIMIT) return result;
+  const squeezed = await compressToBudget(result.scriptText, result.wordCount, args);
+  return { ...result, ...squeezed };
 }
 
 export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptResult> {
@@ -388,20 +411,20 @@ export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptRes
   return { scriptText, wordCount };
 }
 
-// Short-form duration is a product promise (30s must be speakable in ~30s). The prompt
-// window alone gets ignored often enough that overshoots > 1.35× get up to two compress
-// passes. Keeps the shortest valid version even when it misses the window — rejecting a
-// 1.4× compress in favor of the 1.8× draft helps nobody.
+// Duration is a product promise (a 30s script must be speakable in ~30s, a 5-min one in
+// ~5 min). The prompt window alone gets ignored often enough that overshoots get up to
+// three compress passes. Keeps the shortest valid version even when it misses the window —
+// rejecting a 1.4× compress in favor of the 1.8× draft helps nobody.
 async function compressToBudget(
   scriptText: string,
   wordCount: number,
   args: Pick<WriteScriptArgs, "language" | "targetWordCount">,
 ): Promise<ScriptResult> {
-  const ceiling = Math.round(args.targetWordCount * 1.25);
+  const ceiling = Math.round(args.targetWordCount * OVERSHOOT_LIMIT);
   const floor = Math.round(args.targetWordCount * 0.5);
   let bestText = scriptText;
   let bestCount = wordCount;
-  for (let attempt = 0; attempt < 2 && bestCount > ceiling; attempt++) {
+  for (let attempt = 0; attempt < 3 && bestCount > ceiling; attempt++) {
     // Pro→Flash fallback: Pro's reasoning intermittently burns the whole budget and
     // returns empty, which silently skipped compression entirely.
     const compressed = await generateTextWithFallback({

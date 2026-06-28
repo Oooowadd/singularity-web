@@ -17,7 +17,6 @@ import {
   withRunDb,
 } from "@singularity/db";
 import { factCheckVerbatim } from "@singularity/domain/services/poet/fact-check";
-import { humanizeChinese } from "@singularity/domain/services/poet/humanizer";
 import {
   formatVerbatimFacts,
   type ScriptReference,
@@ -257,8 +256,8 @@ export const generateScript = task({
         },
         {
           onOutlineDone: async (outline) => {
-            // 1 load + 1 outline + N sections + (1 humanize if zh) + 1 save
-            total = 2 + outline.sections.length + (language === "zh" ? 1 : 0) + 1;
+            // 1 load + 1 outline + N sections + 1 save (long-form never humanizes).
+            total = 2 + outline.sections.length + 1;
             step = 2;
             await setProgress(
               `expanding section 1/${outline.sections.length}`,
@@ -275,24 +274,17 @@ export const generateScript = task({
           onSectionDone: async ({ index, total: totalSections, marker, chars }) => {
             logger.info(`[long_form] ${marker} done (${chars} chars, ${index + 1}/${totalSections})`);
           },
+          // Humanize (zh short path only) now lives inside writeScript so the final
+          // length gate runs after it; here we just advance the progress bar.
+          onHumanizeStart: async () => {
+            step = total - 1;
+            await setProgress("humanizing script", "改写为真人口语（约 1-2 分钟）");
+          },
         },
       );
 
-      let scriptText = safeText(draft.scriptText) ?? "";
+      const scriptText = safeText(draft.scriptText) ?? "";
       if (!scriptText) throw new Error("Script generation returned empty text");
-
-      // Humanize only the short path. Long-form sections are already written in
-      // spoken style + the de-translationese glossary, and a one-pass humanize of a
-      // long script truncates (the guard then returns it unchanged) — a wasted call.
-      if (language === "zh" && draft.path === "short") {
-        step = total - 1;
-        await setProgress("humanizing script", "改写为真人口语（约 1-2 分钟）");
-        // Budget cap: the colloquial rewrite was the historical 2-3× short-form
-        // inflator; over-budget rewrites fall back to the draft inside humanizeChinese.
-        scriptText =
-          (await humanizeChinese(scriptText, Math.round(targetWordCount * 1.25))).trim() ||
-          scriptText;
-      }
 
       step = total;
       await setProgress("saving script", "写入数据库");
@@ -341,7 +333,7 @@ export const generateScript = task({
         wordCount,
         targetWordCount,
         path: draft.path,
-        humanized: language === "zh",
+        humanized: draft.humanized,
       };
     });
   },
