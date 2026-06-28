@@ -59,7 +59,7 @@ import {
   runStatusInput,
   startAnalysisInput,
 } from "./schemas/clerk";
-import { approveIdeaInput, startMonitorInput } from "./schemas/muse";
+import { approveIdeaInput, dismissIdeaInput, startMonitorInput } from "./schemas/muse";
 import { createProjectInput, updateProjectInput } from "./schemas/projects";
 import {
   analyzeCustomTopicInput,
@@ -1418,6 +1418,8 @@ export const appRouter = router({
           .set({
             approved: input.approved,
             approvedAt: input.approved ? new Date() : null,
+            // 采用 from a 已忽略 state must un-dismiss (mutual exclusivity).
+            ...(input.approved ? { dismissedAt: null } : {}),
           })
           .where(
             and(
@@ -1436,23 +1438,31 @@ export const appRouter = router({
         return updated;
       }),
 
-    // Muse idea ids already imported into Poet as custom topics — drives the card's 已导入 state.
-    importedIdeaIds: protectedProcedure
-      .input(z.object({ projectId: z.string().uuid() }))
-      .query(async ({ ctx, input }) => {
-        await assertProjectOwner(ctx.user.id, input.projectId);
-        const rows = await db
-          .selectDistinct({ sourceIdeaId: poetCustomTopics.sourceIdeaId })
-          .from(poetCustomTopics)
+    dismissIdea: protectedProcedure
+      .input(dismissIdeaInput)
+      .mutation(async ({ ctx, input }) => {
+        const [updated] = await db
+          .update(museIdeas)
+          .set({
+            dismissedAt: input.dismissed ? new Date() : null,
+            // 忽略 clears 采用 (mutual exclusivity).
+            ...(input.dismissed ? { approved: false } : {}),
+          })
           .where(
             and(
-              eq(poetCustomTopics.projectId, input.projectId),
-              sql`${poetCustomTopics.sourceIdeaId} IS NOT NULL`,
+              eq(museIdeas.id, input.ideaId),
+              inArray(
+                museIdeas.channelId,
+                db
+                  .select({ id: channels.id })
+                  .from(channels)
+                  .where(eq(channels.userId, ctx.user.id)),
+              ),
             ),
-          );
-        return rows
-          .map((r) => r.sourceIdeaId)
-          .filter((id): id is string => id !== null);
+          )
+          .returning();
+        if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+        return updated;
       }),
   }),
 

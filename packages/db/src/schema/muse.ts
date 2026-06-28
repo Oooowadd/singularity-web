@@ -55,6 +55,7 @@ export const museIdeas = pgTable(
     scripted: boolean("scripted").notNull().default(false),
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
     runId: uuid("run_id").references(() => pipelineRuns.id, { onDelete: "set null" }),
   },
   (table) => ({

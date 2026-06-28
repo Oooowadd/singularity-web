@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -81,6 +81,7 @@ export default async function PoetChannelPage({ params }: Props) {
             eq(museIdeas.projectId, project.id),
             eq(museIdeas.approved, true),
             eq(museIdeas.scripted, false),
+            isNull(museIdeas.dismissedAt),
           ),
         )
         .orderBy(asc(museIdeas.generatedAt)),
@@ -118,7 +119,7 @@ export default async function PoetChannelPage({ params }: Props) {
             {scripts.length} 篇脚本
           </Badge>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {approvedIdeas.length} 个待写选题
+            {approvedIdeas.length} 个待写
           </Badge>
         </div>
       </header>
@@ -147,7 +148,7 @@ export default async function PoetChannelPage({ params }: Props) {
 
       {approvedIdeas.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">待写选题（Muse 已通过）</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">Muse 选题 · 待写</h2>
           <div className="flex flex-col gap-3">
             {approvedIdeas.map((idea) => (
               <article

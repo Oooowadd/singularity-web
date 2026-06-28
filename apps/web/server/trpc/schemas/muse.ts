@@ -22,3 +22,10 @@ export const approveIdeaInput = z.object({
 });
 
 export type ApproveIdeaInput = z.infer<typeof approveIdeaInput>;
+
+export const dismissIdeaInput = z.object({
+  ideaId: z.string().uuid(),
+  dismissed: z.boolean(),
+});
+
+export type DismissIdeaInput = z.infer<typeof dismissIdeaInput>;

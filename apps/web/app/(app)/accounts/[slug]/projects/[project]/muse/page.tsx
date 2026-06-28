@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
@@ -8,7 +8,6 @@ import {
   competitorAccounts,
   museIdeas,
   museMonitorVideos,
-  poetCustomTopics,
   projectCompetitors,
   projects,
 } from "@singularity/db";
@@ -31,8 +30,7 @@ import { getActiveAgentRun } from "@/lib/agent-run";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
-import { IdeaApproveToggle } from "./_components/idea-approve-toggle";
-import { ImportToPoetButton } from "./_components/import-to-poet-button";
+import { IdeaActions } from "./_components/idea-actions";
 import { MuseRunButton } from "./_components/muse-run-button";
 import {
   MuseRunProgressPanel,
@@ -72,7 +70,7 @@ export default async function MuseChannelPage({ params }: Props) {
     .limit(1);
   if (!project) notFound();
 
-  const [monitored, ideas, activeRun, boundCompetitors, importedRows] = await Promise.all([
+  const [monitored, ideas, activeRun, boundCompetitors] = await Promise.all([
     db
       .select()
       .from(museMonitorVideos)
@@ -91,14 +89,16 @@ export default async function MuseChannelPage({ params }: Props) {
         riskFactors: museIdeas.riskFactors,
         approved: museIdeas.approved,
         scripted: museIdeas.scripted,
+        dismissedAt: museIdeas.dismissedAt,
         generatedAt: museIdeas.generatedAt,
+        runId: museIdeas.runId,
         sourceTitle: museMonitorVideos.title,
         sourceUrl: museMonitorVideos.url,
       })
       .from(museIdeas)
       .leftJoin(museMonitorVideos, eq(museMonitorVideos.id, museIdeas.sourceVideoId))
       .where(eq(museIdeas.projectId, project.id))
-      .orderBy(asc(museIdeas.ideaNumber)),
+      .orderBy(desc(museIdeas.generatedAt)),
     getActiveAgentRun(channel.id, user.id, "muse"),
     // Same source the monitor reads: this project's bound competitors.
     db
@@ -113,19 +113,23 @@ export default async function MuseChannelPage({ params }: Props) {
       .from(projectCompetitors)
       .innerJoin(competitorAccounts, eq(competitorAccounts.id, projectCompetitors.competitorAccountId))
       .where(and(eq(projectCompetitors.projectId, project.id), isNull(competitorAccounts.deletedAt))),
-    // Ideas already pushed into Poet — flips the card button to 已导入.
-    db
-      .selectDistinct({ sourceIdeaId: poetCustomTopics.sourceIdeaId })
-      .from(poetCustomTopics)
-      .where(eq(poetCustomTopics.projectId, project.id)),
   ]);
 
-  const importedIdeaIds = new Set(
-    importedRows.map((r) => r.sourceIdeaId).filter((id): id is string => id !== null),
-  );
-
   const activeCompetitorCount = boundCompetitors.length;
-  const approvedUnscripted = ideas.filter((i) => i.approved && !i.scripted).length;
+
+  // State derived from approved + scripted + dismissedAt (Round 4 triage model).
+  const pendingIdeas = ideas.filter((i) => !i.approved && !i.scripted && i.dismissedAt == null);
+  const adoptedIdeas = ideas.filter((i) => (i.approved || i.scripted) && i.dismissedAt == null);
+  const dismissedIdeas = ideas.filter((i) => i.dismissedAt != null);
+  const undismissedCount = ideas.filter((i) => i.dismissedAt == null).length;
+  const approvedUnscripted = ideas.filter(
+    (i) => i.approved && !i.scripted && i.dismissedAt == null,
+  ).length;
+
+  // Per-run sub-grouping of 待处理: the live run's id wins, else the newest by generatedAt.
+  const newestRunId = activeRun?.runId ?? pendingIdeas[0]?.runId ?? null;
+  const newestRunIdeas = pendingIdeas.filter((i) => i.runId === newestRunId);
+  const earlierRunIdeas = pendingIdeas.filter((i) => i.runId !== newestRunId);
 
   let liveStats: LiveStats | null = null;
   let lastProcessed: LastProcessed = null;
@@ -214,7 +218,7 @@ export default async function MuseChannelPage({ params }: Props) {
           <span className="size-2 rounded-full bg-muse" />
           <h1 className="text-2xl font-semibold tracking-tight">{channel.name}</h1>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {ideas.length} 个选题
+            {undismissedCount} 个选题
           </Badge>
           <Badge variant="secondary" className="font-mono text-[10px]">
             {activeCompetitorCount} 个对标账号
@@ -229,7 +233,7 @@ export default async function MuseChannelPage({ params }: Props) {
                 />
               }
             >
-              {approvedUnscripted} 个已通过 · 去 Poet 写稿
+              {approvedUnscripted} 个待写 · 去 Poet
             </Button>
           ) : null}
         </div>
@@ -341,118 +345,181 @@ export default async function MuseChannelPage({ params }: Props) {
       ) : null}
 
       {ideas.length > 0 ? (
-        <section id="muse-ideas" className="flex scroll-mt-20 flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">选题列表</h2>
-          <div className="flex flex-col gap-4">
-            {ideas.map((idea, i) => (
-              <StaggerItem key={idea.id} index={i}>
-              <article
-                className="flex flex-col gap-3 rounded-lg border bg-card p-5"
-              >
-                <header className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-1">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      #{idea.ideaNumber}
-                      {idea.sourceTitle ? (
-                        <>
-                          {" · 来源："}
-                          {idea.sourceUrl ? (
-                            <a
-                              href={idea.sourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-foreground"
-                            >
-                              {idea.sourceTitle}
-                            </a>
-                          ) : (
-                            idea.sourceTitle
-                          )}
-                        </>
-                      ) : null}
-                    </span>
-                    <h3 className="text-base font-medium whitespace-pre-wrap">
-                      {idea.storyAngle ?? "—"}
-                    </h3>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <ImportToPoetButton
-                      channelId={channel.id}
-                      projectId={project.id}
+        <>
+          <section id="muse-ideas" className="flex scroll-mt-20 flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">待处理</h2>
+              <Badge variant="secondary" className="font-mono text-[10px]">
+                {pendingIdeas.length}
+              </Badge>
+            </div>
+            {pendingIdeas.length === 0 ? (
+              <span className="text-xs text-muted-foreground">待处理选题已清空</span>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {[
+                  { key: "newest", label: `本次巡视 · ${newestRunIdeas.length}`, rows: newestRunIdeas },
+                  { key: "earlier", label: `更早 · ${earlierRunIdeas.length}`, rows: earlierRunIdeas },
+                ]
+                  .filter((g) => g.rows.length > 0)
+                  .map((group) => (
+                    <div key={group.key} className="flex flex-col gap-4">
+                      <span className="text-xs text-muted-foreground">{group.label}</span>
+                      {group.rows.map((idea, i) => (
+                        <StaggerItem key={idea.id} index={i}>
+                          <article className="flex flex-col gap-3 rounded-lg border bg-card p-5">
+                            <header className="flex items-start justify-between gap-3">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  #{idea.ideaNumber}
+                                  {idea.sourceTitle ? (
+                                    <>
+                                      {" · 来源："}
+                                      {idea.sourceUrl ? (
+                                        <a
+                                          href={idea.sourceUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="hover:text-foreground"
+                                        >
+                                          {idea.sourceTitle}
+                                        </a>
+                                      ) : (
+                                        idea.sourceTitle
+                                      )}
+                                    </>
+                                  ) : null}
+                                </span>
+                                <h3 className="text-base font-medium whitespace-pre-wrap">
+                                  {idea.storyAngle ?? "—"}
+                                </h3>
+                              </div>
+                              <IdeaActions
+                                ideaId={idea.id}
+                                state="pending"
+                                accountSlug={slug}
+                                projectSlug={projectSlug}
+                              />
+                            </header>
+
+                            {idea.factsAndData ? (
+                              <div className="flex flex-col gap-1">
+                                <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                  事实与数据
+                                </h4>
+                                <p className="text-sm whitespace-pre-wrap">{idea.factsAndData}</p>
+                              </div>
+                            ) : null}
+
+                            {idea.whySimilar ? (
+                              <div className="flex flex-col gap-1">
+                                <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                  为什么对标
+                                </h4>
+                                <p className="text-sm whitespace-pre-wrap">{idea.whySimilar}</p>
+                              </div>
+                            ) : null}
+
+                            {idea.coverConcept ? (
+                              <div className="flex flex-col gap-1">
+                                <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                  封面建议
+                                </h4>
+                                <p className="text-sm whitespace-pre-wrap">{idea.coverConcept}</p>
+                              </div>
+                            ) : null}
+
+                            {idea.suggestedHookType ? (
+                              <div className="flex flex-col gap-1">
+                                <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                  建议钩子类型
+                                </h4>
+                                <p className="text-sm whitespace-pre-wrap">{idea.suggestedHookType}</p>
+                              </div>
+                            ) : null}
+
+                            {idea.riskFactors ? (
+                              <div className="flex flex-col gap-1">
+                                <h4 className="text-xs font-medium tracking-wide text-amber-700 dark:text-amber-400 uppercase">
+                                  风险提示
+                                </h4>
+                                <p className="text-sm whitespace-pre-wrap text-amber-700 dark:text-amber-400">
+                                  {idea.riskFactors}
+                                </p>
+                              </div>
+                            ) : null}
+
+                            {idea.viralTrigger ? (
+                              <div className="flex flex-col gap-1">
+                                <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                  爆款触发因素
+                                </h4>
+                                <p className="text-sm whitespace-pre-wrap">{idea.viralTrigger}</p>
+                              </div>
+                            ) : null}
+                          </article>
+                        </StaggerItem>
+                      ))}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
+
+          {adoptedIdeas.length > 0 ? (
+            <details className="flex flex-col gap-3">
+              <summary className="cursor-pointer text-sm font-medium text-muted-foreground list-none [&::-webkit-details-marker]:hidden">
+                已采用 · {adoptedIdeas.length}
+              </summary>
+              <div className="mt-3 flex flex-col gap-2">
+                {adoptedIdeas.map((idea) => (
+                  <div
+                    key={idea.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">#{idea.ideaNumber}</span>
+                      <span className="truncate text-sm line-clamp-1">{idea.storyAngle ?? "—"}</span>
+                    </div>
+                    <IdeaActions
                       ideaId={idea.id}
-                      topic={idea.storyAngle ?? ""}
-                      facts={idea.factsAndData}
-                      language="zh"
-                      alreadyImported={importedIdeaIds.has(idea.id)}
+                      state={idea.scripted ? "scripted" : "adopted"}
+                      accountSlug={slug}
+                      projectSlug={projectSlug}
                     />
-                    <IdeaApproveToggle
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
+
+          {dismissedIdeas.length > 0 ? (
+            <details className="flex flex-col gap-3">
+              <summary className="cursor-pointer text-sm font-medium text-muted-foreground list-none [&::-webkit-details-marker]:hidden">
+                已忽略 · {dismissedIdeas.length}
+              </summary>
+              <div className="mt-3 flex flex-col gap-2">
+                {dismissedIdeas.map((idea) => (
+                  <div
+                    key={idea.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 opacity-60"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">#{idea.ideaNumber}</span>
+                      <span className="truncate text-sm line-clamp-1">{idea.storyAngle ?? "—"}</span>
+                    </div>
+                    <IdeaActions
                       ideaId={idea.id}
-                      approved={idea.approved}
-                      scripted={idea.scripted}
+                      state="dismissed"
+                      accountSlug={slug}
+                      projectSlug={projectSlug}
                     />
                   </div>
-                </header>
-
-                {idea.factsAndData ? (
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      事实与数据
-                    </h4>
-                    <p className="text-sm whitespace-pre-wrap">{idea.factsAndData}</p>
-                  </div>
-                ) : null}
-
-                {idea.whySimilar ? (
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      为什么对标
-                    </h4>
-                    <p className="text-sm whitespace-pre-wrap">{idea.whySimilar}</p>
-                  </div>
-                ) : null}
-
-                {idea.coverConcept ? (
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      封面建议
-                    </h4>
-                    <p className="text-sm whitespace-pre-wrap">{idea.coverConcept}</p>
-                  </div>
-                ) : null}
-
-                {idea.suggestedHookType ? (
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      建议钩子类型
-                    </h4>
-                    <p className="text-sm whitespace-pre-wrap">{idea.suggestedHookType}</p>
-                  </div>
-                ) : null}
-
-                {idea.riskFactors ? (
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-xs font-medium tracking-wide text-amber-700 dark:text-amber-400 uppercase">
-                      风险提示
-                    </h4>
-                    <p className="text-sm whitespace-pre-wrap text-amber-700 dark:text-amber-400">
-                      {idea.riskFactors}
-                    </p>
-                  </div>
-                ) : null}
-
-                {idea.viralTrigger ? (
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      爆款触发因素
-                    </h4>
-                    <p className="text-sm whitespace-pre-wrap">{idea.viralTrigger}</p>
-                  </div>
-                ) : null}
-              </article>
-              </StaggerItem>
-            ))}
-          </div>
-        </section>
+                ))}
+              </div>
+            </details>
+          ) : null}
+        </>
       ) : monitored.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
           <span>还没有选题</span>

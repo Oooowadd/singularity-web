@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, ChevronDown } from "lucide-react";
@@ -54,7 +54,10 @@ export default async function ProjectHubPage({ params }: Props) {
     activeBibleRows,
   ] = await Promise.all([
     db.select({ c: count() }).from(museMonitorVideos).where(eq(museMonitorVideos.projectId, project.id)),
-    db.select({ c: count() }).from(museIdeas).where(eq(museIdeas.projectId, project.id)),
+    db
+      .select({ c: count() })
+      .from(museIdeas)
+      .where(and(eq(museIdeas.projectId, project.id), isNull(museIdeas.dismissedAt))),
     db.select({ c: count() }).from(poetCustomTopics).where(eq(poetCustomTopics.projectId, project.id)),
     db.select({ c: count() }).from(poetScripts).where(eq(poetScripts.projectId, project.id)),
     db
@@ -167,7 +170,7 @@ export default async function ProjectHubPage({ params }: Props) {
 
       <div className="flex flex-col items-center gap-0.5 text-muted-foreground/70">
         <ChevronDown className="size-4" />
-        <span className="text-[11px]">选题可一键导入 Poet</span>
+        <span className="text-[11px]">采用选题 → Poet 写稿</span>
       </div>
 
       <section className="flex flex-col gap-2.5 border-l-2 border-l-poet/70 pl-4">
