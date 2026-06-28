@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { channels, clerkSops, clerkVideos, poetBible, projects } from "@singularity/db";
-import { formatDurationLabel } from "@singularity/domain/schemas/poet";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -142,9 +141,6 @@ export default async function AccountDetailPage({ params }: Props) {
                     <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
                       <Badge variant="secondary" className="font-mono text-[10px] uppercase">
                         {proj.platform}
-                      </Badge>
-                      <Badge variant="outline" className="font-mono text-[10px]">
-                        {formatDurationLabel(proj.targetDurationSeconds)}
                       </Badge>
                     </div>
                   </CardContent>

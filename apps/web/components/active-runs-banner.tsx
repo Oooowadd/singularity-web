@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { AGENT_LABEL, COMMAND_LABEL } from "@/lib/run-labels";
+import { COMMAND_LABEL, runBadgeLabel } from "@/lib/run-labels";
 
 type Props = {
   channelId?: string;
@@ -64,11 +64,14 @@ export function ActiveRunsBanner({ channelId, competitorAccountId }: Props) {
               className="flex flex-wrap items-center gap-2 rounded-md bg-background/80 px-2.5 py-1.5"
             >
               <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                {AGENT_LABEL[r.agent as keyof typeof AGENT_LABEL] ?? r.agent}
+                {runBadgeLabel(r.agent, r.command)}
               </Badge>
-              <span className="text-xs text-foreground">
-                {COMMAND_LABEL[r.command] ?? r.command}
-              </span>
+              {/* Bible badge already reads 频道圣经 — skip the redundant command label. */}
+              {r.command !== "poet-generate-bible" ? (
+                <span className="text-xs text-foreground">
+                  {COMMAND_LABEL[r.command] ?? r.command}
+                </span>
+              ) : null}
               {r.status === "running" ? (
                 <Loader2 className="size-3 animate-spin text-amber-600" />
               ) : (

@@ -60,7 +60,7 @@ import {
   startAnalysisInput,
 } from "./schemas/clerk";
 import { approveIdeaInput, startMonitorInput } from "./schemas/muse";
-import { createProjectInput } from "./schemas/projects";
+import { createProjectInput, updateProjectInput } from "./schemas/projects";
 import {
   analyzeCustomTopicInput,
   createCustomTopicInput,
@@ -1946,6 +1946,20 @@ export const appRouter = router({
           .returning();
         if (!created) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         return created;
+      }),
+
+    // Rename only — slug is left intact to keep the /projects/[project] URL stable.
+    update: protectedProcedure
+      .input(updateProjectInput)
+      .mutation(async ({ ctx, input }) => {
+        await assertProjectOwner(ctx.user.id, input.projectId);
+        const [updated] = await db
+          .update(projects)
+          .set({ name: input.name, description: input.description ?? null, updatedAt: new Date() })
+          .where(eq(projects.id, input.projectId))
+          .returning();
+        if (!updated) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        return updated;
       }),
 
     // Picker source for "在项目中选用": every project the user owns, across accounts.

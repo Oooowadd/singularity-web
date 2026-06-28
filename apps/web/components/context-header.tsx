@@ -4,8 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 
-import { formatDurationLabel } from "@singularity/domain/schemas/poet";
-
 import { trpc } from "@/lib/trpc";
 import { BibleChip } from "@/components/bible-chip";
 
@@ -71,9 +69,6 @@ export function ContextHeader() {
             className="flex min-w-0 items-center gap-1.5 text-muted-foreground hover:text-foreground"
           >
             <span className="truncate font-medium text-foreground">{data.project.name}</span>
-            <span className="font-mono text-[10px] opacity-70">
-              {formatDurationLabel(data.project.targetDurationSeconds)}
-            </span>
           </Link>
         </>
       ) : null}

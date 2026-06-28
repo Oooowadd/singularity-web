@@ -15,8 +15,6 @@ import {
   projects,
   projectSops,
 } from "@singularity/db";
-import { formatDurationLabel } from "@singularity/domain/schemas/poet";
-
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
@@ -25,6 +23,7 @@ import { ensureCurrentUser } from "@/lib/users";
 
 import { BibleChip } from "@/components/bible-chip";
 import { ProjectCompetitorsCard } from "../../../_components/project-competitors-card";
+import { EditProjectSheet } from "./_components/edit-project-sheet";
 import { ProjectSopRow, type CurrentSop } from "./_components/project-sop-row";
 
 type Props = { params: Promise<{ slug: string; project: string }> };
@@ -113,7 +112,14 @@ export default async function ProjectHubPage({ params }: Props) {
       <BackLink href={`/accounts/${a}`} label={channel.name} />
 
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+          <EditProjectSheet
+            projectId={project.id}
+            name={project.name}
+            description={project.description}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Link href={`/accounts/${a}`} className="hover:text-foreground hover:underline">
             {channel.name}
@@ -121,9 +127,6 @@ export default async function ProjectHubPage({ params }: Props) {
           <span className="opacity-40">·</span>
           <Badge variant="secondary" className="font-mono text-[10px] uppercase">
             {project.platform}
-          </Badge>
-          <Badge variant="outline" className="font-mono text-[10px]">
-            目标时长 {formatDurationLabel(project.targetDurationSeconds)}
           </Badge>
         </div>
       </header>

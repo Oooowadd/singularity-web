@@ -10,7 +10,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { AGENT_LABEL, COMMAND_LABEL } from "@/lib/run-labels";
+import { AGENT_LABEL, COMMAND_LABEL, runBadgeLabel } from "@/lib/run-labels";
 
 // Default project slug == account slug, so agent pages deep-link off channelSlug.
 // Competitor-target clerk runs (no slug) link to the competitor analysis page.
@@ -142,9 +142,12 @@ function GlobalRunsIndicatorInner() {
               <div key={r.id} className="flex flex-col gap-1 rounded-md px-2 py-2 text-sm">
                 <span className="flex w-full items-center gap-2">
                   <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                    {AGENT_LABEL[r.agent] ?? r.agent}
+                    {runBadgeLabel(r.agent, r.command)}
                   </Badge>
-                  <span className="text-xs">{COMMAND_LABEL[r.command] ?? r.command}</span>
+                  {/* Bible badge already reads 频道圣经 — skip the redundant command label. */}
+                  {r.command !== "poet-generate-bible" ? (
+                    <span className="text-xs">{COMMAND_LABEL[r.command] ?? r.command}</span>
+                  ) : null}
                   <span className="ml-auto font-mono text-[10px] text-muted-foreground">
                     {r.status === "pending" ? "待启动" : elapsed(now, r.startedAt)}
                   </span>

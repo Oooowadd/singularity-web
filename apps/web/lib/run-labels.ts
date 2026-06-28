@@ -14,3 +14,9 @@ export const COMMAND_LABEL: Record<string, string> = {
   "poet-analyze-custom-topic": "选题拆解",
   "poet-generate-script": "脚本生成",
 };
+
+// Bible runs are stored as agent="poet"; show "频道圣经" as the badge so users don't see a misleading "Poet".
+export function runBadgeLabel(agent: string, command: string): string {
+  if (command === "poet-generate-bible") return "频道圣经";
+  return AGENT_LABEL[agent] ?? agent;
+}
