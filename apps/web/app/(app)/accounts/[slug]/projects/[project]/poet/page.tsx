@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 
 import {
   channels,
-  clerkSops,
   museIdeas,
   museMonitorVideos,
   poetBible,
   poetCustomTopics,
   poetScripts,
   projects,
+  resolvePrimarySop,
   type CustomTopicReference,
 } from "@singularity/db";
 
@@ -56,7 +56,7 @@ export default async function PoetChannelPage({ params }: Props) {
     .limit(1);
   if (!project) notFound();
 
-  const [activeBibleRow, approvedIdeas, customTopics, scripts, activeRun, aiSopRows] =
+  const [activeBibleRow, approvedIdeas, customTopics, scripts, activeRun, primarySop] =
     await Promise.all([
       db
         .select()
@@ -98,15 +98,14 @@ export default async function PoetChannelPage({ params }: Props) {
         .orderBy(desc(poetScripts.generatedAt))
         .limit(20),
       getActiveAgentRun(channel.id, user.id, "poet"),
-      db
-        .select({ id: clerkSops.id })
-        .from(clerkSops)
-        .where(and(eq(clerkSops.channelId, channel.id), eq(clerkSops.sopType, "ai_reference")))
-        .limit(1),
+      resolvePrimarySop(db as unknown as Parameters<typeof resolvePrimarySop>[0], project.id, channel.id),
     ]);
 
   const activeBible = activeBibleRow[0] ?? null;
-  const hasAiReferenceSop = aiSopRows.length > 0;
+  // hasSop = what the writer actually resolves (project-bound SOP — incl. a competitor's —
+  // OR the own-channel ai_reference fallback). Checking only own-channel ai_reference falsely
+  // warned "no SOP" when a competitor SOP was selected for the project.
+  const hasAiReferenceSop = primarySop != null;
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-8 p-6 sm:p-8">
