@@ -583,6 +583,83 @@ export const appRouter = router({
         if (!updated) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         return updated;
       }),
+
+    // Own-account follower count is only stored when set; refresh it on demand. Gated on a
+    // valid profile URL — an account with no real homepage has nothing to pull.
+    refreshStats: protectedProcedure
+      .input(z.object({ channelId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        const [ch] = await db
+          .select({
+            id: channels.id,
+            platform: channels.platform,
+            platformUrl: channels.platformUrl,
+            platformChannelId: channels.platformChannelId,
+          })
+          .from(channels)
+          .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!ch) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const validUrl =
+          ch.platform === "xhs"
+            ? isValidXhsProfileUrl(ch.platformUrl)
+            : isValidYoutubeChannelUrl(ch.platformUrl);
+        if (!validUrl) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "该账号未填写有效主页链接，无法刷新",
+          });
+        }
+
+        let subscriberCount: number | null = null;
+        let resolvedChannelId: string | null = null;
+        try {
+          if (ch.platform === "xhs") {
+            const u = await resolveXhsUser(ch.platformUrl);
+            subscriberCount = u.fansCount ?? null;
+          } else {
+            const parsed = parseYoutubeChannelUrl(ch.platformUrl);
+            const yt =
+              parsed?.type === "id"
+                ? await fetchChannelMetaById(parsed.channelId)
+                : parsed?.type === "handle"
+                  ? await fetchChannelMetaByHandle(parsed.handle)
+                  : null;
+            if (yt) {
+              subscriberCount = yt.subscriberCount;
+              resolvedChannelId = yt.channelId;
+            } else {
+              const cid = ch.platformChannelId ?? (await resolveChannelId(ch.platformUrl));
+              const meta = await getChannelInfo(cid);
+              subscriberCount = meta.subscriberCount;
+              resolvedChannelId = meta.channel_id ?? cid;
+            }
+          }
+        } catch (err) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `刷新失败：${(err as Error).message.slice(0, 160)}`,
+          });
+        }
+        if (subscriberCount == null) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "刷新失败：未获取到粉丝数" });
+        }
+
+        await db
+          .update(channels)
+          .set({
+            subscriberCount,
+            ...(resolvedChannelId && !ch.platformChannelId
+              ? { platformChannelId: resolvedChannelId }
+              : {}),
+            lastVerifiedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(channels.id, ch.id));
+
+        return { id: ch.id, subscriberCount };
+      }),
   }),
 
   competitors: router({

@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { users } from "./users";
 
@@ -15,6 +15,9 @@ export const channels = pgTable(
     platformUrl: text("platform_url").notNull(),
     platformChannelId: text("platform_channel_id"),
     description: text("description"),
+    // Manually-refreshed follower count + freshness (own-account twin of competitor stats, 0025).
+    subscriberCount: integer("subscriber_count"),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

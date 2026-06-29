@@ -7,9 +7,13 @@ import { channels, clerkSops, clerkVideos, poetBible, projects } from "@singular
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshOwnAccountButton } from "@/components/refresh-own-account-button";
 import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/datetime";
+import { followerNoun, formatFollowerCount } from "@/lib/format-count";
 import { stripMarkdown } from "@/lib/strip-markdown";
 import { ensureCurrentUser } from "@/lib/users";
+import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
 
 import { EditChannelSheet } from "../_components/edit-channel-sheet";
 import { NewProjectSheet } from "./projects/_components/new-project-sheet";
@@ -48,6 +52,11 @@ export default async function AccountDetailPage({ params }: Props) {
   const itemNoun = channel.platform === "xhs" ? "篇笔记" : "个视频";
   const activeBible = activeBibleRows.find((b) => b.isActive) ?? null;
   const analyzed = (clerkVideoCount?.c ?? 0) > 0;
+  // No real homepage URL → nothing to pull, so the refresh button is hidden.
+  const canRefresh =
+    channel.platform === "xhs"
+      ? isValidXhsProfileUrl(channel.platformUrl)
+      : isValidYoutubeChannelUrl(channel.platformUrl);
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
@@ -69,8 +78,23 @@ export default async function AccountDetailPage({ params }: Props) {
               </a>
             ) : null}
           </div>
+          {channel.subscriberCount != null || channel.lastVerifiedAt ? (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {channel.subscriberCount != null ? (
+                <span className="font-mono font-semibold text-foreground">
+                  {formatFollowerCount(channel.subscriberCount)} {followerNoun(channel.platform)}
+                </span>
+              ) : null}
+              {channel.lastVerifiedAt ? (
+                <span>数据更新于 {formatDateTime(channel.lastVerifiedAt)}</span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        <EditChannelSheet channel={channel} />
+        <div className="flex items-center gap-2">
+          {canRefresh ? <RefreshOwnAccountButton channelId={channel.id} /> : null}
+          <EditChannelSheet channel={channel} />
+        </div>
       </header>
 
       <section className="flex flex-col gap-3">
