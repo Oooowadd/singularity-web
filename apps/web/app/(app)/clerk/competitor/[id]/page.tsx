@@ -6,6 +6,7 @@ import { clerkSops, clerkVideos, competitorAccounts } from "@singularity/db";
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
+import { RefreshCompetitorButton } from "@/components/refresh-competitor-button";
 import { ContentTypeBadge } from "../../_components/content-type-badge";
 import { ResetTargetButton } from "../../_components/reset-target-button";
 import { SingleVideoSopButton } from "../../_components/single-video-sop-button";
@@ -93,6 +94,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
               {competitor.subscriberCount != null
                 ? ` · ${formatFollowerCount(competitor.subscriberCount)} ${followerNoun(competitor.platform)}`
                 : ""}
+              {competitor.lastVerifiedAt ? ` · 数据更新于 ${formatDateTime(competitor.lastVerifiedAt)}` : ""}
               {" · "}
               <a href={competitor.url} target="_blank" rel="noopener noreferrer" className="font-mono hover:text-foreground">
                 {competitor.url.slice(0, 60)}
@@ -108,6 +110,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
             </Badge>
           ) : null}
         </div>
+        <RefreshCompetitorButton competitorAccountId={competitor.id} />
       </header>
 
       <ClerkRunButton

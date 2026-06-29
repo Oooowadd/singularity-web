@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
+import { RefreshCompetitorButton } from "@/components/refresh-competitor-button";
 import { formatFollowerCount } from "@/lib/format-count";
 import { trpc } from "@/lib/trpc";
 import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
@@ -248,6 +249,7 @@ export function CompetitorsManager() {
                 <TableCell className="text-right font-mono text-xs font-semibold">{formatFollowerCount(c.subscriberCount)}</TableCell>
                 <TableCell className="text-right font-mono text-xs">{c.usedBy}</TableCell>
                 <TableCell className="text-right">
+                  <RefreshCompetitorButton competitorAccountId={c.id} iconOnly />
                   <AlertDialog>
                     <AlertDialogTrigger render={<Button variant="ghost" size="sm" />}>
                       <Trash2 className="size-3.5" />

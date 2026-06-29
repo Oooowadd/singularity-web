@@ -653,6 +653,85 @@ export const appRouter = router({
       return { results };
     }),
 
+    // Stats (follower count, name, avatar) are written once at import and never refreshed;
+    // this re-fetches them live the same way upsertCompetitor first did, so the number
+    // stays comparable to the original.
+    refreshStats: protectedProcedure
+      .input(competitorIdInput)
+      .mutation(async ({ ctx, input }) => {
+        const [acct] = await db
+          .select({
+            id: competitorAccounts.id,
+            platform: competitorAccounts.platform,
+            url: competitorAccounts.url,
+            platformKey: competitorAccounts.platformKey,
+            needsResolution: competitorAccounts.needsResolution,
+          })
+          .from(competitorAccounts)
+          .where(
+            and(
+              eq(competitorAccounts.id, input.competitorAccountId),
+              eq(competitorAccounts.userId, ctx.user.id),
+              isNull(competitorAccounts.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (!acct) throw new TRPCError({ code: "NOT_FOUND" });
+
+        let name: string | null = null;
+        let avatarUrl: string | null = null;
+        let subscriberCount: number | null = null;
+        let key = acct.platformKey;
+        let needsResolution = acct.needsResolution;
+        try {
+          if (acct.platform === "xhs") {
+            const u = await resolveXhsUser(acct.url);
+            name = u.nickname || null;
+            avatarUrl = u.avatarUrl || null;
+            subscriberCount = u.fansCount || null;
+          } else {
+            if (needsResolution) {
+              const uc = await resolveChannelId(acct.url);
+              if (uc && uc.startsWith("UC")) {
+                key = uc;
+                needsResolution = false;
+              }
+            }
+            if (!needsResolution) {
+              const info = await getChannelInfo(key);
+              name = info.channel_name || null;
+              avatarUrl = info.thumbnail_url;
+              subscriberCount = info.subscriberCount;
+            }
+          }
+        } catch {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "刷新失败：拉取账号信息出错，请稍后重试",
+          });
+        }
+        if (subscriberCount == null && name == null) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "刷新失败：未能获取到账号信息（链接可能已失效）",
+          });
+        }
+
+        await db
+          .update(competitorAccounts)
+          .set({
+            ...(subscriberCount != null ? { subscriberCount } : {}),
+            ...(name ? { name } : {}),
+            ...(avatarUrl ? { avatarUrl } : {}),
+            ...(key !== acct.platformKey ? { platformKey: key, needsResolution } : {}),
+            lastVerifiedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(competitorAccounts.id, acct.id));
+
+        return { id: acct.id, subscriberCount, name };
+      }),
+
     remove: protectedProcedure.input(competitorIdInput).mutation(async ({ ctx, input }) => {
       const [owned] = await db
         .select({ id: competitorAccounts.id })
