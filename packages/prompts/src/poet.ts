@@ -153,6 +153,7 @@ Follow the SOP structure precisely:
 **Facts from references:**
 - Copy every number, date, name, price, and model name exactly as it appears in the references. Do not round, normalise, or convert.
 - Do not invent any fact not present in the references. If a fact isn't there, leave it out.
+- Preserve uncertainty. If a source fact is hedged (待核实 / 需验证 / 大约 / 可能 / estimated / reportedly / "a large share"), keep it hedged or generalize it — never upgrade a tentative claim into a definitive number, year, or absolute ("多数都是" / "亏了两万"). A flagged ⚠️ DISPUTED fact must be generalized or omitted, never stated as a hard value.
 
 ${markerLine} No meta-commentary, no preamble.
 `, args.language);
@@ -203,10 +204,10 @@ Produce a JSON object with this exact structure:
 }
 
 Rules:
-- Use ONLY these markers in this order: [HOOK], [TEASE], [ITEM 1], [ITEM 2], ... (as many ITEMs as the SOP demands), [CTA], [CLIMAX], [CLOSE]
+- Use ONLY these markers in this order: [HOOK], [TEASE], [ITEM 1], [ITEM 2], ... (as many ITEMs as the SOP demands), [CLIMAX], [CTA], [CLOSE]. [CLIMAX] is the emotional peak and MUST come before [CTA]; [CTA] is the viewer's next-step ask; [CLOSE] is the single brief final sign-off.
 - key_points must be CONCRETE — pull real facts, names, numbers from the References. No generic placeholders.
 - target_count values must sum to approximately ${args.targetWordCount}
-- Suggested budget: HOOK 8%, TEASE 5%, CTA 3%, CLIMAX 18%, CLOSE 6%; divide the remaining 60% equally across ITEM sections
+- Suggested budget: HOOK 8%, TEASE 5%, CLIMAX 18%, CTA 3%, CLOSE 6%; divide the remaining 60% equally across ITEM sections
 - emotional_note: be specific (e.g. "calm and factual, building curiosity", "sharp revelation, audience feels cheated", "triumphant payoff")
 
 Output ONLY the JSON. No markdown fences, no explanation.
@@ -242,6 +243,7 @@ ${args.referencesContext}
 
 ## Verbatim Facts (copy these character-for-character — numbers, names, prices, specs)
 ${args.verbatimFactsContext}
+Preserve uncertainty: if a fact is hedged (待核实 / 需验证 / 大约 / 可能 / estimated) or marked ⚠️ DISPUTED, keep it hedged or generalize it — never state a tentative claim as a definitive number, year, or absolute.
 
 ## Full Script Outline (maintain consistency with the overall arc)
 Overall arc: ${args.overallArc}
@@ -354,13 +356,17 @@ ${sources}
 ## Facts to check
 ${list}
 
+## First: is this even a checkable factual claim?
+Many atoms are NOT factual claims — dialogue lines, direct quotes, song lyrics, opinions, rhetorical fragments, or a bare proper noun with no assertion. These cannot be true or false, so mark them "verified" (i.e. nothing to flag). Only evaluate atoms that assert a checkable fact about the world.
+
 ## For each fact, assign one status
-- "verified": consistent with well-known reality, OR you cannot judge it from world knowledge (a niche/obscure detail) — DEFAULT to "verified" when unsure. Most facts should be "verified".
+- "verified": consistent with well-known reality; OR not a checkable factual claim (dialogue/quote/lyric/opinion/fragment); OR you cannot judge it from world knowledge (a niche/obscure detail or unfamiliar name). DEFAULT to "verified" when unsure. Most atoms should be "verified".
 - "disputed": ONLY when you are HIGHLY confident it conflicts with widely-known reality (e.g. a famous product's launch year, a well-known date / name / spec is wrong). In "note", give the commonly-accepted correct value, briefly.
-- "unsupported": the claim is internally incoherent or clearly fabricated nonsense.
+- "unsupported": ONLY when the claim is internally incoherent or self-evidently impossible. Note: an unfamiliar company / person / product name is NOT grounds for this — niche or unknown entities default to "verified", never "unsupported".
 
 ## Critical rules
-- Be conservative. When in doubt → "verified". Do NOT flag something merely because you're unsure — only clear, high-confidence conflicts. A wrongly-flagged correct fact is worse than a missed one.
+- Be conservative. When in doubt → "verified". Do NOT flag something merely because you're unsure or don't recognize a name — only clear, high-confidence conflicts. A wrongly-flagged correct fact is worse than a missed one.
+- Never call a verbatim source quote "编造"/"fabricated" just because it sounds odd or names something you don't know — it was really said in the source.
 - Do NOT rewrite or correct the facts themselves. Only classify, and for "disputed"/"unsupported" add a short "note".
 - "note" must be written in ${noteLang}. Omit "note" for "verified".
 

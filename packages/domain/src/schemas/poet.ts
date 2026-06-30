@@ -38,6 +38,16 @@ export function isLongForm(targetWordCount: number, language: "zh" | "en"): bool
   return targetWordCount >= LONG_FORM_THRESHOLD[language];
 }
 
+// Length budget is a spoken-duration promise. Section markers ([HOOK], [ITEM 1], [CLOSE]…) and
+// markdown emphasis aren't spoken, so they must not count toward it — leaving them in inflated
+// short scripts past the gate ceiling and padded long scripts up toward the floor.
+export function countWords(text: string, language: "zh" | "en"): number {
+  const spoken = (text ?? "").replace(/\[[A-Z][A-Z0-9 ]*\]/g, "").replace(/\*\*/g, "");
+  return language === "zh"
+    ? spoken.replace(/\s+/g, "").length
+    : spoken.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export function formatDurationLabel(seconds: number | null | undefined): string | null {
   if (!seconds || seconds <= 0) return null;
   if (seconds < 60) return `${seconds} 秒`;

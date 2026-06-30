@@ -22,7 +22,7 @@ import {
   type ScriptReference,
   writeScript,
 } from "@singularity/domain/services/poet/script-writer";
-import { computeTargetWordCount, isLongForm } from "@singularity/domain/schemas/poet";
+import { computeTargetWordCount, countWords, isLongForm } from "@singularity/domain/schemas/poet";
 import { safeText } from "@singularity/integrations/utils";
 
 type Payload = {
@@ -289,8 +289,7 @@ export const generateScript = task({
       step = total;
       await setProgress("saving script", "写入数据库");
 
-      const wordCount =
-        language === "zh" ? scriptText.length : scriptText.trim().split(/\s+/).length;
+      const wordCount = countWords(scriptText, language);
       const durationSeconds = resolvedDuration;
 
       const [scriptRow] = await db

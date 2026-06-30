@@ -402,14 +402,29 @@ async function parseAnalysis(rawText: string): Promise<ReturnType<typeof clerkAn
   if (!parsed || typeof parsed !== "object") return null;
 
   const obj = parsed as Record<string, unknown>;
-  const str = (k: string): string =>
-    typeof obj[k] === "string"
-      ? (obj[k] as string)
-      : obj[k] == null
-        ? ""
-        : Array.isArray(obj[k])
-          ? (obj[k] as unknown[]).map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join("\n")
-          : JSON.stringify(obj[k]);
+  // The model sometimes returns a field as a {timestamp,text}/{type,description} object or an
+  // array of them instead of prose. Extract the human-readable text rather than serializing the
+  // object (which surfaced as raw JSON / "[object Object]" in stored fields).
+  const PROSE_TEXT_KEYS = ["text", "description", "value", "content", "detail", "point", "summary"];
+  const PROSE_LABEL_KEYS = ["timestamp", "time", "type", "label", "name", "title"];
+  const toProse = (x: unknown): string => {
+    if (x == null) return "";
+    if (typeof x === "string") return x;
+    if (typeof x === "number" || typeof x === "boolean") return String(x);
+    if (Array.isArray(x)) return x.map(toProse).filter(Boolean).join("\n");
+    if (typeof x === "object") {
+      const o = x as Record<string, unknown>;
+      const tk = PROSE_TEXT_KEYS.find((k) => typeof o[k] === "string" && (o[k] as string).trim());
+      if (tk) {
+        const lk = PROSE_LABEL_KEYS.find((k) => typeof o[k] === "string" && (o[k] as string).trim());
+        return `${lk ? `${(o[lk] as string).trim()} ` : ""}${(o[tk] as string).trim()}`;
+      }
+      const vals = Object.values(o).filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+      return vals.join(" — ");
+    }
+    return String(x);
+  };
+  const str = (k: string): string => toProse(obj[k]);
 
   const candidate = {
     thumbnail_description: str("thumbnail_description"),

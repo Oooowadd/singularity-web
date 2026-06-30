@@ -10,7 +10,7 @@ import {
   buildScriptWritingPrompt,
   buildSectionExpandPrompt,
 } from "@singularity/prompts/poet";
-import { isLongForm } from "../../schemas/poet";
+import { countWords, isLongForm } from "../../schemas/poet";
 import type { CheckedFact } from "./factCheck";
 import { humanizeChinese } from "./humanizer";
 
@@ -320,7 +320,7 @@ async function writeScriptLong(
   }
 
   let scriptText = scriptParts.join("\n\n");
-  let wordCount = language === "zh" ? scriptText.length : scriptText.trim().split(/\s+/).length;
+  let wordCount = countWords(scriptText, language);
   // Large long-form sometimes under-delivers per section (esp Flash-filled ones), landing
   // well short of target. Enrich the existing sections once (grounded, no new sections);
   // any resulting overshoot is trimmed by the budget gate back in writeScript.
@@ -361,7 +361,7 @@ async function expandToBudget(
       maxRetries: 2,
     });
     const et = expanded.text.trim();
-    const ec = args.language === "zh" ? et.length : et.split(/\s+/).length;
+    const ec = countWords(et, args.language);
     if (!et || expanded.finishReason === "length" || ec <= bestCount || ec > ceiling) {
       // eslint-disable-next-line no-console
       console.warn(
@@ -476,8 +476,7 @@ export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptRes
   });
 
   const scriptText = result.text;
-  const wordCount =
-    args.language === "zh" ? scriptText.length : scriptText.trim().split(/\s+/).length;
+  const wordCount = countWords(scriptText, args.language);
 
   return { scriptText, wordCount };
 }
@@ -515,7 +514,7 @@ async function compressToBudget(
       maxRetries: 2,
     });
     const ct = compressed.text.trim();
-    const cc = args.language === "zh" ? ct.length : ct.split(/\s+/).length;
+    const cc = countWords(ct, args.language);
     if (!ct || compressed.finishReason === "length" || cc < floor) {
       // eslint-disable-next-line no-console
       console.warn(
