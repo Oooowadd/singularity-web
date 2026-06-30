@@ -1,6 +1,6 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { generateText } from "ai";
-import { and, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import pLimit from "p-limit";
 
 import {
