@@ -1400,6 +1400,42 @@ export const appRouter = router({
         return { ok: true };
       }),
 
+    // Library-side: delete ALL of one owner's SOPs (keeps the analyzed videos — unlike
+    // resetTarget). project_sops bindings cascade-unbind, so the caller must warn.
+    deleteSopsForOwner: protectedProcedure
+      .input(resetTargetInput)
+      .mutation(async ({ ctx, input }) => {
+        if (input.channelId) {
+          const [own] = await db
+            .select({ id: channels.id })
+            .from(channels)
+            .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+            .limit(1);
+          if (!own) throw new TRPCError({ code: "NOT_FOUND" });
+          const rows = await db
+            .delete(clerkSops)
+            .where(eq(clerkSops.channelId, own.id))
+            .returning({ id: clerkSops.id });
+          return { deleted: rows.length };
+        }
+        const [comp] = await db
+          .select({ id: competitorAccounts.id })
+          .from(competitorAccounts)
+          .where(
+            and(
+              eq(competitorAccounts.id, input.competitorAccountId!),
+              eq(competitorAccounts.userId, ctx.user.id),
+            ),
+          )
+          .limit(1);
+        if (!comp) throw new TRPCError({ code: "NOT_FOUND" });
+        const rows = await db
+          .delete(clerkSops)
+          .where(eq(clerkSops.competitorAccountId, comp.id))
+          .returning({ id: clerkSops.id });
+        return { deleted: rows.length };
+      }),
+
     listSeries: protectedProcedure
       .input(listSeriesInput)
       .query(async ({ ctx, input }) => {

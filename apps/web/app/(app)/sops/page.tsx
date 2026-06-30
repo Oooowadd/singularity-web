@@ -6,6 +6,7 @@ import { channels, clerkSops, competitorAccounts, projects, projectSops } from "
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClerkTabs } from "../clerk/_components/clerk-tabs";
+import { DeleteAccountSopsButton } from "../clerk/_components/delete-account-sops-button";
 import { SopCard } from "../clerk/_components/sop-card";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
@@ -19,6 +20,7 @@ type SopRow = {
   sourceKind: "own" | "competitor";
   sourceName: string;
   sourceHref: string;
+  owner: { channelId: string } | { competitorAccountId: string };
 };
 
 const sopOrder: Record<string, number> = {
@@ -39,6 +41,7 @@ export default async function SopsLibraryPage() {
       language: clerkSops.language,
       contentMd: clerkSops.contentMd,
       generatedAt: clerkSops.generatedAt,
+      channelId: channels.id,
       channelName: channels.name,
       channelSlug: channels.slug,
       competitorId: competitorAccounts.id,
@@ -72,16 +75,22 @@ export default async function SopsLibraryPage() {
     sourceHref: r.channelSlug
       ? `/clerk/${encodeURIComponent(r.channelSlug)}`
       : `/clerk/competitor/${r.competitorId}`,
+    owner: r.channelSlug
+      ? { channelId: r.channelId! }
+      : { competitorAccountId: r.competitorId! },
   }));
 
   // Group by source within each kind, preserving generatedAt-desc first appearance.
   const buildGroups = (kind: "own" | "competitor") => {
-    const groups = new Map<string, { name: string; href: string; sops: SopRow[] }>();
+    const groups = new Map<
+      string,
+      { name: string; href: string; owner: SopRow["owner"]; sops: SopRow[] }
+    >();
     for (const s of sops) {
       if (s.sourceKind !== kind) continue;
       const existing = groups.get(s.sourceHref);
       if (existing) existing.sops.push(s);
-      else groups.set(s.sourceHref, { name: s.sourceName, href: s.sourceHref, sops: [s] });
+      else groups.set(s.sourceHref, { name: s.sourceName, href: s.sourceHref, owner: s.owner, sops: [s] });
     }
     return [...groups.values()];
   };
@@ -135,7 +144,7 @@ function SourceSection({
   usedByMap,
 }: {
   title: string;
-  groups: Array<{ name: string; href: string; sops: SopRow[] }>;
+  groups: Array<{ name: string; href: string; owner: SopRow["owner"]; sops: SopRow[] }>;
   chip: string;
   usedByMap: Map<string, number>;
 }) {
@@ -162,13 +171,14 @@ function SourceSection({
             </summary>
 
             <div className="mt-2 flex flex-col gap-4">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
                 <Button variant="ghost" size="sm" render={<Link href={group.href} />}>
                   查看分析
                 </Button>
+                <DeleteAccountSopsButton owner={group.owner} name={group.name} />
               </div>
               {primarySops.map((sop) => (
-                <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} />
+                <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} showDelete />
               ))}
 
               {aiReferenceSops.length > 0 ? (
@@ -178,7 +188,7 @@ function SourceSection({
                   </summary>
                   <div className="mt-3 flex flex-col gap-4">
                     {aiReferenceSops.map((sop) => (
-                      <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} />
+                      <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} showDelete />
                     ))}
                   </div>
                 </details>
