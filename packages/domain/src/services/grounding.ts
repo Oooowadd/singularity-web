@@ -24,6 +24,11 @@ export async function redactUngrounded(args: {
   const emptyRule = isScript
     ? `If the SOURCE is empty or has no concrete data, the DRAFT must end up with NO specific prices / specs / stats / named products / fabricated quotes — generalize them into natural spoken wording (never insert ${tag}).`
     : `If the SOURCE is empty or has no concrete data, the DRAFT must end up with NO specific prices / specs / stats / named products / quotes — generalize or ${tag} all of them (strategy-level wording is fine).`;
+  // A sectioned script's [HOOK]/[ITEM]/[CTA]/etc markers are structure the UI splits on — a
+  // heavy rewrite was dropping them. They are not factual claims; keep every one in place.
+  const markerRule = isScript
+    ? `\n- This is a sectioned script: keep EVERY structural marker ([HOOK], [TEASE], [ITEM 1], [ITEM 2], [CLIMAX], [CTA], [CLOSE], …) exactly where it is, on its own line. They are structure, not factual claims — never drop, merge, move, or reword a marker.`
+    : "";
   const prompt = `You are a strict fact-checker and copy-cleaner. You are given SOURCE MATERIAL (the ground truth) and a DRAFT generated from it. Your job is to make the DRAFT factually safe — remove fabricated specifics, clean garbled source quotes, and fix clear factual errors — WITHOUT rewriting its structure, voice, or grounded content.
 
 Go through the DRAFT. For every SPECIFIC factual claim — price, number, percentage, statistic, measurement or spec, model / product / brand name, person name, social handle, date or year, and any line presented as a verbatim quote — decide:
@@ -35,7 +40,7 @@ Go through the DRAFT. For every SPECIFIC factual claim — price, number, percen
 Always allowed (never redact these): the channel's own name, the host's name, and the channel/show brand — they identify the deliverable, not a factual claim.
 
 Hard rules:
-- Preserve the DRAFT's language, structure, section headers, voice, and every grounded sentence unchanged. Touch ONLY unsupported specifics, garbled source quotes, and clear factual errors.
+- Preserve the DRAFT's language, structure, section headers, voice, and every grounded sentence unchanged. Touch ONLY unsupported specifics, garbled source quotes, and clear factual errors.${markerRule}
 - Do NOT add new facts, sections, analysis, or commentary. Do NOT explain your edits or wrap the output in code fences.
 - ${emptyRule}
 - Output ONLY the corrected document.
