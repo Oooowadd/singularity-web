@@ -135,6 +135,8 @@ Rules:
 6. Vary the ANGLE TYPE across the batch — e.g. engineering deep-dive, myth-busting / expectation check, hands-on experiment, side-by-side comparison, data-driven story, prediction. At most 2 ideas may share an angle type, and story_angle phrasing must not repeat one sentence pattern across ideas.
 7. Stay inside the target channel's niche — drop an idea rather than drift into adjacent lifestyle / marketing / general-interest territory.
 8. Do NOT fabricate. Do not claim first-person experience, experiments, tests, or case-counts the channel hasn't actually done; do not invent statistics, sample sizes, prices, dates, or names. If a useful fact isn't grounded in the source, mark it "(needs verification)" or omit it. This applies to every field — story_angle, why_similar, viral_trigger included, not just facts_and_data.
+9. Facts come from the SOURCE VIDEO, not from the channel bible or general knowledge. Every named person, brand, date, price, quote, or event you cite must be supported by the source transcript/analysis above — do NOT import an entity or backstory the source never mentions.
+10. NEVER state that a named real person has died, is ill, committed wrongdoing, or said a specific quote unless the source explicitly says so — not even with "(needs verification)". A false death / scandal / quote about a real person or brand is a critical, potentially defamatory failure. If the source doesn't support it, omit the claim and keep the angle general (name no one).
 
 Return JSON:
 {

@@ -295,13 +295,19 @@ ${args.topic}
 ## External References
 ${args.referencesContext}
 
+## Grounding & anti-fabrication (HARD RULES — these override the creative instructions below)
+- The Channel Bible and SOP above are for VOICE and STYLE ONLY. NEVER pull facts, people, brands, events, dates, prices, quotes, or backstories from them into this topic's output. They tell you HOW to talk, not WHAT is true.
+- Every factual claim (names, people, brands, dates, quotes, prices, events) in story_angle / facts_and_data / why_similar / viral_trigger MUST be supported by the External References for THIS topic. If the reference is a simple product post, keep the angle within what that post actually shows — do NOT import a different person, brand, death, or backstory from anywhere else.
+- NEVER state that a named real person has died, is ill, did something wrong, or made a specific statement, unless the External References explicitly say so — not even hedged. A false claim about a real person or brand (a death, a scandal, an invented quote) is the single worst failure this tool can produce. When unsure, stay general and name no one.
+- If the references are thin, produce a THINNER result (fewer facts, a more general angle). Do NOT backfill with invented specifics.
+
 ## Your Task
 
 Output a JSON object with exactly these five keys:
 
 - "story_angle": One paragraph (~80–150 ${lengthUnit}) describing the specific narrative angle for this topic, framed for this channel's audience. Be concrete — name the specific story you'd tell, not the general subject.
 
-- "facts_and_data": Bullet list of concrete facts, statistics, examples, and data points the script should incorporate. **Do not artificially limit the count.** If the references contain twelve distinct camera models and forty data points, capture all of them; if they only contain three, capture three. Walk the references end-to-end and capture every concrete fact you find. Prefer facts grounded in the External References. If the references are thin or missing, you may add plausible, verifiable-by-the-user facts — but label any such addition with "(needs verification)" so the user can review.
+- "facts_and_data": Bullet list of concrete facts, statistics, examples, and data points the script should incorporate. **Do not artificially limit the count.** If the references contain twelve distinct camera models and forty data points, capture all of them; if they only contain three, capture three. Walk the references end-to-end and capture every concrete fact you find. **Every fact MUST come from the External References.** If the references are thin, produce FEWER facts — do NOT backfill from the Channel Bible, general knowledge, or invention. "(needs verification)" is only for a genuinely-uncertain figure about the source's own subject, never a license to introduce a new person, death, event, price, or scandal not in the references.
 
 - "verbatim_facts": A flat newline-separated list of the most important factual atoms pulled **VERBATIM** from the references. Each line is one atom. Format: \`- <verbatim fact> [src: <reference title>]\`. Examples:
   \`- M3 viewfinder magnification: 0.91x [src: Leica M Series Film Cameras Overview]\`

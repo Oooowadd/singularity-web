@@ -542,7 +542,9 @@ Create a time-segmented structural breakdown. Break the video into 5-8 Parts; gi
 
 After the Parts, append a **Retention Tape** section: a single chronological list of every retention move (open loop, rehook, specificity spike, pattern break), each with a 5-word description.${commentsInstruction}
 
-Format as clean markdown. Quote only lines that actually appear in the transcript above — never invent quotes, stats, or timestamps.
+**Grounding (HARD RULE).** Base every field ONLY on what the Full Transcript above actually contains. Quote only lines that appear verbatim in the transcript — never invent quotes, stats, prices, product features, amenities, timestamps, or CTAs. Do NOT expand a bare phrase or aphorism into a fabricated full-sentence "hook line" and present it as something the creator said; if the transcript only contains a short phrase, quote just that phrase. If the transcript is thin, short, or clearly has no real speech, keep the breakdown minimal and say so plainly — do not embellish to fill the template.
+
+Format as clean markdown.
 `;
   return args.language === 'zh' ? CHINESE_WRAPPER(inner) : inner;
 }
