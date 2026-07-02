@@ -402,9 +402,7 @@ async function parseAnalysis(rawText: string): Promise<ReturnType<typeof clerkAn
   if (!parsed || typeof parsed !== "object") return null;
 
   const obj = parsed as Record<string, unknown>;
-  // The model sometimes returns a field as a {timestamp,text}/{type,description} object or an
-  // array of them instead of prose. Extract the human-readable text rather than serializing the
-  // object (which surfaced as raw JSON / "[object Object]" in stored fields).
+  // Fields sometimes arrive as {timestamp,text} objects — extract prose, don't serialize.
   const PROSE_TEXT_KEYS = ["text", "description", "value", "content", "detail", "point", "summary"];
   const PROSE_LABEL_KEYS = ["timestamp", "time", "type", "label", "name", "title"];
   const toProse = (x: unknown): string => {

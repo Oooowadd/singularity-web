@@ -466,9 +466,7 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(deleteChannelInput)
       .mutation(async ({ ctx, input }) => {
-        // Remove the whole account spine (projects + own_account twin + channel), mirroring
-        // convertToCompetitor's cleanup — deleting only `channels` strands the twins and the
-        // account keeps showing in the sidebar.
+        // Delete the whole account spine — removing only `channels` strands the twins.
         return await db.transaction(async (tx) => {
           const [channel] = await tx
             .select({ id: channels.id })
@@ -2224,8 +2222,7 @@ export const appRouter = router({
         return updated;
       }),
 
-    // The default project shares its id with the account (the project spine) — deleting it
-    // would hollow out the account, so only extra projects can be removed.
+    // The default project (id === ownAccountId) is the account spine — not deletable.
     delete: protectedProcedure
       .input(deleteProjectInput)
       .mutation(async ({ ctx, input }) => {

@@ -87,11 +87,8 @@ type ScriptWritingArgs = {
   channelName?: string;
 };
 
-// The SOP and even the Bible are distilled from analyzed videos and can carry the
-// ANALYZED creator's self-references ("我是孟娇", credentials, sign-offs) — beta users
-// routinely bootstrap accounts from other people's content, so a script can end up
-// signing off as a stranger. Personal-name self-identification is therefore allowed
-// ONLY when the name is the account's own name.
+// Bible/SOP can carry the ANALYZED creator's self-references ("我是孟娇") — a self-name is
+// therefore allowed only when it is the account's own name.
 export function identityRule(channelName: string | undefined): string {
   const forChannel = channelName ? ` You are writing for the account "${channelName}".` : "";
   const nameGate = channelName

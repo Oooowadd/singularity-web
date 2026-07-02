@@ -177,9 +177,7 @@ function SourceSection({
                 </Button>
                 <DeleteAccountSopsButton owner={group.owner} name={group.name} />
               </div>
-              {/* Channel-set SOPs (human/hottest/ai_reference) are generated together — the
-                  per-account 清空SOP is their delete. Only single-video SOPs, generated one
-                  at a time, keep an individual delete. */}
+              {/* Channel-set SOPs are generated together — 清空SOP is their delete. */}
               {primarySops.map((sop) => (
                 <SopCard
                   key={sop.id}

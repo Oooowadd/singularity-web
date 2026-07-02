@@ -1,6 +1,4 @@
-// Offline duration+persona matrix: calls writeScript directly (real LLM, no DB writes)
-// with a real channel's bible/SOP/topic. Measures spoken-count ratio per duration and
-// scans for SOP-source persona leakage (孟娇). Run: pnpm --filter @singularity/db exec tsx scripts/duration-matrix.ts
+// Offline duration+persona matrix: real-LLM writeScript against a real bible/SOP/topic, no DB writes.
 import { dirname, resolve } from "node:path"; import { fileURLToPath } from "node:url";
 import { mkdirSync, writeFileSync } from "node:fs";
 import dotenv from "dotenv"; import postgres from "postgres"; import { drizzle } from "drizzle-orm/postgres-js";
@@ -28,9 +26,7 @@ const idea = {
 const references = ((t.references as any[]) ?? []).map((r) => ({ type: r.kind, title: r.title ?? "Reference", url: r.url, content: r.text ?? "" })).filter((r) => r.content.trim());
 
 const CASES: Array<{ label: string; dur: number }> = [
-  { label: "F-180s-A", dur: 180 }, { label: "F-180s-B", dur: 180 },
-  { label: "F-30s-A", dur: 30 }, { label: "F-30s-B", dur: 30 },
-  { label: "F-300s-A", dur: 300 }, { label: "F-300s-B", dur: 300 },
+  { label: "G-1200s-A", dur: 1200 }, { label: "G-1200s-B", dur: 1200 },
 ];
 mkdirSync("/tmp/duration-matrix", { recursive: true });
 

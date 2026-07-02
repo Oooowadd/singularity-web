@@ -1,5 +1,4 @@
-// Focused re-test of the colleague's exact failing case: 300s script from the custom topic
-// whose own text embeds per-second pacing (开场0-20秒…) — the undershoot trap.
+// 300s re-test of the undershoot trap: a topic whose own text embeds per-second pacing.
 import { dirname, resolve } from "node:path"; import { fileURLToPath } from "node:url";
 import { mkdirSync, writeFileSync } from "node:fs";
 import dotenv from "dotenv"; import postgres from "postgres"; import { drizzle } from "drizzle-orm/postgres-js";
