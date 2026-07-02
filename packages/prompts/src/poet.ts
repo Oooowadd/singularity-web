@@ -84,7 +84,21 @@ type ScriptWritingArgs = {
   ideaText: string;
   language: "en" | "zh";
   targetWordCount: number;
+  channelName?: string;
 };
+
+// The SOP and even the Bible are distilled from analyzed videos and can carry the
+// ANALYZED creator's self-references ("我是孟娇", credentials, sign-offs) — beta users
+// routinely bootstrap accounts from other people's content, so a script can end up
+// signing off as a stranger. Personal-name self-identification is therefore allowed
+// ONLY when the name is the account's own name.
+export function identityRule(channelName: string | undefined): string {
+  const forChannel = channelName ? ` You are writing for the account "${channelName}".` : "";
+  const nameGate = channelName
+    ? `The ONLY name the host may use for themselves is "${channelName}". If the Bible or SOP mentions a different personal name (e.g. "我是孟娇"), that is the ANALYZED creator, not this account's host — never use that name, and omit name-based self-introductions and sign-offs entirely.`
+    : `Do not use ANY personal name for the host — no "我是XX" / "I'm XX" self-introductions or named sign-offs.`;
+  return `**Speaker identity (HARD RULE).**${forChannel} The SOP below is a STRUCTURAL voice model distilled from analyzed videos: imitate its structure, rhythm, hook patterns, and retention devices — never the source creator's identity. ${nameGate} Do not claim the analyzed creator's credentials or backstory (e.g. "做了20年医美") as the host's own unless the Channel Bible explicitly states it about THIS account. When identity is uncertain, write host-neutral first person with no name and no invented personal history.`;
+}
 
 export function buildScriptWritingPrompt(args: ScriptWritingArgs): string {
   const languageName = args.language === "zh" ? "Chinese (中文)" : "English";
@@ -107,7 +121,9 @@ Understand the niche, the core thesis, the content rules, and the source categor
 ${args.channelBible}
 
 ## Step 2: SOP Reference (Voice, Structure & Retention Mechanics)
-This SOP was generated from analysis of the channel's top-performing videos. It defines the host's actual voice, tone, hook formulas, beat-by-beat structure, and retention devices. This is your primary guide for HOW to write.
+This SOP was generated from analysis of top-performing videos. It defines voice, tone, hook formulas, beat-by-beat structure, and retention devices. This is your primary guide for HOW to write — structure and rhythm, not identity.
+
+${identityRule(args.channelName)}
 
 ${args.sopReference}
 
@@ -131,6 +147,7 @@ ${args.ideaText}
 ## Step 5: Write the Script
 
 Write a COMPLETE, ready-to-film script in **${languageName}**. Length is a HARD WINDOW: **${minWordCount}–${maxWordCount} ${lengthUnit}** (aim for ~${args.targetWordCount}). Do not fall below ${minWordCount} and do NOT exceed ${maxWordCount}.${isShort ? " This is a SHORT video — keep every section to 1-2 sentences, front-load the hook, and cut anything that doesn't earn its place. Do not pad to reach a higher count." : ` If you finish all sections early, expand the ITEM sections with more specific detail until you reach ~${args.targetWordCount} — then STOP. Never pad with filler, and do not exceed ${maxWordCount}.`}
+If the Idea or References carry their own pacing — per-second beat notes like 「开场（0-20秒）」, a draft script written for a different length, or an implied shorter/longer video — IGNORE that pacing entirely. The window above is the only length target; re-proportion the material to fill it.
 
 Follow the SOP structure precisely:
 1. Open with one of the hook formulas from the SOP, adapted to this topic.
@@ -226,6 +243,7 @@ type SectionExpandArgs = {
   keyPoints: string;
   targetCount: number;
   emotionalNote: string;
+  channelName?: string;
 };
 
 export function buildSectionExpandPrompt(args: SectionExpandArgs): string {
@@ -236,6 +254,8 @@ export function buildSectionExpandPrompt(args: SectionExpandArgs): string {
   return withZhStyle(`You are writing one section of a long-form YouTube script in **${languageName}**.
 
 ## SOP Reference (this is your VOICE MODEL — follow the tone, rhythm, and retention devices exactly)
+${identityRule(args.channelName)}
+
 ${args.sopReference}
 
 ## References (research material — extract facts and framing from here)

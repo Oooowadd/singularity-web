@@ -104,6 +104,9 @@ export type WriteScriptArgs = {
   targetWordCount: number;
   verbatimFacts?: string | null;
   factChecks?: CheckedFact[] | null;
+  // The account being written for — anchors speaker identity so the SOP's source
+  // creator (their name/credentials/sign-offs) never becomes the script's persona.
+  channelName?: string;
 };
 
 export type ScriptResult = {
@@ -262,6 +265,7 @@ async function writeScriptLong(
       keyPoints: keyPointsBlock,
       targetCount: section.target_count,
       emotionalNote: section.emotional_note,
+      channelName: args.channelName,
     });
 
     let sectionText = "";
@@ -348,7 +352,7 @@ async function expandToBudget(
   const ceiling = Math.round(args.targetWordCount * 1.5);
   let bestText = scriptText;
   let bestCount = wordCount;
-  for (let attempt = 0; attempt < 2 && bestCount < floor; attempt++) {
+  for (let attempt = 0; attempt < 3 && bestCount < floor; attempt++) {
     const expanded = await generateTextWithFallback({
       prompt: buildScriptExpandPrompt({
         scriptText: bestText,
@@ -362,12 +366,19 @@ async function expandToBudget(
     });
     const et = expanded.text.trim();
     const ec = countWords(et, args.language);
-    if (!et || expanded.finishReason === "length" || ec <= bestCount || ec > ceiling) {
+    // Overgrown expansions are still progress: keep them and let the compress gate trim
+    // back into the window (rejecting them outright stranded 0.74x drafts below the floor).
+    if (ec > ceiling && ec > bestCount) {
+      bestText = et;
+      bestCount = ec;
+      break;
+    }
+    if (!et || expanded.finishReason === "length" || ec <= bestCount) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[poet:expand] attempt ${attempt + 1} rejected (finish=${expanded.finishReason}, count=${ec}/${bestCount})`,
+        `[poet:expand] attempt ${attempt + 1} unusable (finish=${expanded.finishReason}, count=${ec}/${bestCount}); retrying`,
       );
-      break;
+      continue;
     }
     bestText = et;
     bestCount = ec;
@@ -410,11 +421,7 @@ export async function writeScript(
     tier: "fallback", // Pro-first: catches factual errors (e.g. wrong product year) a script asserts.
   });
   if (grounded && grounded !== result.scriptText) {
-    result = {
-      ...result,
-      scriptText: grounded,
-      wordCount: args.language === "zh" ? grounded.length : grounded.trim().split(/\s+/).length,
-    };
+    result = { ...result, scriptText: grounded, wordCount: countWords(grounded, args.language) };
   }
 
   // Humanize (zh short) runs on the writer's natural overshoot so its own colloquial trim
@@ -428,23 +435,66 @@ export async function writeScript(
       await humanizeChinese(result.scriptText, Math.round(args.targetWordCount * OVERSHOOT_LIMIT))
     ).trim();
     if (rewritten && rewritten !== result.scriptText) {
-      result = { ...result, scriptText: rewritten, wordCount: rewritten.length };
+      result = { ...result, scriptText: rewritten, wordCount: countWords(rewritten, args.language) };
     }
     humanized = true;
   }
 
-  result = await enforceBudget(result, args);
+  result = await enforceBudget(result, {
+    ...args,
+    referencesContext: formatReferencesBlock(args.references),
+  });
+
+  // Deterministic backstop for the identity prompt rule: the writer still occasionally signs
+  // off as the ANALYZED creator ("我是孟娇" — a name absorbed into the bible/SOP when the
+  // account was bootstrapped from someone else's videos). Only rewrites names that actually
+  // appear in the bible/SOP sources, so rhetorical 我是不是/I'm not sure never match.
+  const scrubbed = scrubForeignSelfIntro(result.scriptText, args);
+  if (scrubbed !== result.scriptText) {
+    result = { ...result, scriptText: scrubbed, wordCount: countWords(scrubbed, args.language) };
+  }
 
   return { ...result, humanized };
 }
 
+export function scrubForeignSelfIntro(scriptText: string, args: Pick<WriteScriptArgs, "channelName" | "bibleText" | "sopText" | "language">): string {
+  const channelName = (args.channelName ?? "").trim();
+  const sources = `${args.bibleText}\n${args.sopText}`;
+  const pattern =
+    args.language === "zh"
+      ? /我是([\p{Script=Han}A-Za-z][\p{Script=Han}A-Za-z0-9]{1,7})/gu
+      : /I(?:'m| am) ([A-Z][A-Za-z]{1,15})/g;
+  return scriptText.replace(pattern, (full, name: string) => {
+    if (!name || name === channelName) return full;
+    if (channelName && channelName.includes(name)) return full;
+    // Only a name that exists in the analyzed sources is a persona leak.
+    if (!sources.includes(name)) return full;
+    if (channelName) return args.language === "zh" ? `我是${channelName}` : full.replace(name, channelName);
+    return args.language === "zh" ? "我" : "I";
+  });
+}
+
+// Symmetric gate: compress past the ceiling, expand below the floor. The short path had no
+// undershoot handling at all (expand lived only inside writeScriptLong), so a 5-min zh script
+// could ship at 0.56x after the humanize trim.
 async function enforceBudget(
   result: ScriptResult & { path: "short" | "long" },
-  args: Pick<WriteScriptArgs, "language" | "targetWordCount">,
+  args: Pick<WriteScriptArgs, "language" | "targetWordCount"> & { referencesContext: string },
 ): Promise<ScriptResult & { path: "short" | "long" }> {
-  if (result.wordCount <= args.targetWordCount * OVERSHOOT_LIMIT) return result;
-  const squeezed = await compressToBudget(result.scriptText, result.wordCount, args);
-  return { ...result, ...squeezed };
+  if (result.wordCount > args.targetWordCount * OVERSHOOT_LIMIT) {
+    const squeezed = await compressToBudget(result.scriptText, result.wordCount, args);
+    return { ...result, ...squeezed };
+  }
+  if (result.wordCount < args.targetWordCount * 0.8) {
+    const grown = await expandToBudget(result.scriptText, result.wordCount, args);
+    // Expansion may overshoot past the ceiling (kept deliberately) — bounce through compress.
+    if (grown.wordCount > args.targetWordCount * OVERSHOOT_LIMIT) {
+      const squeezed = await compressToBudget(grown.scriptText, grown.wordCount, args);
+      return { ...result, ...squeezed };
+    }
+    return { ...result, ...grown };
+  }
+  return result;
 }
 
 export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptResult> {
@@ -464,6 +514,7 @@ export async function writeScriptShort(args: WriteScriptArgs): Promise<ScriptRes
     ideaText,
     language: args.language,
     targetWordCount: args.targetWordCount,
+    channelName: args.channelName,
   });
 
   const result = await generateText({
@@ -493,24 +544,24 @@ async function compressToBudget(
   const ceiling = Math.round(args.targetWordCount * OVERSHOOT_LIMIT);
   const floor = Math.round(args.targetWordCount * 0.5);
   const charsPerToken = args.language === "zh" ? 1.5 : 0.75;
-  // Cap output near the target so a model can't burn the whole budget on reasoning and
-  // return an empty/length-truncated result — the failure that let overshoot through (a
-  // zh 5-min draft stayed at 1.25x because every Pro+Flash compress came back empty).
-  const maxOutputTokens = Math.round((ceiling / charsPerToken) * 1.4) + 800;
+  // Escalating budget: a tight cap keeps the fast path cheap, but Flash intermittently
+  // reasons too and returns empty at finish=length — retries widen the budget so at least
+  // one attempt has room for reasoning + full output (all 3 tight attempts failed live).
+  const baseOutputTokens = Math.round((ceiling / charsPerToken) * 1.4) + 800;
   let bestText = scriptText;
   let bestCount = wordCount;
   for (let attempt = 0; attempt < 3 && bestCount > ceiling; attempt++) {
-    // Flash, not Pro: compression is mechanical and Pro's reasoning intermittently ate the
-    // budget. RETRY a bad attempt instead of giving up, so the 1.2x cap actually holds.
-    const compressed = await generateText({
-      model: llm("flash"),
+    // Pro-first with Flash fallback: Flash alone deadlocks on this prompt (endless thinking,
+    // empty text at any budget — observed live at ~14k tokens), while Pro completes once the
+    // escalated budget covers its reasoning. RETRY bad attempts so the 1.2x cap actually holds.
+    const compressed = await generateTextWithFallback({
       prompt: buildScriptCompressPrompt({
         scriptText: bestText,
         language: args.language,
         targetWordCount: args.targetWordCount,
       }),
       temperature: 0.3,
-      maxOutputTokens,
+      maxOutputTokens: Math.min(16384, baseOutputTokens + attempt * 6144),
       maxRetries: 2,
     });
     const ct = compressed.text.trim();

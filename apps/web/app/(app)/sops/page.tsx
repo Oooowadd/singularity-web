@@ -177,8 +177,16 @@ function SourceSection({
                 </Button>
                 <DeleteAccountSopsButton owner={group.owner} name={group.name} />
               </div>
+              {/* Channel-set SOPs (human/hottest/ai_reference) are generated together — the
+                  per-account 清空SOP is their delete. Only single-video SOPs, generated one
+                  at a time, keep an individual delete. */}
               {primarySops.map((sop) => (
-                <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} showDelete />
+                <SopCard
+                  key={sop.id}
+                  sop={sop}
+                  usedBy={usedByMap.get(sop.id) ?? 0}
+                  showDelete={sop.sopType === "single_video"}
+                />
               ))}
 
               {aiReferenceSops.length > 0 ? (
@@ -188,7 +196,7 @@ function SourceSection({
                   </summary>
                   <div className="mt-3 flex flex-col gap-4">
                     {aiReferenceSops.map((sop) => (
-                      <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} showDelete />
+                      <SopCard key={sop.id} sop={sop} usedBy={usedByMap.get(sop.id) ?? 0} />
                     ))}
                   </div>
                 </details>

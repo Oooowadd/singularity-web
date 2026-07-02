@@ -19,23 +19,18 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 
 type Props = {
-  id: string;
+  projectId: string;
   name: string;
-  // Set when the button lives on the account's own page — after delete the page is gone.
-  redirectTo?: string;
+  accountSlug: string;
 };
 
-export function DeleteChannelButton({ id, name, redirectTo }: Props) {
+export function DeleteProjectButton({ projectId, name, accountSlug }: Props) {
   const router = useRouter();
-  const utils = trpc.useUtils();
-  const deleteMutation = trpc.channels.delete.useMutation({
+  const deleteMutation = trpc.projects.delete.useMutation({
     onSuccess: () => {
-      utils.channels.list.invalidate();
-      toast.success(`已删除「${name}」`);
-      if (redirectTo) {
-        router.push(redirectTo);
-        router.refresh();
-      }
+      toast.success(`已删除项目「${name}」`);
+      router.push(`/accounts/${encodeURIComponent(accountSlug)}`);
+      router.refresh();
     },
     onError: (err) => {
       toast.error(err.message);
@@ -50,7 +45,7 @@ export function DeleteChannelButton({ id, name, redirectTo }: Props) {
             variant="ghost"
             size="icon"
             className="size-8 text-muted-foreground hover:text-destructive"
-            aria-label={`删除 ${name}`}
+            aria-label={`删除项目 ${name}`}
           />
         }
       >
@@ -58,16 +53,16 @@ export function DeleteChannelButton({ id, name, redirectTo }: Props) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>确认删除账号？</AlertDialogTitle>
+          <AlertDialogTitle>确认删除项目？</AlertDialogTitle>
           <AlertDialogDescription>
             <span className="font-mono">{name}</span>{" "}
-            及其所有项目、分析记录、SOP、圣经、选题、脚本将被永久删除，无法恢复。
+            及其选题、自定义选题、脚本将被永久删除，无法恢复。账号与 SOP 库不受影响。
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>取消</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => deleteMutation.mutate({ id })}
+            onClick={() => deleteMutation.mutate({ projectId })}
             disabled={deleteMutation.isPending}
           >
             删除

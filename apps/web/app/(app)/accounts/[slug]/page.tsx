@@ -15,6 +15,7 @@ import { stripMarkdown } from "@/lib/strip-markdown";
 import { ensureCurrentUser } from "@/lib/users";
 import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
 
+import { DeleteChannelButton } from "../_components/delete-channel-button";
 import { EditChannelSheet } from "../_components/edit-channel-sheet";
 import { NewProjectSheet } from "./projects/_components/new-project-sheet";
 import { BibleGenerateSheet } from "./projects/[project]/poet/_components/bible-generate-sheet";
@@ -94,6 +95,7 @@ export default async function AccountDetailPage({ params }: Props) {
         <div className="flex items-center gap-2">
           {canRefresh ? <RefreshOwnAccountButton channelId={channel.id} /> : null}
           <EditChannelSheet channel={channel} />
+          <DeleteChannelButton id={channel.id} name={channel.name} redirectTo="/" />
         </div>
       </header>
 

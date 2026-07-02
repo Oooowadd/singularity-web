@@ -15,3 +15,9 @@ export const updateProjectInput = z.object({
 });
 
 export type UpdateProjectInput = z.infer<typeof updateProjectInput>;
+
+export const deleteProjectInput = z.object({
+  projectId: z.string().uuid(),
+});
+
+export type DeleteProjectInput = z.infer<typeof deleteProjectInput>;

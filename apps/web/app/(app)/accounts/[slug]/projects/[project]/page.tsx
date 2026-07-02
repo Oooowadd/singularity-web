@@ -23,6 +23,7 @@ import { ensureCurrentUser } from "@/lib/users";
 
 import { BibleChip } from "@/components/bible-chip";
 import { ProjectCompetitorsCard } from "../../../_components/project-competitors-card";
+import { DeleteProjectButton } from "./_components/delete-project-button";
 import { EditProjectSheet } from "./_components/edit-project-sheet";
 import { ProjectSopRow, type CurrentSop } from "./_components/project-sop-row";
 
@@ -117,11 +118,20 @@ export default async function ProjectHubPage({ params }: Props) {
       <header className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-          <EditProjectSheet
-            projectId={project.id}
-            name={project.name}
-            description={project.description}
-          />
+          <div className="flex items-center gap-1">
+            <EditProjectSheet
+              projectId={project.id}
+              name={project.name}
+              description={project.description}
+            />
+            {project.id !== project.ownAccountId ? (
+              <DeleteProjectButton
+                projectId={project.id}
+                name={project.name}
+                accountSlug={channel.slug}
+              />
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Link href={`/accounts/${a}`} className="hover:text-foreground hover:underline">

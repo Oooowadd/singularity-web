@@ -253,6 +253,7 @@ export const generateScript = task({
           targetWordCount,
           verbatimFacts,
           factChecks,
+          channelName: channel.name,
         },
         {
           onOutlineDone: async (outline) => {

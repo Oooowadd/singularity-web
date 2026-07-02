@@ -61,7 +61,7 @@ import {
   startAnalysisInput,
 } from "./schemas/clerk";
 import { approveIdeaInput, dismissIdeaInput, startMonitorInput } from "./schemas/muse";
-import { createProjectInput, updateProjectInput } from "./schemas/projects";
+import { createProjectInput, deleteProjectInput, updateProjectInput } from "./schemas/projects";
 import {
   analyzeCustomTopicInput,
   createCustomTopicInput,
@@ -466,11 +466,24 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(deleteChannelInput)
       .mutation(async ({ ctx, input }) => {
-        const [deleted] = await db
-          .delete(channels)
-          .where(and(eq(channels.id, input.id), eq(channels.userId, ctx.user.id)))
-          .returning({ id: channels.id });
-        return { id: deleted?.id ?? null };
+        // Remove the whole account spine (projects + own_account twin + channel), mirroring
+        // convertToCompetitor's cleanup — deleting only `channels` strands the twins and the
+        // account keeps showing in the sidebar.
+        return await db.transaction(async (tx) => {
+          const [channel] = await tx
+            .select({ id: channels.id })
+            .from(channels)
+            .where(and(eq(channels.id, input.id), eq(channels.userId, ctx.user.id)))
+            .limit(1);
+          if (!channel) throw new TRPCError({ code: "NOT_FOUND" });
+          await tx.delete(projects).where(eq(projects.ownAccountId, channel.id));
+          await tx.delete(ownAccounts).where(eq(ownAccounts.id, channel.id));
+          const [deleted] = await tx
+            .delete(channels)
+            .where(eq(channels.id, channel.id))
+            .returning({ id: channels.id });
+          return { id: deleted?.id ?? null };
+        });
       }),
 
     verifyUrl: protectedProcedure
@@ -2209,6 +2222,31 @@ export const appRouter = router({
           .returning();
         if (!updated) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         return updated;
+      }),
+
+    // The default project shares its id with the account (the project spine) — deleting it
+    // would hollow out the account, so only extra projects can be removed.
+    delete: protectedProcedure
+      .input(deleteProjectInput)
+      .mutation(async ({ ctx, input }) => {
+        await assertProjectOwner(ctx.user.id, input.projectId);
+        const [proj] = await db
+          .select({ id: projects.id, ownAccountId: projects.ownAccountId })
+          .from(projects)
+          .where(eq(projects.id, input.projectId))
+          .limit(1);
+        if (!proj) throw new TRPCError({ code: "NOT_FOUND" });
+        if (proj.id === proj.ownAccountId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "默认项目不能删除，请直接删除账号",
+          });
+        }
+        const [deleted] = await db
+          .delete(projects)
+          .where(eq(projects.id, input.projectId))
+          .returning({ id: projects.id });
+        return { id: deleted?.id ?? null };
       }),
 
     // Picker source for "在项目中选用": every project the user owns, across accounts.
