@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -11,11 +11,13 @@ import {
   allowedEmails,
   checkMinutes,
   codeRedemptions,
+  currentPeriod,
   grantMinutes,
   loginEvents,
   pipelineRuns,
   quotaAdjustments,
   redemptionCodes,
+  usageCounters,
   usageEvents,
   users,
 } from "@singularity/db";
@@ -53,7 +55,7 @@ export const accessRouter = router({
   submit: authedProcedure
     .input(
       z.object({
-        message: z.string().trim().min(5, "请简单介绍一下使用场景").max(2000),
+        message: z.string().trim().min(2, "请简单介绍一下使用场景").max(2000),
         contact: z.string().trim().max(200).optional(),
       }),
     )
@@ -238,9 +240,19 @@ export const adminRouter = router({
         role: users.role,
         plan: users.plan,
         createdAt: users.createdAt,
+        lastSeenAt: users.lastSeenAt,
+        minutesUsed: sql<number>`coalesce(${usageCounters.minutesUsed}, 0)`,
+        bonusMinutes: sql<number>`coalesce(${usageCounters.bonusMinutes}, 0)`,
       })
       .from(users)
-      .orderBy(desc(users.createdAt));
+      .leftJoin(
+        usageCounters,
+        and(eq(usageCounters.userId, users.id), eq(usageCounters.period, currentPeriod())),
+      )
+      .orderBy(
+        sql`case when ${users.accessStatus} = 'pending' then 0 else 1 end`,
+        desc(users.createdAt),
+      );
   }),
 
   createCode: adminProcedure

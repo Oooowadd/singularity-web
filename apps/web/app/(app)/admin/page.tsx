@@ -14,7 +14,7 @@ export default async function AdminPage() {
         <h1 className="text-xl font-semibold">管理后台</h1>
         <p className="text-sm text-muted-foreground">内测准入审批与用户管理</p>
       </div>
-      <AdminPanel />
+      <AdminPanel selfId={user.id} />
     </div>
   );
 }

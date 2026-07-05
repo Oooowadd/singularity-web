@@ -25,6 +25,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -177,7 +184,7 @@ function UserDetailSheet({
   );
 }
 
-export function AdminPanel() {
+export function AdminPanel({ selfId }: { selfId: string }) {
   const utils = trpc.useUtils();
   const requests = trpc.admin.listRequests.useQuery();
   const allowed = trpc.admin.listAllowedEmails.useQuery();
@@ -328,6 +335,11 @@ export function AdminPanel() {
             <Input
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && inviteEmail.includes("@") && !addAllowed.isPending) {
+                  addAllowed.mutate({ email: inviteEmail });
+                }
+              }}
               placeholder="someone@example.com"
               className="max-w-sm"
             />
@@ -406,7 +418,19 @@ export function AdminPanel() {
                   const exhausted = c.usedCount >= c.maxUses;
                   return (
                     <TableRow key={c.id}>
-                      <TableCell className="font-mono text-xs">{c.code}</TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          className="font-mono text-xs hover:underline"
+                          title="点击复制"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(c.code);
+                            toast.success(`已复制 ${c.code}`);
+                          }}
+                        >
+                          {c.code}
+                        </button>
+                      </TableCell>
                       <TableCell className="text-xs">{c.grant?.minutes ?? 0} 分钟</TableCell>
                       <TableCell className="font-mono text-xs">
                         {c.usedCount}/{c.maxUses}
@@ -444,7 +468,7 @@ export function AdminPanel() {
       <Card>
         <CardHeader>
           <CardTitle>用户</CardTitle>
-          <CardDescription>点击「详情」查看用量、登录记录与申请信息</CardDescription>
+          <CardDescription>状态与角色可直接切换；点击「详情」查看用量、登录记录与申请信息</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -453,91 +477,117 @@ export function AdminPanel() {
                 <TableHead>用户</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>角色</TableHead>
-                <TableHead>注册时间</TableHead>
+                <TableHead className="text-right">本月时长</TableHead>
+                <TableHead>最近登录</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(usersQuery.data ?? []).map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span>{u.displayName ?? "—"}</span>
-                      <span className="text-xs text-muted-foreground">{u.email}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{statusBadge(u.accessStatus)}</TableCell>
-                  <TableCell className="text-sm">{u.role === "admin" ? "管理员" : "成员"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(u.createdAt).toLocaleDateString("zh-CN")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => setDetailUserId(u.id)}>
-                        详情
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={setRole.isPending}
-                        onClick={() =>
-                          setRole.mutate({
-                            userId: u.id,
-                            role: u.role === "admin" ? "member" : "admin",
-                          })
-                        }
-                      >
-                        {u.role === "admin" ? "取消管理员" : "设为管理员"}
-                      </Button>
-                      {u.accessStatus !== "approved" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={setAccess.isPending}
-                          onClick={() => setAccess.mutate({ userId: u.id, accessStatus: "approved" })}
-                        >
-                          放行
-                        </Button>
-                      ) : null}
-                      {u.accessStatus !== "blocked" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={setAccess.isPending}
-                          onClick={() => setAccess.mutate({ userId: u.id, accessStatus: "blocked" })}
-                        >
-                          停用
-                        </Button>
-                      ) : null}
-                      <AlertDialog>
-                        <AlertDialogTrigger
-                          render={
-                            <Button size="sm" variant="destructive" disabled={deleteUser.isPending} />
+              {(usersQuery.data ?? []).map((u) => {
+                const isSelf = u.id === selfId;
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>
+                          {u.displayName ?? "—"}
+                          {isSelf ? (
+                            <span className="ml-1 text-xs text-muted-foreground">(我)</span>
+                          ) : null}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{u.email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {isSelf ? (
+                        statusBadge(u.accessStatus)
+                      ) : (
+                        <Select
+                          value={u.accessStatus}
+                          onValueChange={(v) =>
+                            setAccess.mutate({
+                              userId: u.id,
+                              accessStatus: v as "pending" | "approved" | "blocked",
+                            })
                           }
                         >
-                          删除
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>删除用户 {u.email}？</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              将永久删除该用户及其全部账号、项目、分析、SOP、圣经、选题与脚本，不可恢复。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteUser.mutate({ userId: u.id })}
+                          <SelectTrigger size="sm" className="w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="approved">已通过</SelectItem>
+                            <SelectItem value="pending">待审核</SelectItem>
+                            <SelectItem value="blocked">已停用</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isSelf ? (
+                        <span className="text-sm">管理员</span>
+                      ) : (
+                        <Select
+                          value={u.role}
+                          onValueChange={(v) =>
+                            setRole.mutate({ userId: u.id, role: v as "member" | "admin" })
+                          }
+                        >
+                          <SelectTrigger size="sm" className="w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="member">成员</SelectItem>
+                            <SelectItem value="admin">管理员</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {Number(u.minutesUsed)}
+                      {Number(u.bonusMinutes) > 0 ? ` (+${Number(u.bonusMinutes)})` : ""} 分
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleString("zh-CN") : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setDetailUserId(u.id)}>
+                          详情
+                        </Button>
+                        {!isSelf ? (
+                          <AlertDialog>
+                            <AlertDialogTrigger
+                              render={
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={deleteUser.isPending}
+                                />
+                              }
                             >
-                              确认删除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                              删除
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>删除用户 {u.email}？</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  将永久删除该用户及其全部账号、项目、分析、SOP、圣经、选题与脚本，不可恢复。
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteUser.mutate({ userId: u.id })}>
+                                  确认删除
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

@@ -90,14 +90,19 @@ export function RequestAccessForm({ email, blocked }: { email: string; blocked: 
               />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex-col items-stretch gap-2">
             <Button
               onClick={() => submit.mutate({ message, contact: contact || undefined })}
-              disabled={submit.isPending || message.trim().length < 5}
+              disabled={submit.isPending || message.trim().length === 0}
               className="w-full"
             >
               {submit.isPending ? "提交中…" : "提交申请"}
             </Button>
+            {message.trim().length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground">
+                填写使用场景后即可提交
+              </p>
+            ) : null}
           </CardFooter>
         </>
       )}
