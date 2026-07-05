@@ -1,5 +1,7 @@
 import { createDeepSeek } from "@ai-sdk/deepseek";
-import { generateText } from "ai";
+import { generateText, wrapLanguageModel } from "ai";
+
+import { usageMiddleware } from "../metering";
 
 // Lazy-init: Trigger.dev scans modules at deploy time; defer env throw to first call.
 let _deepseek: ReturnType<typeof createDeepSeek> | null = null;
@@ -17,7 +19,11 @@ function getDeepseek() {
 export type LlmTier = "flash" | "pro";
 
 export function llm(tier: LlmTier = "flash") {
-  return getDeepseek()(tier === "pro" ? "deepseek-v4-pro" : "deepseek-v4-flash");
+  const modelId = tier === "pro" ? "deepseek-v4-pro" : "deepseek-v4-flash";
+  return wrapLanguageModel({
+    model: getDeepseek()(modelId),
+    middleware: usageMiddleware("llm", "deepseek", modelId),
+  });
 }
 
 // DeepSeek Pro is a reasoning model — on heavy prompts it can burn the entire

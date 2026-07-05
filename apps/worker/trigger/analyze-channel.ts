@@ -12,8 +12,9 @@ import {
   loadProxyPool,
   pipelineRuns,
   projectSops,
-  withRunDb,
 } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import { llm } from "@singularity/integrations/clients/llm";
 import { summarizeVideoForSop } from "@singularity/domain/services/clerk-map";
 import { redactUngrounded } from "@singularity/domain/services/grounding";
@@ -65,6 +66,7 @@ type Payload = {
   channelId?: string;
   competitorAccountId?: string;
   runId: string;
+  userId?: string;
   limit?: number;
   language?: "en" | "zh";
   mode?: "overwrite" | "incremental";
@@ -463,7 +465,7 @@ export const analyzeChannel = task({
     const limit = payload.limit ?? 5;
     const language = payload.language ?? "en";
 
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "clerk-analyze-channel" }, async (db) => {
 
     // Activity log + per-video tracks for the live progress panel. metadata.append
     // pushes to an array realtime; videoTracks is keyed by id so concurrent videos

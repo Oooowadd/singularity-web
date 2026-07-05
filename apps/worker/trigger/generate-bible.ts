@@ -2,7 +2,9 @@ import { logger, metadata, task } from "@trigger.dev/sdk";
 import { and, desc, eq } from "drizzle-orm";
 import { generateText } from "ai";
 
-import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects, withRunDb } from "@singularity/db";
+import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import { generateChannelBible } from "@singularity/domain/services/poet/bible";
 import { llm } from "@singularity/integrations/clients/llm";
 import { safeText } from "@singularity/integrations/utils";
@@ -10,6 +12,7 @@ import { safeText } from "@singularity/integrations/utils";
 type Payload = {
   channelId: string;
   runId: string;
+  userId?: string;
   ideaText: string;
   name?: string;
   language?: "en" | "zh";
@@ -21,7 +24,7 @@ export const generateBible = task({
   maxDuration: 600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "poet-generate-bible" }, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)

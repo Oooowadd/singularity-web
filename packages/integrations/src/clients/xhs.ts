@@ -1,6 +1,8 @@
 // TikHub XHS client. All routes use the app_v2 series — the legacy /xiaohongshu/web/*
 // and /app/* prefixes are deprecated (scheduled for removal per the 2026-06 TikHub notice).
 
+import { recordUsage } from "../metering";
+
 const BASE = "https://api.tikhub.io";
 
 const XHS_USER_ID_RE = /^[a-f0-9]{24}$/i;
@@ -46,6 +48,7 @@ async function get<T>(
         const body = await res.text();
         throw new Error(`TikHub ${endpoint} HTTP ${res.status}: ${body.slice(0, 200)}`);
       }
+      recordUsage({ resourceType: "scrape", provider: "tikhub", model: endpoint, apiCalls: 1 });
       return (await res.json()) as T;
     } catch (err) {
       lastErr = err as Error;

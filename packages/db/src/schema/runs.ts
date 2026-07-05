@@ -5,6 +5,7 @@ import { channels } from "./channels";
 import { competitorAccounts } from "./competitor";
 import { ownAccounts } from "./own-account";
 import { projects } from "./project";
+import { users } from "./users";
 
 export const agentEnum = pgEnum("agent", ["clerk", "muse", "poet"]);
 export const runStatusEnum = pgEnum("run_status", ["pending", "running", "done", "failed"]);
@@ -19,6 +20,7 @@ export const pipelineRuns = pgTable(
     competitorAccountId: uuid("competitor_account_id").references(() => competitorAccounts.id, { onDelete: "cascade" }),
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
     ownAccountId: uuid("own_account_id").references(() => ownAccounts.id, { onDelete: "set null" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     agent: agentEnum("agent").notNull(),
     command: text("command").notNull(),
     status: runStatusEnum("status").notNull().default("pending"),

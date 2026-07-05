@@ -7,8 +7,9 @@ import {
   clerkVideos,
   competitorAccounts,
   pipelineRuns,
-  withRunDb,
 } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import { redactUngrounded } from "@singularity/domain/services/grounding";
 import { llm } from "@singularity/integrations/clients/llm";
 import { safeText } from "@singularity/integrations/utils";
@@ -17,6 +18,7 @@ import { generateText } from "ai";
 
 type Payload = {
   runId: string;
+  userId?: string;
   // An already-analyzed clerk_videos row id — the SOP is built from its cached
   // transcript + analysis, so no re-fetch/ASR/vision and the channel SOPs are untouched.
   videoId: string;
@@ -45,7 +47,7 @@ export const analyzeSingleVideo = task({
   maxDuration: 600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "clerk-analyze-single-video" }, async (db) => {
       await db
         .update(pipelineRuns)
         .set({ status: "running", startedAt: new Date() })

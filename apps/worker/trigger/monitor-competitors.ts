@@ -11,8 +11,9 @@ import {
   pipelineRuns,
   projectCompetitors,
   resolveActiveBible,
-  withRunDb,
 } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import {
   likelyChineseText,
   renderTranscriptWithTimestamps,
@@ -43,6 +44,7 @@ type Payload = {
   channelId: string;
   projectId?: string;
   runId: string;
+  userId?: string;
   maxVideosPerCompetitor?: number;
   numIdeasPerVideo?: number;
   language?: "en" | "zh";
@@ -71,7 +73,7 @@ export const monitorCompetitors = task({
     const numIdeasPerVideo = payload.numIdeasPerVideo ?? DEFAULT_NUM_IDEAS;
     const language = payload.language ?? "zh";
 
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "muse-monitor-competitors" }, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)

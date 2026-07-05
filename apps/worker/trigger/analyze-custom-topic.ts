@@ -10,8 +10,9 @@ import {
   resolveActiveBible,
   resolvePrimarySop,
   type CustomTopicReference,
-  withRunDb,
 } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import {
   fetchReferences,
   type FetchedReference,
@@ -23,6 +24,7 @@ type Payload = {
   channelId: string;
   projectId?: string;
   runId: string;
+  userId?: string;
   topicId: string;
   language?: "en" | "zh";
 };
@@ -33,7 +35,7 @@ export const analyzeCustomTopic = task({
   maxDuration: 1800,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "poet-analyze-custom-topic" }, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)

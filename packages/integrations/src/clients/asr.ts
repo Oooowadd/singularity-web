@@ -5,6 +5,7 @@ import { basename, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
+import { recordUsage } from "../metering";
 import { classifyError, ProxyPool, type ProxySession } from "../proxy";
 import {
   downloadAudioWithYtdlp,
@@ -555,7 +556,15 @@ export async function transcribeFromStreams(
       );
       const mime = (stream.mimeType ?? "audio/mp4").split(";")[0] ?? "audio/mp4";
       const result = await transcribeAtPath(tempPath, mime, actualSize, opts, true);
-      if (result) return result;
+      if (result) {
+        recordUsage({
+          resourceType: "asr",
+          provider: result.provider,
+          audioSeconds: result.durationSec ?? durationSec ?? 0,
+          apiCalls: 1,
+        });
+        return result;
+      }
       logger?.warn(
         `${tag}: stream ${s + 1}/${sorted.length}${stream.label ? ` (${stream.label})` : ""} yielded no transcript${s + 1 < sorted.length ? ", trying next" : ""}`,
       );
@@ -686,6 +695,14 @@ export async function transcribeYoutubeVideo(
     try {
       const { result, bytes } = await transcribeYoutubeOnce(videoId, session, opts);
       pool.reportOk(session, bytes);
+      if (result) {
+        recordUsage({
+          resourceType: "asr",
+          provider: result.provider,
+          audioSeconds: result.durationSec ?? opts.durationSec ?? 0,
+          apiCalls: 1,
+        });
+      }
       return result;
     } catch (err) {
       lastErr = err as Error;

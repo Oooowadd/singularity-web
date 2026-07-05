@@ -1,7 +1,8 @@
 // Thumbnail vision via Claude Sonnet — DeepSeek V4 is text-only.
 
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { generateText } from "ai";
+import { generateText, wrapLanguageModel } from "ai";
+import { usageMiddleware } from "../metering";
 import { parseLlmJson } from "../utils";
 
 let _anthropic: ReturnType<typeof createAnthropic> | null = null;
@@ -124,7 +125,10 @@ export async function analyzeImageStack(
         ? ZH_STACK_INSTRUCTION
         : EN_STACK_INSTRUCTION;
     const result = await generateText({
-      model: getAnthropic()("claude-sonnet-4-6"),
+      model: wrapLanguageModel({
+        model: getAnthropic()("claude-sonnet-4-6"),
+        middleware: usageMiddleware("vision", "anthropic", "claude-sonnet-4-6"),
+      }),
       // Chinese 1 char ≈ 1.5-2 tokens; 2 fields × 4 sentences × ~80 chars
       // each easily hits 1000-2000 tokens per field. 2.5× headroom prevents
       // mid-JSON truncation that defeats parseLenient.

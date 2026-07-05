@@ -14,8 +14,9 @@ import {
   resolvePrimarySop,
   type CheckedFact,
   type CustomTopicReference,
-  withRunDb,
 } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import { factCheckVerbatim } from "@singularity/domain/services/poet/fact-check";
 import {
   formatVerbatimFacts,
@@ -29,6 +30,7 @@ type Payload = {
   channelId: string;
   projectId?: string;
   runId: string;
+  userId?: string;
   // Exactly one of these two must be set.
   ideaId?: string;
   customTopicId?: string;
@@ -42,7 +44,7 @@ export const generateScript = task({
   maxDuration: 3600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "poet-generate-script" }, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)

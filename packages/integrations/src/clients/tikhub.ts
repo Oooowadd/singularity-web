@@ -1,4 +1,6 @@
 // TikHub rate limit: 1 req/sec per route — caller paces across same endpoint.
+import { recordUsage } from "../metering";
+
 const BASE = "https://api.tikhub.io";
 
 function key(): string {
@@ -32,6 +34,7 @@ async function get<T>(endpoint: string, params: Record<string, string> = {}): Pr
       if (json.code && json.code !== 200) {
         throw new Error(`TikHub ${endpoint} code ${json.code}: ${JSON.stringify(json).slice(0, 200)}`);
       }
+      recordUsage({ resourceType: "scrape", provider: "tikhub", model: endpoint, apiCalls: 1 });
       return (json.data ?? json) as T;
     } catch (err) {
       lastErr = err as Error;

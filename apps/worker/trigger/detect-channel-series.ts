@@ -9,8 +9,9 @@ import {
   loadProxyPool,
   pipelineRuns,
   type SeriesVideoRef,
-  withRunDb,
 } from "@singularity/db";
+
+import { withMeteredRunDb } from "../lib/metered-run";
 import { llm } from "@singularity/integrations/clients/llm";
 import {
   buildSeriesDetectPrompt,
@@ -23,6 +24,7 @@ import { parseLlmJson } from "@singularity/integrations/utils";
 type Payload = {
   channelId: string;
   runId: string;
+  userId?: string;
   // Default 100 — yt-dlp flat-playlist handles it cheaply.
   videoCount?: number;
   language?: "en" | "zh";
@@ -36,7 +38,7 @@ export const detectChannelSeries = task({
     const videoCount = payload.videoCount ?? 100;
     const language = payload.language ?? "zh";
 
-    return withRunDb(payload.runId, async (db) => {
+    return withMeteredRunDb({ runId: payload.runId, userId: payload.userId, feature: "clerk-detect-channel-series" }, async (db) => {
       const [channel] = await db
         .select()
         .from(channels)

@@ -4,7 +4,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { accessRequests, allowedEmails, users } from "@singularity/db";
+import { accessRequests, allowedEmails, usageEvents, users } from "@singularity/db";
 
 import { db } from "@/lib/db";
 import { sendApprovalEmail } from "@/lib/email";
@@ -165,6 +165,24 @@ export const adminRouter = router({
       })
       .from(users)
       .orderBy(desc(users.createdAt));
+  }),
+
+  usageSummary: adminProcedure.query(async () => {
+    const month = sql<string>`to_char(${usageEvents.createdAt} at time zone 'Asia/Shanghai', 'YYYY-MM')`;
+    return db
+      .select({
+        userId: usageEvents.userId,
+        email: users.email,
+        month,
+        llmTokens: sql<number>`coalesce(sum(${usageEvents.inputTokens}), 0) + coalesce(sum(${usageEvents.outputTokens}), 0)`,
+        asrSeconds: sql<number>`coalesce(sum(${usageEvents.audioSeconds}), 0)`,
+        scrapeCalls: sql<number>`coalesce(sum(${usageEvents.apiCalls}) filter (where ${usageEvents.resourceType} = 'scrape'), 0)`,
+        costUsd: sql<number>`coalesce(sum(${usageEvents.estimatedCostUsd}), 0)`,
+      })
+      .from(usageEvents)
+      .innerJoin(users, eq(users.id, usageEvents.userId))
+      .groupBy(usageEvents.userId, users.email, month)
+      .orderBy(desc(month), desc(sql`sum(${usageEvents.estimatedCostUsd})`));
   }),
 
   setUserAccess: adminProcedure

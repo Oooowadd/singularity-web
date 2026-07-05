@@ -174,6 +174,7 @@ async function stageAndTriggerRun(args: {
   config: Record<string, unknown>;
   payload: Record<string, unknown>;
   projectId?: string;
+  userId: string;
 }) {
   const [run] = await db
     .insert(pipelineRuns)
@@ -184,6 +185,7 @@ async function stageAndTriggerRun(args: {
       command: args.taskId,
       status: "pending",
       configJson: args.config,
+      userId: args.userId,
     })
     .returning();
   if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -191,6 +193,7 @@ async function stageAndTriggerRun(args: {
     ...args.owner,
     ...(args.projectId ? { projectId: args.projectId } : {}),
     runId: run.id,
+    userId: args.userId,
     ...args.payload,
   });
   await db
@@ -1222,6 +1225,7 @@ export const appRouter = router({
           recencyMonths: input.recencyMonths,
         };
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner,
           agent: "clerk",
           taskId: "clerk-analyze-channel",
@@ -1268,6 +1272,7 @@ export const appRouter = router({
 
         const config = { videoId: video.id, language: input.language };
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner,
           agent: "clerk",
           taskId: "clerk-analyze-single-video",
@@ -1483,6 +1488,7 @@ export const appRouter = router({
         await assertNoActiveRun(channel.id, "clerk");
 
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner: { channelId: channel.id },
           agent: "clerk",
           taskId: "clerk-detect-channel-series",
@@ -1564,6 +1570,7 @@ export const appRouter = router({
         await assertNoActiveRun(channel.id, "muse");
 
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner: { channelId: channel.id },
           projectId: input.projectId,
           agent: "muse",
@@ -1733,6 +1740,7 @@ export const appRouter = router({
         await assertNoActiveRun(channel.id, "poet");
 
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner: { channelId: channel.id },
           agent: "poet",
           taskId: "poet-generate-bible",
@@ -1844,6 +1852,7 @@ export const appRouter = router({
         await assertNoActiveRun(channel.id, "poet");
 
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner: { channelId: channel.id },
           projectId: input.projectId,
           agent: "poet",
@@ -2043,6 +2052,7 @@ export const appRouter = router({
         await assertNoActiveRun(channel.id, "poet");
 
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner: { channelId: channel.id },
           projectId: input.projectId,
           agent: "poet",
@@ -2152,6 +2162,7 @@ export const appRouter = router({
         await assertNoActiveRun(channel.id, "poet");
 
         return stageAndTriggerRun({
+          userId: ctx.user.id,
           owner: { channelId: channel.id },
           projectId: input.projectId,
           agent: "poet",

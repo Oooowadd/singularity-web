@@ -3,8 +3,10 @@ import "server-only";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
-import type { User } from "@singularity/db";
+import { createUsageSink, type User } from "@singularity/db";
+import { runWithUsage } from "@singularity/integrations/metering";
 
+import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
 export type Context = {
@@ -36,11 +38,14 @@ export const authedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
+const usageSink = createUsageSink(db);
+
 export const protectedProcedure = authedProcedure.use(({ ctx, next }) => {
   if (ctx.user.accessStatus !== "approved") {
     throw new TRPCError({ code: "FORBIDDEN", message: "内测资格待审批" });
   }
-  return next();
+  // Attribute in-request client calls (TikHub verify/refresh etc.) to the user.
+  return runWithUsage({ userId: ctx.user.id, feature: "web", sink: usageSink }, async () => next());
 });
 
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {

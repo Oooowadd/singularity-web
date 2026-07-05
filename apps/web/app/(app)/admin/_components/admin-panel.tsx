@@ -41,6 +41,7 @@ export function AdminPanel() {
   const requests = trpc.admin.listRequests.useQuery();
   const allowed = trpc.admin.listAllowedEmails.useQuery();
   const usersQuery = trpc.admin.listUsers.useQuery();
+  const usage = trpc.admin.usageSummary.useQuery();
 
   const decide = trpc.admin.decideRequest.useMutation({
     onSuccess: (res, vars) => {
@@ -243,6 +244,53 @@ export function AdminPanel() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>用量</CardTitle>
+          <CardDescription>按用户按月的资源消耗与估算成本（内部遥测）</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {usage.data?.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>月份</TableHead>
+                  <TableHead>用户</TableHead>
+                  <TableHead className="text-right">LLM tokens</TableHead>
+                  <TableHead className="text-right">ASR 分钟</TableHead>
+                  <TableHead className="text-right">抓取调用</TableHead>
+                  <TableHead className="text-right">估算成本</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usage.data.map((row) => (
+                  <TableRow key={`${row.month}-${row.userId}`}>
+                    <TableCell className="font-mono text-xs">{row.month}</TableCell>
+                    <TableCell className="text-sm">{row.email}</TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {Number(row.llmTokens).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {(Number(row.asrSeconds) / 60).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {Number(row.scrapeCalls).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      ${Number(row.costUsd).toFixed(3)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {usage.isLoading ? "加载中…" : "暂无用量数据（新任务运行后开始记录）"}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
