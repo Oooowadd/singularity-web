@@ -8,9 +8,12 @@ import { z } from "zod";
 import {
   channels,
   channelSeries,
+  checkAccountQuota,
+  checkQuota,
   clerkSops,
   clerkVideos,
   competitorAccounts,
+  consumeQuota,
   museIdeas,
   ownAccounts,
   pipelineRuns,
@@ -148,9 +151,10 @@ async function triggerOrFailRun(
   runId: string,
   taskId: string,
   payload: Record<string, unknown>,
+  options?: { concurrencyKey?: string },
 ) {
   try {
-    return await tasks.trigger(taskId, payload);
+    return await tasks.trigger(taskId, payload, options);
   } catch (err) {
     await db
       .update(pipelineRuns)
@@ -161,6 +165,37 @@ async function triggerOrFailRun(
       })
       .where(eq(pipelineRuns.id, runId));
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "无法启动后台任务，请稍后重试" });
+  }
+}
+
+// 生成数: consumed 1-per-run at trigger. 解析数: threshold-checked here, actuals
+// settled by the worker per processed video (overshoot bounded by concurrency cap).
+const GENERATION_TASKS = new Set([
+  "poet-generate-script",
+  "poet-generate-bible",
+  "poet-analyze-custom-topic",
+  "clerk-analyze-single-video",
+]);
+const CONTENT_TASKS = new Set(["clerk-analyze-channel", "muse-monitor-competitors"]);
+
+async function assertRunQuota(userId: string, taskId: string) {
+  if (GENERATION_TASKS.has(taskId)) {
+    const q = await checkQuota(db, { userId, unit: "generations" });
+    if (!q.allowed) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `本月生成额度已用完（${q.base} 次/月${q.bonusRemaining > 0 ? ` + 奖励 ${q.bonusRemaining}` : ""}）。可在「用量与额度」页兑换额度码，或联系我们。`,
+      });
+    }
+    await consumeQuota(db, { userId, unit: "generations", amount: 1 });
+  } else if (CONTENT_TASKS.has(taskId)) {
+    const q = await checkQuota(db, { userId, unit: "contents" });
+    if (!q.allowed) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `本月解析额度已用完（${q.base} 条/月，超过 10 分钟的长视频按每 10 分钟计 1 条）。可在「用量与额度」页兑换额度码，或联系我们。`,
+      });
+    }
   }
 }
 
@@ -176,6 +211,7 @@ async function stageAndTriggerRun(args: {
   projectId?: string;
   userId: string;
 }) {
+  await assertRunQuota(args.userId, args.taskId);
   const [run] = await db
     .insert(pipelineRuns)
     .values({
@@ -189,13 +225,18 @@ async function stageAndTriggerRun(args: {
     })
     .returning();
   if (!run) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-  const handle = await triggerOrFailRun(run.id, args.taskId, {
-    ...args.owner,
-    ...(args.projectId ? { projectId: args.projectId } : {}),
-    runId: run.id,
-    userId: args.userId,
-    ...args.payload,
-  });
+  const handle = await triggerOrFailRun(
+    run.id,
+    args.taskId,
+    {
+      ...args.owner,
+      ...(args.projectId ? { projectId: args.projectId } : {}),
+      runId: run.id,
+      userId: args.userId,
+      ...args.payload,
+    },
+    { concurrencyKey: args.userId },
+  );
   await db
     .update(pipelineRuns)
     .set({ configJson: { ...args.config, triggerRunId: handle.id } })
@@ -277,6 +318,13 @@ async function upsertCompetitor(
     )
     .limit(1);
   if (live) return { status: "duplicate", id: live.id };
+  const accountQuota = await checkAccountQuota(db, { userId });
+  if (!accountQuota.allowed) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `账号额度已用完（自有+对标共 ${accountQuota.base + accountQuota.bonusRemaining} 个）。删除不用的账号可释放名额，或在「用量与额度」页兑换额度码。`,
+    });
+  }
   const [dead] = await db
     .select({ id: competitorAccounts.id })
     .from(competitorAccounts)
@@ -431,6 +479,13 @@ export const appRouter = router({
     create: protectedProcedure
       .input(createChannelInput)
       .mutation(async ({ ctx, input }) => {
+        const accountQuota = await checkAccountQuota(db, { userId: ctx.user.id });
+        if (!accountQuota.allowed) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `账号额度已用完（自有+对标共 ${accountQuota.base + accountQuota.bonusRemaining} 个）。删除不用的账号可释放名额，或在「用量与额度」页兑换额度码。`,
+          });
+        }
         const slug = await uniqueSlug(ctx.user.id, slugify(input.name));
         const [created] = await db
           .insert(channels)

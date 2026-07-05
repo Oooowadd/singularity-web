@@ -4,6 +4,8 @@ import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import {
   channels,
   competitorAccounts,
+  consumeQuota,
+  contentUnits,
   flushProxyPool,
   loadProxyPool,
   museIdeas,
@@ -14,6 +16,7 @@ import {
 } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import {
   likelyChineseText,
   renderTranscriptWithTimestamps,
@@ -62,10 +65,9 @@ type Payload = {
 
 export const monitorCompetitors = task({
   id: "muse-monitor-competitors",
+  queue: userRunsQueue,
   // Serial per-video pipeline (I/O + LLM bound); one audio buffer at a time fits medium-1x's 2GB.
   machine: { preset: "medium-1x" },
-  // Cap concurrent runs so a burst of users can't exhaust the Trigger/Groq budget.
-  queue: { concurrencyLimit: 6 },
   // 4h headroom for 10-20 videos with YouTube CDN throttle (Trigger.dev Hobby).
   maxDuration: 14400,
   run: async (payload: Payload) => {
@@ -638,6 +640,16 @@ export const monitorCompetitors = task({
           `Pool flushed: ${flushed.updatedSessions} sessions touched, ${flushed.newlyDisabled} newly disabled. ` +
             `alive=${stats.alive}/${stats.total} bytes=${JSON.stringify(stats.bytesByProvider)} ok=${JSON.stringify(stats.okByProvider)} err=${JSON.stringify(stats.errByProvider)}`,
         );
+      }
+
+      // Settle 解析额度 from the videos this run actually stamped (duration-weighted).
+      if (payload.userId) {
+        const processed = await db
+          .select({ durationSec: museMonitorVideos.durationSec })
+          .from(museMonitorVideos)
+          .where(eq(museMonitorVideos.runId, payload.runId));
+        const units = processed.reduce((s, v) => s + contentUnits(v.durationSec), 0);
+        await consumeQuota(db, { userId: payload.userId, unit: "contents", amount: units });
       }
 
       await db

@@ -17,6 +17,7 @@ import {
 } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import { factCheckVerbatim } from "@singularity/domain/services/poet/fact-check";
 import {
   formatVerbatimFacts,
@@ -41,6 +42,7 @@ type Payload = {
 
 export const generateScript = task({
   id: "poet-generate-script",
+  queue: userRunsQueue,
   maxDuration: 3600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";

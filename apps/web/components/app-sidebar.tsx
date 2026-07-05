@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, Plus, ScanSearch, ShieldCheck, Tv } from "lucide-react";
+import { ChevronDown, Gauge, Plus, ScanSearch, ShieldCheck, Tv } from "lucide-react";
 
 import { NewAccountSheet } from "@/app/(app)/accounts/_components/new-account-sheet";
 import type { SidebarAccount } from "@/lib/sidebar-data";
@@ -20,7 +20,10 @@ import {
 } from "@/components/ui/sidebar";
 
 // SOP 库 is now a tab inside Clerk (clerk-tabs.tsx), not its own nav slot.
-const ANALYSIS = [{ label: "Clerk · 分析师", href: "/clerk", icon: ScanSearch }];
+const ANALYSIS = [
+  { label: "Clerk · 分析师", href: "/clerk", icon: ScanSearch },
+  { label: "用量与额度", href: "/usage", icon: Gauge },
+];
 
 export function AppSidebar({
   accounts,

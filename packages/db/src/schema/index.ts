@@ -1,6 +1,7 @@
 export * from "./users";
 export * from "./access";
 export * from "./usage";
+export * from "./quota";
 export * from "./channels";
 export * from "./own-account";
 export * from "./competitor";

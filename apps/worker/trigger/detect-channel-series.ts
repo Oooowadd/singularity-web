@@ -12,6 +12,7 @@ import {
 } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import { llm } from "@singularity/integrations/clients/llm";
 import {
   buildSeriesDetectPrompt,
@@ -33,6 +34,7 @@ type Payload = {
 
 export const detectChannelSeries = task({
   id: "clerk-detect-channel-series",
+  queue: userRunsQueue,
   maxDuration: 600,
   run: async (payload: Payload) => {
     const videoCount = payload.videoCount ?? 100;

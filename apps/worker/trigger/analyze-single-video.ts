@@ -10,6 +10,7 @@ import {
 } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import { redactUngrounded } from "@singularity/domain/services/grounding";
 import { llm } from "@singularity/integrations/clients/llm";
 import { safeText } from "@singularity/integrations/utils";
@@ -44,6 +45,7 @@ function summarizeAnalysis(v: typeof clerkVideos.$inferSelect): string {
 
 export const analyzeSingleVideo = task({
   id: "clerk-analyze-single-video",
+  queue: userRunsQueue,
   maxDuration: 600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";

@@ -13,6 +13,7 @@ import {
 } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import {
   fetchReferences,
   type FetchedReference,
@@ -32,6 +33,7 @@ type Payload = {
 
 export const analyzeCustomTopic = task({
   id: "poet-analyze-custom-topic",
+  queue: userRunsQueue,
   maxDuration: 1800,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";

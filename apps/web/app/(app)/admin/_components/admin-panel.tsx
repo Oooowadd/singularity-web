@@ -81,6 +81,20 @@ export function AdminPanel() {
     onError: (err) => toast.error(err.message),
   });
 
+  const codes = trpc.admin.listCodes.useQuery();
+  const [codeForm, setCodeForm] = useState({ contents: "50", generations: "20", accounts: "0" });
+  const createCode = trpc.admin.createCode.useMutation({
+    onSuccess: (created) => {
+      toast.success(`已生成：${created.code}`);
+      void utils.admin.listCodes.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const disableCode = trpc.admin.disableCode.useMutation({
+    onSuccess: () => void utils.admin.listCodes.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -244,6 +258,105 @@ export function AdminPanel() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>兑换码</CardTitle>
+          <CardDescription>生成后发给用户，在「用量与额度」页兑换；额度进奖励池不随月重置</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-end gap-3">
+            {(
+              [
+                ["解析（条）", "contents"],
+                ["生成（次）", "generations"],
+                ["账号（个）", "accounts"],
+              ] as const
+            ).map(([label, key]) => (
+              <div key={key} className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">{label}</span>
+                <Input
+                  value={codeForm[key]}
+                  onChange={(e) =>
+                    setCodeForm((f) => ({ ...f, [key]: e.target.value.replace(/\D/g, "") }))
+                  }
+                  className="w-24 font-mono"
+                />
+              </div>
+            ))}
+            <Button
+              disabled={createCode.isPending}
+              onClick={() =>
+                createCode.mutate({
+                  contents: Number(codeForm.contents) || 0,
+                  generations: Number(codeForm.generations) || 0,
+                  accounts: Number(codeForm.accounts) || 0,
+                  maxUses: 1,
+                })
+              }
+            >
+              生成兑换码
+            </Button>
+          </div>
+          {codes.data?.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>码</TableHead>
+                  <TableHead>额度</TableHead>
+                  <TableHead>使用</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {codes.data.map((c) => {
+                  const expired = c.expiresAt && new Date(c.expiresAt) < new Date();
+                  const exhausted = c.usedCount >= c.maxUses;
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-mono text-xs">{c.code}</TableCell>
+                      <TableCell className="text-xs">
+                        {[
+                          c.grant?.contents ? `解析${c.grant.contents}` : null,
+                          c.grant?.generations ? `生成${c.grant.generations}` : null,
+                          c.grant?.accounts ? `账号${c.grant.accounts}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" / ")}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {c.usedCount}/{c.maxUses}
+                      </TableCell>
+                      <TableCell>
+                        {expired ? (
+                          <Badge variant="destructive">已失效</Badge>
+                        ) : exhausted ? (
+                          <Badge variant="secondary">已用完</Badge>
+                        ) : (
+                          <Badge variant="success">可用</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!expired && !exhausted ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={disableCode.isPending}
+                            onClick={() => disableCode.mutate({ codeId: c.id })}
+                          >
+                            作废
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : null}
         </CardContent>
       </Card>
 

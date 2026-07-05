@@ -8,6 +8,8 @@ import {
   clerkSops,
   clerkVideos,
   competitorAccounts,
+  consumeQuota,
+  contentUnits,
   flushProxyPool,
   loadProxyPool,
   pipelineRuns,
@@ -15,6 +17,7 @@ import {
 } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import { llm } from "@singularity/integrations/clients/llm";
 import { summarizeVideoForSop } from "@singularity/domain/services/clerk-map";
 import { redactUngrounded } from "@singularity/domain/services/grounding";
@@ -456,9 +459,8 @@ const VIDEO_CONCURRENCY = 8;
 
 export const analyzeChannel = task({
   id: "clerk-analyze-channel",
+  queue: userRunsQueue,
   machine: { preset: "large-1x" },
-  // Cap concurrent runs so a burst of users can't exhaust the Trigger/Groq budget.
-  queue: { concurrencyLimit: 6 },
   // 4h headroom for 20 long-form videos with ASR + SOPs (Trigger.dev Hobby).
   maxDuration: 14400,
   run: async (payload: Payload) => {
@@ -1612,6 +1614,16 @@ export const analyzeChannel = task({
               ),
             );
         }
+      }
+
+      // Settle 解析额度 from the videos this run actually stamped (duration-weighted).
+      if (payload.userId) {
+        const processed = await db
+          .select({ durationSec: clerkVideos.durationSec })
+          .from(clerkVideos)
+          .where(eq(clerkVideos.runId, payload.runId));
+        const units = processed.reduce((s, v) => s + contentUnits(v.durationSec), 0);
+        await consumeQuota(db, { userId: payload.userId, unit: "contents", amount: units });
       }
 
       await db

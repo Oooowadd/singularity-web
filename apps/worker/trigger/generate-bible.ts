@@ -5,6 +5,7 @@ import { generateText } from "ai";
 import { channels, clerkVideos, pipelineRuns, poetBible, poetDriftEvents, projects } from "@singularity/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
+import { userRunsQueue } from "../lib/queues";
 import { generateChannelBible } from "@singularity/domain/services/poet/bible";
 import { llm } from "@singularity/integrations/clients/llm";
 import { safeText } from "@singularity/integrations/utils";
@@ -21,6 +22,7 @@ type Payload = {
 
 export const generateBible = task({
   id: "poet-generate-bible",
+  queue: userRunsQueue,
   maxDuration: 600,
   run: async (payload: Payload) => {
     const language = payload.language ?? "zh";
