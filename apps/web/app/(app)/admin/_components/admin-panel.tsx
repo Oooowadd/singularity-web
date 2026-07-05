@@ -277,6 +277,47 @@ export function AdminPanel({ selfId }: { selfId: string }) {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
+          <CardTitle>套餐与额度规则</CardTitle>
+          <CardDescription>
+            「本月时长」是免费套餐的判断依据；下面是每种操作扣多少分钟（与 /usage 用户侧一致）
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2">
+          <div className="flex justify-between sm:col-span-2">
+            <span className="font-medium">免费套餐</span>
+            <span className="text-muted-foreground">
+              300 分钟/月（每月 1 日北京时间重置）· 账号上限 30 个
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>分析视频</span>
+            <span className="font-mono text-muted-foreground">实际时长（向上取整，≥1）</span>
+          </div>
+          <div className="flex justify-between">
+            <span>分析图文笔记</span>
+            <span className="font-mono text-muted-foreground">5 分钟/篇</span>
+          </div>
+          <div className="flex justify-between">
+            <span>写稿</span>
+            <span className="font-mono text-muted-foreground">目标时长（≥2）</span>
+          </div>
+          <div className="flex justify-between">
+            <span>频道圣经</span>
+            <span className="font-mono text-muted-foreground">5 分钟</span>
+          </div>
+          <div className="flex justify-between">
+            <span>选题分析</span>
+            <span className="font-mono text-muted-foreground">3 分钟</span>
+          </div>
+          <div className="flex justify-between">
+            <span>单视频 SOP</span>
+            <span className="font-mono text-muted-foreground">2 分钟</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>内测申请</CardTitle>
           <CardDescription>批准后对方即可使用（配置邮件后会自动通知）</CardDescription>
         </CardHeader>
