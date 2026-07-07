@@ -1440,10 +1440,14 @@ export const analyzeChannel = task({
         // Atomic swap: keep old SOPs visible while new ones generate;
         // delete only after each new one lands so the UI never goes blank.
 
+        // Each SOP is grounded against the material its prompt actually received:
+        // human/ai_reference read the map summaries, hottest reads the full transcript.
+        // Checking hottest against summaries redacted legitimate verbatim quotes.
         const sopSteps: Array<{
           type: "human" | "ai_reference" | "hottest";
           phase: string;
           buildPrompt: () => string | null;
+          groundingSource: () => string;
         }> = [
           {
             type: "human",
@@ -1458,6 +1462,7 @@ export const analyzeChannel = task({
                 transcriptCount,
                 language,
               }),
+            groundingSource: () => videosData,
           },
           {
             type: "ai_reference",
@@ -1472,6 +1477,7 @@ export const analyzeChannel = task({
                 transcriptCount,
                 language,
               }),
+            groundingSource: () => videosData,
           },
           {
             type: "hottest",
@@ -1497,6 +1503,13 @@ export const analyzeChannel = task({
                 commentsSummary: hottestCommentsSummary,
                 language,
               });
+            },
+            groundingSource: () => {
+              const top = channelVideos[0];
+              if (!top) return videosData;
+              return [top.transcript, summarizeAnalysis(top), hottestCommentsSummary]
+                .filter(Boolean)
+                .join("\n\n");
             },
           },
         ];
@@ -1535,11 +1548,11 @@ export const analyzeChannel = task({
                 logger.warn(`Empty ${step.type} SOP response`);
                 return;
               }
-              // Grounding pass: drop quotes/specs/timestamps the transcripts don't support
+              // Grounding pass: drop quotes/specs/timestamps the source doesn't support
               // (ai_reference stays English, so tag in English).
               const grounded = await redactUngrounded({
                 draft: cleaned,
-                source: videosData,
+                source: step.groundingSource(),
                 language: step.type === "ai_reference" ? "en" : language,
                 logger,
               });
