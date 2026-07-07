@@ -2,6 +2,11 @@ import { generateTextWithFallback } from "@singularity/integrations/clients/llm"
 import { parseLlmJson } from "@singularity/integrations/utils";
 import { redactUngrounded } from "../grounding";
 import { selectBibleSections } from "./bible";
+
+function extractFactSheet(content: string): string | undefined {
+  const m = content.match(/^##\s+FACT_SHEET[^\n]*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+  return m?.[1]?.trim() || undefined;
+}
 import { buildTopicAnalysisPrompt } from "@singularity/prompts/poet";
 import { factCheckVerbatim, type CheckedFact } from "./factCheck";
 import { formatReferencesBlock, type ScriptReference } from "./scriptWriter";
@@ -41,9 +46,7 @@ function toText(value: unknown): string {
 export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysis> {
   const prompt = buildTopicAnalysisPrompt({
     // Positioning/rules only: PERSONA/METHODOLOGY are the fact-leak surface this
-    // prompt's hardest rule exists to suppress. Imported bibles additionally expose
-    // FACT_SHEET (digit-audited, verbatim) so the account's own signature terminology
-    // can't be reconstructed wrongly (live QA: 真/假韧带 got reversed without it).
+    // prompt's hardest rule exists to suppress.
     channelBible: selectBibleSections(args.bibleText, [
       "POSITIONING",
       "AUDIENCE",
@@ -51,8 +54,11 @@ export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysi
       "CONTENT_RULES",
       "TOPIC_FRAMEWORK",
       "INFORMATION_SOURCES",
-      ...(args.trustedFactSheet ? (["FACT_SHEET"] as const) : []),
     ]),
+    // Imported bibles: digit-audited FACT_SHEET rides a dedicated verified-facts block
+    // (live QA: mixing it into the voice-only bible slice made the model anonymize
+    // specifics into 某种/若干 placeholders and still reverse step order).
+    verifiedFacts: args.trustedFactSheet ? extractFactSheet(args.bibleText) : undefined,
     sopReference: args.sopText,
     topic: args.topic,
     referencesContext: formatReferencesBlock(args.references ?? null),

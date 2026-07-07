@@ -354,6 +354,8 @@ Sound like a real human talking. Follow the SOP voice precisely.
 
 type TopicAnalysisArgs = {
   channelBible: string;
+  // Digit-audited FACT_SHEET of an imported bible — the one bible section usable as facts.
+  verifiedFacts?: string | null;
   sopReference: string;
   topic: string;
   referencesContext: string;
@@ -363,11 +365,17 @@ type TopicAnalysisArgs = {
 export function buildTopicAnalysisPrompt(args: TopicAnalysisArgs): string {
   const languageName = args.language === "zh" ? "Chinese (中文)" : "English";
   const lengthUnit = args.language === "zh" ? "characters (字)" : "words";
+  const verifiedBlock = args.verifiedFacts?.trim()
+    ? `\n## Verified Account Facts (from this account's own persona document — a legitimate FACT source)\n${args.verifiedFacts.trim()}\n`
+    : "";
+  const verifiedRule = args.verifiedFacts?.trim()
+    ? `\n- The Verified Account Facts above ARE usable as facts (unlike the Bible/SOP): when the topic touches the account's own methodology, copy names, classifications, numbered step ORDER, and figures from them VERBATIM. Never contradict, reverse, or reorder them, and never anonymize them into placeholders (no 某种 / 某类 / 若干 / "特定剂量" style masking — state the real term or omit it).`
+    : "";
   const base = `You are an editorial strategist for a YouTube channel. Given a user-supplied topic and (optionally) reference materials, generate the structured idea fields that the scriptwriter will consume.
 
 ## Channel Bible (the brand, niche, and rules)
 ${args.channelBible}
-
+${verifiedBlock}
 ## SOP Reference (the channel's voice and viral mechanics)
 ${args.sopReference}
 
@@ -378,7 +386,7 @@ ${args.topic}
 ${args.referencesContext}
 
 ## Grounding & anti-fabrication (HARD RULES — these override the creative instructions below)
-- The Channel Bible and SOP above are for VOICE and STYLE ONLY. NEVER pull facts, people, brands, events, dates, prices, quotes, or backstories from them into this topic's output. ONE exception: if the Bible includes a FACT_SHEET section, those are the account's own VERIFIED methodology facts and terminology — when this topic touches the channel's own methods, use those exact terms and classifications verbatim, and never contradict or reverse them (e.g. do not swap which items belong to which named category). They tell you HOW to talk, not WHAT is true.
+- The Channel Bible and SOP above are for VOICE and STYLE ONLY. NEVER pull facts, people, brands, events, dates, prices, quotes, or backstories from them into this topic's output. They tell you HOW to talk, not WHAT is true.${verifiedRule}
 - Every factual claim (names, people, brands, dates, quotes, prices, events) in story_angle / facts_and_data / why_similar / viral_trigger MUST be supported by the External References for THIS topic. If the reference is a simple product post, keep the angle within what that post actually shows — do NOT import a different person, brand, death, or backstory from anywhere else.
 - NEVER state that a named real person has died, is ill, did something wrong, or made a specific statement, unless the External References explicitly say so — not even hedged. A false claim about a real person or brand (a death, a scandal, an invented quote) is the single worst failure this tool can produce. When unsure, stay general and name no one.
 - If the references are thin, produce a THINNER result (fewer facts, a more general angle). Do NOT backfill with invented specifics.
@@ -389,7 +397,7 @@ Output a JSON object with exactly these five keys:
 
 - "story_angle": One paragraph (~80–150 ${lengthUnit}) describing the specific narrative angle for this topic, framed for this channel's audience. Be concrete — name the specific story you'd tell, not the general subject.
 
-- "facts_and_data": Bullet list of concrete facts, statistics, examples, and data points the script should incorporate. **Do not artificially limit the count.** If the references contain twelve distinct camera models and forty data points, capture all of them; if they only contain three, capture three. Walk the references end-to-end and capture every concrete fact you find. **Every fact MUST come from the External References.** If the references are thin, produce FEWER facts — do NOT backfill from the Channel Bible, general knowledge, or invention. "(needs verification)" is only for a genuinely-uncertain figure about the source's own subject, never a license to introduce a new person, death, event, price, or scandal not in the references.
+- "facts_and_data": Bullet list of concrete facts, statistics, examples, and data points the script should incorporate. **Do not artificially limit the count.** If the references contain twelve distinct camera models and forty data points, capture all of them; if they only contain three, capture three. Walk the references end-to-end and capture every concrete fact you find. **Every fact MUST come from the External References${args.verifiedFacts?.trim() ? " or the Verified Account Facts" : ""}.** If the references are thin, produce FEWER facts — do NOT backfill from the Channel Bible, general knowledge, or invention. "(needs verification)" is only for a genuinely-uncertain figure about the source's own subject, never a license to introduce a new person, death, event, price, or scandal not in the references.
 
 - "verbatim_facts": A flat newline-separated list of the most important factual atoms pulled **VERBATIM** from the references. Each line is one atom. Format: \`- <verbatim fact> [src: <reference title>]\`. Examples:
   \`- M3 viewfinder magnification: 0.91x [src: Leica M Series Film Cameras Overview]\`
