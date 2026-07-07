@@ -31,10 +31,11 @@ export async function redactUngrounded(args: {
     : "";
   const prompt = `You are a strict fact-checker and copy-cleaner. You are given SOURCE MATERIAL (the ground truth) and a DRAFT generated from it. Your job is to make the DRAFT factually safe — remove fabricated specifics, clean garbled source quotes, and fix clear factual errors — WITHOUT rewriting its structure, voice, or grounded content.
 
-Go through the DRAFT. For every SPECIFIC factual claim — price, number, percentage, statistic, measurement or spec, model / product / brand name, person name, social handle, date or year, and any line presented as a verbatim quote — decide:
+Go through the DRAFT. For every SPECIFIC factual claim — price, number, percentage, statistic, measurement or spec, model / product / brand name, person name, social handle, date or year, a named domain-specific technique detail (e.g. an anatomical structure, injection site / landmark, tool setting), a stated ORDER of steps in a named method, a self-test that routes the reader to a decision, and any line presented as a verbatim quote — decide:
 - SOURCE supports it → keep it exactly.
 - SOURCE does NOT support it → ${fixRule} A quoted line not found in the SOURCE must not be presented as a real quote. Never leave an unsupported specific stated as fact.
 - GARBLED ASR in the SOURCE → never reproduce a nonsensical garbled quote / number / name (e.g. "六年两百九十三个零件", "新一4.4百币"); correct it from context if the intent is clear, otherwise drop it${isScript ? "" : ` or mark ${tag}`}.
+- STEP ORDER: if the SOURCE states a numbered or explicit order for a process, the DRAFT must not reorder those steps — fix the DRAFT's order to match the SOURCE.
 - CLEAR FACTUAL ERROR about a real, widely-known entity (e.g. a wrong launch year for a famous product, a misattributed quote) → if you are HIGHLY confident of the correct value, fix it to the correct value; if unsure, do not guess${isScript ? ", soften to safe general wording" : ` — mark it ${tag}`}.
 
 Always allowed (never redact these): the channel's own name, the host's name, and the channel/show brand — they identify the deliverable, not a factual claim.

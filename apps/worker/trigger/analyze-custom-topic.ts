@@ -122,6 +122,7 @@ export const analyzeCustomTopic = task({
           error: f.error,
         })),
         bibleText: bible.content,
+        trustedFactSheet: bible.sourceKind === "file",
         sopText,
         language,
       });

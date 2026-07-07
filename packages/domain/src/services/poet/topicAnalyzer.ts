@@ -19,6 +19,8 @@ export type AnalyzeTopicArgs = {
   topic: string;
   references: ScriptReference[] | null | undefined;
   bibleText: string;
+  // True for imported (source_kind='file') bibles whose FACT_SHEET passed the digit audit.
+  trustedFactSheet?: boolean;
   sopText: string;
   language: "en" | "zh";
 };
@@ -38,8 +40,10 @@ function toText(value: unknown): string {
 
 export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysis> {
   const prompt = buildTopicAnalysisPrompt({
-    // Positioning/rules only: PERSONA/METHODOLOGY/FACT_SHEET are the fact-leak surface
-    // this prompt's hardest rule exists to suppress.
+    // Positioning/rules only: PERSONA/METHODOLOGY are the fact-leak surface this
+    // prompt's hardest rule exists to suppress. Imported bibles additionally expose
+    // FACT_SHEET (digit-audited, verbatim) so the account's own signature terminology
+    // can't be reconstructed wrongly (live QA: 真/假韧带 got reversed without it).
     channelBible: selectBibleSections(args.bibleText, [
       "POSITIONING",
       "AUDIENCE",
@@ -47,6 +51,7 @@ export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysi
       "CONTENT_RULES",
       "TOPIC_FRAMEWORK",
       "INFORMATION_SOURCES",
+      ...(args.trustedFactSheet ? (["FACT_SHEET"] as const) : []),
     ]),
     sopReference: args.sopText,
     topic: args.topic,
