@@ -2,14 +2,20 @@ import { generateTextWithFallback } from "@singularity/integrations/clients/llm"
 import { parseLlmJson } from "@singularity/integrations/utils";
 import { redactUngrounded } from "../grounding";
 import { selectBibleSections } from "./bible";
-
-function extractFactSheet(content: string): string | undefined {
-  const m = content.match(/^##\s+FACT_SHEET[^\n]*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
-  return m?.[1]?.trim() || undefined;
-}
 import { buildTopicAnalysisPrompt } from "@singularity/prompts/poet";
 import { factCheckVerbatim, type CheckedFact } from "./factCheck";
 import { formatReferencesBlock, type ScriptReference } from "./scriptWriter";
+
+function extractVerifiedSections(content: string): string | undefined {
+  // METHODOLOGY carries the full named systems + step order; FACT_SHEET the atomic
+  // facts. Both passed the import digit audit — the trustworthy subset of the bible.
+  const out: string[] = [];
+  for (const anchor of ["METHODOLOGY", "FACT_SHEET"]) {
+    const m = content.match(new RegExp(`^##\\s+${anchor}[^\\n]*\\n([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))`, "m"));
+    if (m?.[1]?.trim()) out.push(m[1]!.trim());
+  }
+  return out.length ? out.join("\n\n") : undefined;
+}
 
 export type TopicAnalysis = {
   storyAngle: string;
@@ -44,6 +50,7 @@ function toText(value: unknown): string {
 }
 
 export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysis> {
+  const verifiedFacts = args.trustedFactSheet ? extractVerifiedSections(args.bibleText) : undefined;
   const prompt = buildTopicAnalysisPrompt({
     // Positioning/rules only: PERSONA/METHODOLOGY are the fact-leak surface this
     // prompt's hardest rule exists to suppress.
@@ -55,10 +62,10 @@ export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysi
       "TOPIC_FRAMEWORK",
       "INFORMATION_SOURCES",
     ]),
-    // Imported bibles: digit-audited FACT_SHEET rides a dedicated verified-facts block
-    // (live QA: mixing it into the voice-only bible slice made the model anonymize
-    // specifics into 某种/若干 placeholders and still reverse step order).
-    verifiedFacts: args.trustedFactSheet ? extractFactSheet(args.bibleText) : undefined,
+    // Imported bibles: digit-audited sections ride a dedicated verified-facts block
+    // (live QA: mixing them into the voice-only bible slice made the model anonymize
+    // specifics into 某种/若干 placeholders).
+    verifiedFacts,
     sopReference: args.sopText,
     topic: args.topic,
     referencesContext: formatReferencesBlock(args.references ?? null),
@@ -98,9 +105,11 @@ export async function analyzeTopic(args: AnalyzeTopicArgs): Promise<TopicAnalysi
     );
   }
   // Grounding pass on the data-heavy field: drop specs/stats the references don't support.
+  // Verified account facts count as source — otherwise the empty-references rule
+  // generalizes them into 某种/一定范围 placeholders (live QA round 2).
   analysis.factsAndData = await redactUngrounded({
     draft: analysis.factsAndData,
-    source: formatReferencesBlock(args.references ?? null),
+    source: [formatReferencesBlock(args.references ?? null), verifiedFacts ?? ""].filter(Boolean).join("\n\n"),
     language: args.language,
     maxOutputTokens: 4096,
   });
