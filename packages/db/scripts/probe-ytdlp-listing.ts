@@ -1,7 +1,7 @@
 // Triage probe: is YouTube channel listing broken at the yt-dlp/YouTube layer or
 // only through the proxy egress? Runs the same listing twice — direct, then via a
 // wealthproxies session from the prod pool. Read-only except proxy byte usage.
-// Run: pnpm --filter @singularity/db exec tsx scripts/probe-ytdlp-listing.ts <channelUrl>
+// Run: pnpm --filter @goooose/db exec tsx scripts/probe-ytdlp-listing.ts <channelUrl>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -11,8 +11,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { ensureYtdlpBinary, runYtdlp } = await import("@singularity/integrations/clients/ytdlp");
-const { loadProxyPool } = await import("@singularity/db");
+const { ensureYtdlpBinary, runYtdlp } = await import("@goooose/integrations/clients/ytdlp");
+const { loadProxyPool } = await import("@goooose/db");
 
 const channelUrl = process.argv[2] ?? "https://www.youtube.com/@lyi";
 const target = `${channelUrl.replace(/\/+$/, "")}/videos`;

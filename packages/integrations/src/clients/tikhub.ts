@@ -92,9 +92,7 @@ export async function resolveChannelId(channelUrl: string): Promise<string> {
   return data.channel_id;
 }
 
-// Real TikHub response shape (probed): `title`, `description`, `subscriber_count`
-// (display string), `video_count` (display string), `avatar[]` (array of sized
-// variants). We normalize to flat clean fields.
+// Response shape probed from the live API (counts are display strings); normalized to flat fields.
 type RawChannelInfo = {
   channel_id?: string;
   title?: string;
@@ -167,10 +165,9 @@ export type YouTubeVideoInfo = {
   captions: CaptionTrack[];
 };
 
-// Switched 2026-05-20 from `web_v2/get_video_info` (returned empty data for
-// Chinese YouTubers like 林亦LYi) to `web_v2/get_video_streams_v2` which works
-// across both English and Chinese coverage. Captions fetched separately via
-// `get_video_captions_v2` since streams_v2 doesn't include caption tracks.
+// `web_v2/get_video_info` returns empty data for Chinese YouTubers (e.g. 林亦LYi);
+// `get_video_streams_v2` covers both, but omits caption tracks — fetched separately
+// via `get_video_captions_v2`.
 export async function getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
   const [meta, captionsData] = await Promise.all([
     get<{

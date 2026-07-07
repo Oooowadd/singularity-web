@@ -1,7 +1,7 @@
 import { and, count, desc, eq, or } from "drizzle-orm";
 import Link from "next/link";
 
-import { channels, clerkSops, competitorAccounts, projects, projectSops } from "@singularity/db";
+import { channels, clerkSops, competitorAccounts, projects, projectSops } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 
-import { channels } from "@singularity/db";
+import { channels } from "@goooose/db";
 
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";

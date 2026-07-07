@@ -2,8 +2,8 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { getXhsUserNotes } from "@singularity/integrations/clients/xhs";
-import { transcribeFromStreams } from "@singularity/integrations/clients/asr";
+import { getXhsUserNotes } from "@goooose/integrations/clients/xhs";
+import { transcribeFromStreams } from "@goooose/integrations/clients/asr";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

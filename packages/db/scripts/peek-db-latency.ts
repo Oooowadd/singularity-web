@@ -1,5 +1,5 @@
 // Read-only: measure connect + per-query RTT from this machine to the prod DB.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-db-latency.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-db-latency.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

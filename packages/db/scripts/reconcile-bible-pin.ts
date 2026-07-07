@@ -1,7 +1,7 @@
 // INC5d: reconcile project.active_bible_id to each channel's currently-active bible
 // (project.id == channel.id during the expand phase) so the hard-pin read path can't
 // hit a null pin where an active bible exists. Idempotent. Authorized prod DML.
-// Run: pnpm --filter @singularity/db exec tsx scripts/reconcile-bible-pin.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/reconcile-bible-pin.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

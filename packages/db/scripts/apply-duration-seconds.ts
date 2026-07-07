@@ -1,6 +1,6 @@
 // One-off: apply the expand step of #6 (durationSeconds) — idempotent ADD COLUMN
 // + backfill from duration_minutes×60. Mirrors drizzle/0009. Run:
-// pnpm --filter @singularity/db exec tsx scripts/apply-duration-seconds.ts
+// pnpm --filter @goooose/db exec tsx scripts/apply-duration-seconds.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

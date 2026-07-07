@@ -1,6 +1,6 @@
 // Read-only P-C test recon: competitor accounts, own channels, and which
 // pseudo-accounts pass the 5-table conversion guard.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-pc-targets.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-pc-targets.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

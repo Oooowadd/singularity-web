@@ -2,7 +2,7 @@
 // on real XHS accounts/notes the user provided in Phase 0. Asserts shape so
 // schema regressions surface immediately.
 //
-// Run: pnpm --filter @singularity/db xhs-client-smoke
+// Run: pnpm --filter @goooose/db xhs-client-smoke
 
 import { config } from "dotenv";
 config({ path: new URL("../../../.env.local", import.meta.url) });
@@ -15,8 +15,8 @@ import {
   getXhsNoteDetail,
   getXhsUserNotes,
   resolveXhsUser,
-} from "@singularity/integrations/clients/xhs";
-import { fetchReference } from "@singularity/integrations/clients/references";
+} from "@goooose/integrations/clients/xhs";
+import { fetchReference } from "@goooose/integrations/clients/references";
 
 const ACCOUNTS = {
   redhead_witch:

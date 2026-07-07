@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 
-import { channels } from "@singularity/db";
+import { channels } from "@goooose/db";
 
 import { db } from "@/lib/db";
 

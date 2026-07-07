@@ -1,5 +1,5 @@
 {
-  "name": "@singularity/domain",
+  "name": "@goooose/domain",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -23,8 +23,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@singularity/integrations": "workspace:*",
-    "@singularity/prompts": "workspace:*",
+    "@goooose/integrations": "workspace:*",
+    "@goooose/prompts": "workspace:*",
     "ai": "^6.0.184",
     "zod": "^4.0.0"
   },

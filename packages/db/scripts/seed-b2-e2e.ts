@@ -1,6 +1,6 @@
 // Seeds the five pipeline_runs rows for the post-refactor machine E2E suite and
 // prints the ids + the muse target's bound competitor. Read-only except the inserts.
-// Run: pnpm --filter @singularity/db exec tsx scripts/seed-b2-e2e.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/seed-b2-e2e.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

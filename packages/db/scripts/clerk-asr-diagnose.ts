@@ -6,9 +6,9 @@
 import { config } from "dotenv";
 config({ path: new URL("../../../.env.local", import.meta.url) });
 
-import { fetchVideoMetadata } from "@singularity/integrations/clients/youtube-data";
-import { getAudioStreams, getVideoWithTranscript } from "@singularity/integrations/clients/tikhub";
-import { transcribeYoutubeVideo } from "@singularity/integrations/clients/asr";
+import { fetchVideoMetadata } from "@goooose/integrations/clients/youtube-data";
+import { getAudioStreams, getVideoWithTranscript } from "@goooose/integrations/clients/tikhub";
+import { transcribeYoutubeVideo } from "@goooose/integrations/clients/asr";
 
 async function main() {
   const videoId = process.argv[2] ?? "EPUg9pmfPk0";

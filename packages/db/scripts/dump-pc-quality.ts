@@ -1,5 +1,5 @@
 // Read-only: dump a competitor's SOPs + a script to /tmp for quality review.
-// Run: pnpm --filter @singularity/db exec tsx scripts/dump-pc-quality.ts <competitorAccountId> [scriptId]
+// Run: pnpm --filter @goooose/db exec tsx scripts/dump-pc-quality.ts <competitorAccountId> [scriptId]
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

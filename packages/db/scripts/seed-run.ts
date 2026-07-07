@@ -1,6 +1,6 @@
 // Seed a pipeline_runs row so a directly-triggered job can satisfy its run_id FKs,
 // mirroring what the tRPC layer does before triggering. Prints the run id.
-// Run: pnpm --filter @singularity/db exec tsx scripts/seed-run.ts <channelId> <agent> <command>
+// Run: pnpm --filter @goooose/db exec tsx scripts/seed-run.ts <channelId> <agent> <command>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

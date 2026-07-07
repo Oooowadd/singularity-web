@@ -29,9 +29,7 @@ export function parseDurationToSec(text: string | number | undefined): number {
   return 0;
 }
 
-// Lenient parser for LLM JSON output: strip ``` fences, slice to the outermost
-// object/array, JSON.parse, then jsonrepair as the last resort. Callers validate
-// the resulting unknown with their own zod schema.
+// Lenient LLM-JSON parse; callers validate the resulting unknown with their own zod schema.
 export async function parseLlmJson(raw: string, kind: "object" | "array" = "object"): Promise<unknown> {
   const open = kind === "object" ? "{" : "[";
   const close = kind === "object" ? "}" : "]";

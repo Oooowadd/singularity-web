@@ -2,7 +2,7 @@
  * LIVE Bible-adherence test for Muse idea generation.
  * READ-ONLY: SELECTs an active poet_bible + its channel + a real source video, then runs
  * generateIdeas TWICE (without vs with biblePositioning). No DB writes.
- * Run: pnpm --filter @singularity/db exec tsx scripts/muse-bible-smoke.ts
+ * Run: pnpm --filter @goooose/db exec tsx scripts/muse-bible-smoke.ts
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +19,7 @@ import { clerkVideos } from "../src/schema/clerk";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { generateIdeas } = await import("@singularity/domain/services/muse");
+const { generateIdeas } = await import("@goooose/domain/services/muse");
 
 const client = postgres(process.env.DATABASE_URL!, { prepare: false });
 const db = drizzle(client);

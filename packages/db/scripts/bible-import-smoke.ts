@@ -1,7 +1,7 @@
 /**
  * Smoke test for the bible file-import pipeline (stage-1 transcription + stage-2
  * anchored bible + digit audit + section selection).
- * Run: pnpm --filter @singularity/db bible-import-smoke -- <file.pdf|.docx|.md> [checklist]
+ * Run: pnpm --filter @goooose/db bible-import-smoke -- <file.pdf|.docx|.md> [checklist]
  * Sample files stay local (colleague business docs) — pass absolute paths, never commit.
  */
 import { readFileSync } from "node:fs";
@@ -14,13 +14,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { transcribeDocument, SUPPORTED_MIMES } = await import(
-  "@singularity/integrations/clients/docTranscribe"
+  "@goooose/integrations/clients/docTranscribe"
 );
 const { generateBibleFromDocument } = await import(
-  "@singularity/domain/services/poet/import-bible"
+  "@goooose/domain/services/poet/import-bible"
 );
 const { selectBibleSections, extractHostLine, extractTopicLine } = await import(
-  "@singularity/domain/services/poet/bible"
+  "@goooose/domain/services/poet/bible"
 );
 
 const file = process.argv[2];

@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 
-import { generateTextWithFallback, llm } from "@singularity/integrations/clients/llm";
-import { parseLlmJson } from "@singularity/integrations/utils";
+import { generateTextWithFallback, llm } from "@goooose/integrations/clients/llm";
+import { parseLlmJson } from "@goooose/integrations/utils";
 import { redactUngrounded } from "../grounding";
 import {
   buildLongFormOutlinePrompt,
@@ -9,7 +9,7 @@ import {
   buildScriptExpandPrompt,
   buildScriptWritingPrompt,
   buildSectionExpandPrompt,
-} from "@singularity/prompts/poet";
+} from "@goooose/prompts/poet";
 import { countWords, isLongForm } from "../../schemas/poet";
 import { selectBibleSections } from "./bible";
 import type { CheckedFact } from "./factCheck";

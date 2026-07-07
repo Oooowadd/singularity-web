@@ -14,52 +14,52 @@ import {
   loadProxyPool,
   pipelineRuns,
   projectSops,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { userRunsQueue } from "../lib/queues";
-import { llm } from "@singularity/integrations/clients/llm";
-import { summarizeVideoForSop } from "@singularity/domain/services/clerk-map";
-import { redactUngrounded } from "@singularity/domain/services/grounding";
-import { withProxyRetry, type ProxyPool } from "@singularity/integrations/proxy";
+import { llm } from "@goooose/integrations/clients/llm";
+import { summarizeVideoForSop } from "@goooose/domain/services/clerk-map";
+import { redactUngrounded } from "@goooose/domain/services/grounding";
+import { withProxyRetry, type ProxyPool } from "@goooose/integrations/proxy";
 import {
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
   buildHumanSopPrompt,
   buildSopPartialReducePrompt,
   buildVideoAnalysisPrompt,
-} from "@singularity/prompts/clerk";
+} from "@goooose/prompts/clerk";
 import {
   buildCommentsSummaryPrompt,
   type CommentsSummary,
-} from "@singularity/prompts/clerk-comments";
-import { clerkAnalysisSchema, clerkAnalysisToDbRow } from "@singularity/domain/schemas/clerk";
+} from "@goooose/prompts/clerk-comments";
+import { clerkAnalysisSchema, clerkAnalysisToDbRow } from "@goooose/domain/schemas/clerk";
 import {
   fetchVideoMetadataBatch,
   type YoutubeVideoMeta,
-} from "@singularity/integrations/clients/youtube-data";
+} from "@goooose/integrations/clients/youtube-data";
 import {
   likelyChineseText,
   renderTranscriptWithTimestamps,
   stripAdSegments,
   transcribeFromStreams,
   transcribeYoutubeVideo,
-} from "@singularity/integrations/clients/asr";
+} from "@goooose/integrations/clients/asr";
 import {
   getTopCommentsYtdlp,
   getVideoMetadataYtdlp,
   listChannelVideos,
   type YtdlpChannelVideo,
   type YtdlpVideoMetadata,
-} from "@singularity/integrations/clients/ytdlp";
-import { analyzeImageStack, analyzeThumbnail } from "@singularity/integrations/clients/vision";
+} from "@goooose/integrations/clients/ytdlp";
+import { analyzeImageStack, analyzeThumbnail } from "@goooose/integrations/clients/vision";
 import {
   extractXhsNoteId,
   getXhsNoteDetail,
   getXhsUserNotes,
   type XhsNote,
-} from "@singularity/integrations/clients/xhs";
-import { asPositiveNumber, parseDurationToSec, parseLlmJson, safeText, sleep } from "@singularity/integrations/utils";
+} from "@goooose/integrations/clients/xhs";
+import { asPositiveNumber, parseDurationToSec, parseLlmJson, safeText, sleep } from "@goooose/integrations/utils";
 
 // Skip ASR for videos > 60 min: audio nearly always exceeds Groq's 25 MB cap.
 const ASR_MAX_DURATION_SEC = 60 * 60;
@@ -205,9 +205,7 @@ function renderVideoAnalysisFields(v: typeof clerkVideos.$inferSelect): string {
 const VIDEOS_SUMMARY_NOTE =
   `GROUNDING — write the SOP only from the per-video pattern summaries below. Each summary already distills one video's grounded techniques; never quote lines, cite [m:ss], invent a beat-by-beat structure, or assert per-video frequency counts beyond what the summaries state. Put a phrase in quotation marks with a [Video N] citation ONLY if it appears verbatim in a summary; paraphrase or inference takes no quotes and no citation. If a video has no pattern summary, infer only from its title and label it inference. If most videos lack spoken detail, say so plainly and keep the SOP at the title/cover-pattern level instead of fabricating depth.\n\n`;
 
-// Render ONE video as its header + cached map summary. Extracted so the budget packer
-// can size each block before deciding single vs hierarchical reduce. `index` is the
-// 1-based label shown to the LLM.
+// Extracted so the budget packer can size each block; `index` is the 1-based label shown to the LLM.
 function renderVideoSummaryBlock(
   v: typeof clerkVideos.$inferSelect,
   summaries: Map<string, string>,
@@ -298,9 +296,8 @@ async function reduceOneChunk(args: {
   return args.chunkText;
 }
 
-// Reduce an ordered list of summary blocks down to a single videosData string ≤ budget.
-// ≤ budget → single string as today. Otherwise: pack into chunks, partial-reduce each chunk
-// CONCURRENTLY into a compact partial pattern set, concatenate, and recurse if still over.
+// Reduce ordered summary blocks to one videosData string: ≤ budget → single string; over →
+// pack into chunks, partial-reduce each CONCURRENTLY, concatenate, recurse if still over.
 // Type-agnostic and run once (shared by both SOP types). Never drops a block.
 async function buildReducedVideosData(args: {
   blocks: string[];
@@ -1378,11 +1375,8 @@ export const analyzeChannel = task({
           `SOP map step: ${summaries.size}/${channelVideos.length} videos summarized (computed=${mapComputed}, cached=${summaries.size - mapComputed - mapFailed}, fallback=${mapFailed})`,
         );
 
-        // BOUND the reduce by char budget, never by dropping videos. Render ALL videos
-        // (views DESC, already ordered) as summary blocks; if they fit the budget, single
-        // reduce as before (the common case). If not, hierarchically reduce into compact
-        // partials so any number of videos is synthesized with zero content loss. The
-        // intermediate reduce is type-agnostic — run once, shared by both SOP types.
+        // Render ALL videos (views DESC, already ordered) as summary blocks;
+        // buildReducedVideosData bounds by char budget, never by dropping videos.
         const reduceBlocks = channelVideos.map((v, i) =>
           renderVideoSummaryBlock(v, summaries, i + 1),
         );

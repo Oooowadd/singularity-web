@@ -1,8 +1,8 @@
-import { generateTextWithFallback } from "@singularity/integrations/clients/llm";
-import { parseLlmJson } from "@singularity/integrations/utils";
-import { buildFactCheckPrompt, type FactCheckItem } from "@singularity/prompts/poet";
+import { generateTextWithFallback } from "@goooose/integrations/clients/llm";
+import { parseLlmJson } from "@goooose/integrations/utils";
+import { buildFactCheckPrompt, type FactCheckItem } from "@goooose/prompts/poet";
 
-// Mirror of @singularity/db CheckedFact (this repo keeps equivalent types per package
+// Mirror of @goooose/db CheckedFact (this repo keeps equivalent types per package
 // rather than cross-importing; see ScriptReference vs CustomTopicReference).
 export type CheckedFact = {
   fact: string;

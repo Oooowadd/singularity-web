@@ -50,7 +50,7 @@ export function RequestAccessForm({ email, blocked }: { email: string; blocked: 
       <CardHeader>
         <CardTitle>申请内测资格</CardTitle>
         <CardDescription>
-          Singularity 正在封闭内测。当前登录邮箱 {email}
+          搬砖小鹅 Goooose 正在封闭内测。当前登录邮箱 {email}
           {pendingRequest
             ? "，你的申请正在审核中，通过后即可使用。"
             : " 尚未获得内测资格，提交申请后我们会尽快审核。"}
@@ -69,7 +69,7 @@ export function RequestAccessForm({ email, blocked }: { email: string; blocked: 
               </p>
             ) : null}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="request-message">想用 Singularity 做什么？</Label>
+              <Label htmlFor="request-message">想用搬砖小鹅做什么？</Label>
               <Textarea
                 id="request-message"
                 value={message}

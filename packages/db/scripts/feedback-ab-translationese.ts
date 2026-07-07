@@ -1,13 +1,13 @@
 // A/B test for #1 (translationese). Same SOP-generation input, only the
 // Chinese wrapper differs: V0 = current CHINESE_WRAPPER, V1 = improved wrapper
 // with a terminology glossary + anti-translationese / anti-AI-tone directives.
-// Run: pnpm --filter @singularity/db exec tsx scripts/feedback-ab-translationese.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/feedback-ab-translationese.ts
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { buildHottestSopPrompt } from "@singularity/prompts/clerk";
-import { generateTextWithFallback } from "@singularity/integrations/clients/llm";
+import { buildHottestSopPrompt } from "@goooose/prompts/clerk";
+import { generateTextWithFallback } from "@goooose/integrations/clients/llm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

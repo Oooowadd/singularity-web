@@ -1,6 +1,6 @@
 /**
  * Workaround for `drizzle-kit push` choking on CHECK constraint introspection.
- * Run: pnpm --filter @singularity/db exec tsx scripts/apply-pending-migration.ts <sql-file>
+ * Run: pnpm --filter @goooose/db exec tsx scripts/apply-pending-migration.ts <sql-file>
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

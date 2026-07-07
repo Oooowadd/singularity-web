@@ -3,7 +3,7 @@
  * READ-ONLY: SELECTs a REAL English source video (no CJK, has transcript), runs the real
  * analyzeViralTrigger in English, then generateIdeas TWICE with language:"en"
  * (without vs with a realistic English account Bible). No DB writes.
- * Run: pnpm --filter @singularity/db exec tsx scripts/muse-bible-en-smoke-zz.ts
+ * Run: pnpm --filter @goooose/db exec tsx scripts/muse-bible-en-smoke-zz.ts
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,7 @@ import { clerkVideos } from "../src/schema/clerk";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { generateIdeas, analyzeViralTrigger } = await import("@singularity/domain/services/muse");
+const { generateIdeas, analyzeViralTrigger } = await import("@goooose/domain/services/muse");
 
 const client = postgres(process.env.DATABASE_URL!, { prepare: false });
 const db = drizzle(client);

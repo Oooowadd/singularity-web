@@ -9,18 +9,18 @@ import {
   loadProxyPool,
   pipelineRuns,
   type SeriesVideoRef,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { userRunsQueue } from "../lib/queues";
-import { llm } from "@singularity/integrations/clients/llm";
+import { llm } from "@goooose/integrations/clients/llm";
 import {
   buildSeriesDetectPrompt,
   type SeriesDetectResponse,
-} from "@singularity/prompts/clerk-series";
-import { listChannelVideos } from "@singularity/integrations/clients/ytdlp";
-import { fetchVideoMetadataBatch } from "@singularity/integrations/clients/youtube-data";
-import { parseLlmJson } from "@singularity/integrations/utils";
+} from "@goooose/prompts/clerk-series";
+import { listChannelVideos } from "@goooose/integrations/clients/ytdlp";
+import { fetchVideoMetadataBatch } from "@goooose/integrations/clients/youtube-data";
+import { parseLlmJson } from "@goooose/integrations/utils";
 
 type Payload = {
   channelId: string;

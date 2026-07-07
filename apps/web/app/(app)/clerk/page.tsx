@@ -1,7 +1,7 @@
 import { and, count, desc, eq, inArray, isNull, max } from "drizzle-orm";
 import Link from "next/link";
 
-import { clerkSops, clerkVideos, competitorAccounts } from "@singularity/db";
+import { clerkSops, clerkVideos, competitorAccounts } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

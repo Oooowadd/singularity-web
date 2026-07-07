@@ -2,7 +2,7 @@
  * Verify: feed English transcript with language=zh, confirm output is
  * Chinese (analyzer JSON values + a quick SOP sample).
  *
- * Run: pnpm --filter @singularity/db exec tsx scripts/verify-chinese-output.ts
+ * Run: pnpm --filter @goooose/db exec tsx scripts/verify-chinese-output.ts
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -1,6 +1,6 @@
 // A/B: Qwen3-ASR-Flash vs Deepgram nova-3 on the SAME audio (English + Chinese),
 // same config as production. Decides whether to unify on Qwen primary + Deepgram
-// fallback. Run: pnpm --filter @singularity/db exec tsx scripts/qwen-vs-deepgram.ts
+// fallback. Run: pnpm --filter @goooose/db exec tsx scripts/qwen-vs-deepgram.ts
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

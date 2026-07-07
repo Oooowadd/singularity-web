@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { channels, clerkVideos } from "@singularity/db";
+import { channels, clerkVideos } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { formatDuration, formatViews } from "@/lib/format-count";

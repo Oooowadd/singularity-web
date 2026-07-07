@@ -6,7 +6,7 @@ import { usageEvents } from "../schema/usage";
 // web client can be passed.
 type DbLike = { insert: PostgresJsDatabase["insert"] };
 
-// Structural twin of @singularity/integrations/metering UsageEvent (db must not
+// Structural twin of @goooose/integrations/metering UsageEvent (db must not
 // depend on integrations).
 export type MeteredEvent = {
   userId?: string;

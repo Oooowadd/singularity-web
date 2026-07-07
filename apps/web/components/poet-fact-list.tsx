@@ -2,7 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 
-import type { CheckedFact, CustomTopicReference } from "@singularity/db";
+import type { CheckedFact, CustomTopicReference } from "@goooose/db";
 
 import { badgeVariants } from "@/components/ui/badge";
 import {

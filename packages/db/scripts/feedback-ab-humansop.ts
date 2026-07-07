@@ -1,13 +1,13 @@
 // Targeted A/B on the HUMAN SOP prompt — the prompt that actually coins
 // 签名式动作 / 认知基模 / 社会仪式CTA in production. Same synthetic videosData,
 // only the wrapper differs. Run:
-// pnpm --filter @singularity/db exec tsx scripts/feedback-ab-humansop.ts
+// pnpm --filter @goooose/db exec tsx scripts/feedback-ab-humansop.ts
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { buildHumanSopPrompt } from "@singularity/prompts/clerk";
-import { generateTextWithFallback } from "@singularity/integrations/clients/llm";
+import { buildHumanSopPrompt } from "@goooose/prompts/clerk";
+import { generateTextWithFallback } from "@goooose/integrations/clients/llm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

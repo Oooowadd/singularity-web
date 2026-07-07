@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-import type { Channel } from "@singularity/db";
+import type { Channel } from "@goooose/db";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";

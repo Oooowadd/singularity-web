@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 config({ path: new URL("../../../.env.local", import.meta.url) });
-import { getXhsNoteDetail } from "@singularity/integrations/clients/xhs";
-import { analyzeImageStack, analyzeThumbnail } from "@singularity/integrations/clients/vision";
+import { getXhsNoteDetail } from "@goooose/integrations/clients/xhs";
+import { analyzeImageStack, analyzeThumbnail } from "@goooose/integrations/clients/vision";
 
 const log = (m: string) => console.log(m);
 const logger = { warn: (m: string) => console.log("  ! " + m), info: log };

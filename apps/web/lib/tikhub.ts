@@ -1,3 +1,3 @@
 import "server-only";
 
-export * from "@singularity/integrations/clients/tikhub";
+export * from "@goooose/integrations/clients/tikhub";

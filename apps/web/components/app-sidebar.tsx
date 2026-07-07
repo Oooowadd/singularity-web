@@ -44,8 +44,8 @@ export function AppSidebar({
   return (
     <Sidebar>
       <SidebarHeader className="px-6 pt-10 pb-6">
-        <Link href="/" className="font-display text-3xl italic leading-none">
-          Singularity
+        <Link href="/" className="font-display text-2xl italic leading-none">
+          搬砖小鹅 Goooose
         </Link>
       </SidebarHeader>
 

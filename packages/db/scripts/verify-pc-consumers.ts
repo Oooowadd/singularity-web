@@ -1,7 +1,7 @@
 // Read-only: mirrors the P-C consumer read paths (dashboard activity feed,
 // global runs indicator listActiveAll) to prove competitor runs are visible
 // with a resolvable target name and deep-link fields.
-// Run: pnpm --filter @singularity/db exec tsx scripts/verify-pc-consumers.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/verify-pc-consumers.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

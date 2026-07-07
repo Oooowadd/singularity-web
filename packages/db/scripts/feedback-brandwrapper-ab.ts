@@ -3,14 +3,14 @@
 //     show what it would have force-injected — proves how often the anyQuoted
 //     fallback grabbed junk. (2) Run the SHIPPED writeScriptShort on a real idea
 //     and show the hook reads naturally.
-// Run: pnpm --filter @singularity/db exec tsx scripts/feedback-brandwrapper-ab.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/feedback-brandwrapper-ab.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { writeScriptShort } from "@singularity/domain/services/poet/script-writer";
+import { writeScriptShort } from "@goooose/domain/services/poet/script-writer";
 import { channels, clerkSops, museIdeas, museMonitorVideos, poetBible } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

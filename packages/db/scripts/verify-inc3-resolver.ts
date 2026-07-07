@@ -1,6 +1,6 @@
 // INC3 read-only logic gate: resolvePrimarySop must equal the legacy ai_reference
 // query for every project, and project_sops must hold <=1 primary per project.
-// Run: pnpm --filter @singularity/db exec tsx scripts/verify-inc3-resolver.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/verify-inc3-resolver.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

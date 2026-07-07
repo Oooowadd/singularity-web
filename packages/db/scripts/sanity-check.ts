@@ -1,7 +1,7 @@
 /**
  * Sanity checks on the imported archive data.
  *
- * Run: pnpm --filter @singularity/db sanity-check
+ * Run: pnpm --filter @goooose/db sanity-check
  *
  * Validates:
  *   1. row counts match the xlsx Summary TOTAL row

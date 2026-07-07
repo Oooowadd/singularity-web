@@ -1,5 +1,5 @@
 // Read-only: check a channel's SOPs for the no-transcript disclosure behavior.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-sop-disclosure.ts <channelSlug>
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-sop-disclosure.ts <channelSlug>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

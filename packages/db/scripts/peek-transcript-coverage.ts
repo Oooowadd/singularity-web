@@ -1,5 +1,5 @@
 // Read-only: transcript coverage for a channel's latest analyzed videos.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-transcript-coverage.ts <channelSlug>
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-transcript-coverage.ts <channelSlug>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

@@ -14,18 +14,18 @@ import {
   resolvePrimarySop,
   type CheckedFact,
   type CustomTopicReference,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { userRunsQueue } from "../lib/queues";
-import { factCheckVerbatim } from "@singularity/domain/services/poet/fact-check";
+import { factCheckVerbatim } from "@goooose/domain/services/poet/fact-check";
 import {
   formatVerbatimFacts,
   type ScriptReference,
   writeScript,
-} from "@singularity/domain/services/poet/script-writer";
-import { computeTargetWordCount, countWords, isLongForm } from "@singularity/domain/schemas/poet";
-import { safeText } from "@singularity/integrations/utils";
+} from "@goooose/domain/services/poet/script-writer";
+import { computeTargetWordCount, countWords, isLongForm } from "@goooose/domain/schemas/poet";
+import { safeText } from "@goooose/integrations/utils";
 
 type Payload = {
   channelId: string;

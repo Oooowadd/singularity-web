@@ -31,7 +31,7 @@ notes/    文档(archive/ 为历史)
 
 - `apps/web`、`apps/worker` → `domain` / `integrations` / `prompts` / `db`
 - `domain` → `integrations` + `prompts`(domain 是上层业务)
-- `integrations`、`prompts` 不依赖任何 `@singularity/*`(底层,框架无关)
+- `integrations`、`prompts` 不依赖任何 `@goooose/*`(底层,框架无关)
 - apps 依赖 packages,反之不行;app 之间不互相依赖
 
 > 这套方向由 **pnpm workspace 依赖声明强制**:包的 `package.json` 没声明就 import 不到。ESLint 另补一条:禁止 app 之间互相 import。

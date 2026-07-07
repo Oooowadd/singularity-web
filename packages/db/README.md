@@ -1,4 +1,4 @@
-# @singularity/db
+# @goooose/db
 
 Drizzle ORM schema + 迁移 + 复用查询。Supabase Postgres 的 single source of truth。被 `apps/web`、`apps/worker` 共用。
 

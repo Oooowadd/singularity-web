@@ -9,7 +9,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, desc, eq } from "drizzle-orm";
 
-import { channels, clerkSops, clerkVideos } from "@singularity/db";
+import { channels, clerkSops, clerkVideos } from "@goooose/db";
 
 async function main() {
   const client = postgres(process.env.DATABASE_URL!, { prepare: false });

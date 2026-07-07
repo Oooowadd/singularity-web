@@ -1,6 +1,6 @@
 // Seed a competitor-owned pipeline_runs row mirroring tRPC startAnalysis (P-C),
 // so a directly-triggered clerk-analyze-channel job can satisfy its run_id FK.
-// Run: pnpm --filter @singularity/db exec tsx scripts/seed-pc-run.ts <competitorAccountId> <limit> <language> <mode> <source>
+// Run: pnpm --filter @goooose/db exec tsx scripts/seed-pc-run.ts <competitorAccountId> <limit> <language> <mode> <source>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

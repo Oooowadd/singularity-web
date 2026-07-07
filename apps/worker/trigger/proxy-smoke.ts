@@ -2,8 +2,8 @@ import { logger, task } from "@trigger.dev/sdk";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { flushProxyPool, loadProxyPool } from "@singularity/db";
-import { transcribeYoutubeVideo } from "@singularity/integrations/clients/asr";
+import { flushProxyPool, loadProxyPool } from "@goooose/db";
+import { transcribeYoutubeVideo } from "@goooose/integrations/clients/asr";
 
 type Payload = {
   videoIds?: string[];

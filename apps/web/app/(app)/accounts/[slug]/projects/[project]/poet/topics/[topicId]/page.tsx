@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 
-import { channels, poetBible, poetCustomTopics, clerkSops, projects, resolvePrimarySop } from "@singularity/db";
-import type { CustomTopicReference } from "@singularity/db";
+import { channels, poetBible, poetCustomTopics, clerkSops, projects, resolvePrimarySop } from "@goooose/db";
+import type { CustomTopicReference } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";

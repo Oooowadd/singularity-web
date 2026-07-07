@@ -1,6 +1,6 @@
 // Generates notes/prompts_catalog.md by rendering every prompt builder with
 // placeholder args, so the catalog is always in sync with the code.
-// Run: pnpm --filter @singularity/db exec tsx scripts/gen-prompts-catalog.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/gen-prompts-catalog.ts
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -9,14 +9,14 @@ import {
   buildHumanSopPrompt,
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
-} from "@singularity/prompts/clerk";
-import { buildCommentsSummaryPrompt } from "@singularity/prompts/clerk-comments";
-import { buildSeriesDetectPrompt } from "@singularity/prompts/clerk-series";
+} from "@goooose/prompts/clerk";
+import { buildCommentsSummaryPrompt } from "@goooose/prompts/clerk-comments";
+import { buildSeriesDetectPrompt } from "@goooose/prompts/clerk-series";
 import {
   buildClassificationPrompt,
   buildViralTriggerPrompt,
   buildIdeaGenerationPrompt,
-} from "@singularity/prompts/muse";
+} from "@goooose/prompts/muse";
 import {
   buildChannelBiblePrompt,
   buildScriptWritingPrompt,
@@ -24,7 +24,7 @@ import {
   buildSectionExpandPrompt,
   buildTopicAnalysisPrompt,
   buildChineseHumanizerPrompt,
-} from "@singularity/prompts/poet";
+} from "@goooose/prompts/poet";
 
 type Entry = {
   fn: string;
@@ -388,7 +388,7 @@ function renderEntry(e: Entry): string {
 }
 
 const parts: string[] = [];
-parts.push(`# Singularity Prompt 目录（模板版）
+parts.push(`# Goooose Prompt 目录（模板版）
 
 > 本文列出三大模块（Clerk / Muse / Poet）用到的全部 prompt，按模块分节，配可点击源码链接。
 > 与 [pipeline_flow.md](./pipeline_flow.md) 互补：那份讲「流程里哪一步用哪个 prompt」，本文讲「prompt 本身长什么样」。
@@ -397,7 +397,7 @@ parts.push(`# Singularity Prompt 目录（模板版）
 > 多数 prompt 的中文 / 英文输出由 \`language\` 参数控制，本文展示中文版（个别强制英文的已标注）。可选段落有内容时才插入。
 >
 > **本文为自动生成，请勿手改。** 改了 prompt 后重新生成：
-> \`pnpm --filter @singularity/db exec tsx scripts/gen-prompts-catalog.ts\`
+> \`pnpm --filter @goooose/db exec tsx scripts/gen-prompts-catalog.ts\`
 `);
 
 for (const sec of sections) {

@@ -1,4 +1,4 @@
-# @singularity/prompts
+# @goooose/prompts
 
 LLM 提示词模板(核心 IP)。纯字符串构造函数,无依赖。
 

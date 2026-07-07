@@ -10,16 +10,16 @@ import {
   resolveActiveBible,
   resolvePrimarySop,
   type CustomTopicReference,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { userRunsQueue } from "../lib/queues";
 import {
   fetchReferences,
   type FetchedReference,
-} from "@singularity/integrations/clients/references";
-import { analyzeTopic } from "@singularity/domain/services/poet/topic-analyzer";
-import { safeText } from "@singularity/integrations/utils";
+} from "@goooose/integrations/clients/references";
+import { analyzeTopic } from "@goooose/domain/services/poet/topic-analyzer";
+import { safeText } from "@goooose/integrations/utils";
 
 type Payload = {
   channelId: string;

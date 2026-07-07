@@ -1,5 +1,5 @@
 // Read-only: verify AriAri competitor analysis data landed (bug-1 triage).
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-ariari.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-ariari.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

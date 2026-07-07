@@ -1,4 +1,4 @@
-# Singularity Web
+# Goooose Web
 
 AI 内容教练 web SaaS — 给中国小型创作者（XHS + YouTube）完成"看对标 → 出选题 → 写稿"的全链路。Closed beta 目标 Q3 2026。
 
@@ -15,7 +15,7 @@ Next.js 16 · TypeScript · tRPC v11 · Vercel AI SDK v6 · Trigger.dev v4 · Lo
 ## 仓库结构
 
 ```
-singularity-web/
+goooose-web/
 ├── apps/
 │   ├── web/                  # Next.js (前端 UI + tRPC API)
 │   └── worker/               # Trigger.dev 长任务
@@ -32,17 +32,17 @@ singularity-web/
 
 ```bash
 pnpm install
-pnpm --filter @singularity/web build
-pnpm --filter @singularity/web dev          # Next.js dev
-pnpm --filter @singularity/worker dev       # Trigger.dev worker（另开窗口）
+pnpm --filter @goooose/web build
+pnpm --filter @goooose/web dev          # Next.js dev
+pnpm --filter @goooose/worker dev       # Trigger.dev worker（另开窗口）
 ```
 
 Smoke 测试（任选）：
 
 ```bash
-pnpm --filter @singularity/db poet-services-smoke
-pnpm --filter @singularity/db muse-services-smoke
-pnpm --filter @singularity/db xhs-client-smoke
-pnpm --filter @singularity/db vision-and-verify-smoke
-pnpm --filter @singularity/db asr-fallback-smoke
+pnpm --filter @goooose/db poet-services-smoke
+pnpm --filter @goooose/db muse-services-smoke
+pnpm --filter @goooose/db xhs-client-smoke
+pnpm --filter @goooose/db vision-and-verify-smoke
+pnpm --filter @goooose/db asr-fallback-smoke
 ```

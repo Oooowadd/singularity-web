@@ -101,7 +101,7 @@ try {
     });
     console.error(`OK ${item.key}: pipeline_run ${run.id}`);
   }
-  writeFileSync("/tmp/singularity-test-manifest.json", JSON.stringify(manifest, null, 2));
+  writeFileSync("/tmp/goooose-test-manifest.json", JSON.stringify(manifest, null, 2));
   console.log(JSON.stringify(manifest, null, 2));
 } finally {
   await sql.end();

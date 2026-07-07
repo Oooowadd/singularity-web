@@ -4,7 +4,7 @@ import { ExternalLink, Layers, Loader2, Play, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { ChannelSeries } from "@singularity/db";
+import type { ChannelSeries } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

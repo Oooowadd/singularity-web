@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
-import { clerkSops, clerkVideos, competitorAccounts } from "@singularity/db";
+import { clerkSops, clerkVideos, competitorAccounts } from "@goooose/db";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";

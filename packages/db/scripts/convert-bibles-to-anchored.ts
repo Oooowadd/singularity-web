@@ -2,7 +2,7 @@
  * One-off: convert legacy 3-section bibles to the anchored 9-section format.
  * Faithful restructure (no new facts) + bidirectional digit audit; skips rows that
  * already carry anchors. Backs up poet_bible to backups/ before writing.
- * Run: pnpm --filter @singularity/db exec tsx scripts/convert-bibles-to-anchored.ts [--execute]
+ * Run: pnpm --filter @goooose/db exec tsx scripts/convert-bibles-to-anchored.ts [--execute]
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -14,9 +14,9 @@ import postgres from "postgres";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { generateTextWithFallback } = await import("@singularity/integrations/clients/llm");
+const { generateTextWithFallback } = await import("@goooose/integrations/clients/llm");
 const { extractHostLine, extractTopicLine, BIBLE_ANCHORS } = await import(
-  "@singularity/domain/services/poet/bible"
+  "@goooose/domain/services/poet/bible"
 );
 
 const execute = process.argv.includes("--execute");

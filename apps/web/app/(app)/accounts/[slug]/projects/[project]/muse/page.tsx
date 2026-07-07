@@ -10,7 +10,7 @@ import {
   museMonitorVideos,
   projectCompetitors,
   projects,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";

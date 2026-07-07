@@ -20,7 +20,7 @@ import {
   usageCounters,
   usageEvents,
   users,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { db } from "@/lib/db";
 import { sendApprovalEmail } from "@/lib/email";

@@ -30,22 +30,22 @@ import {
   projectSops,
   refundRunQuota,
   scriptMinutes,
-} from "@singularity/db";
+} from "@goooose/db";
 import {
   getChannelInfo,
   isValidYoutubeChannelUrl,
   resolveChannelId,
-} from "@singularity/integrations/clients/tikhub";
+} from "@goooose/integrations/clients/tikhub";
 import {
   isValidXhsProfileUrl,
   resolveXhsUser,
-} from "@singularity/integrations/clients/xhs";
+} from "@goooose/integrations/clients/xhs";
 import {
   fetchChannelMetaById,
   fetchChannelMetaByHandle,
   parseYoutubeChannelUrl,
-} from "@singularity/integrations/clients/youtube-data";
-import { provisionalCompetitorKey } from "@singularity/domain/services/competitors";
+} from "@goooose/integrations/clients/youtube-data";
+import { provisionalCompetitorKey } from "@goooose/domain/services/competitors";
 
 import { db } from "@/lib/db";
 import { ETA_JOB_COMMANDS } from "@/lib/eta-jobs";
@@ -207,9 +207,7 @@ async function assertRunQuota(userId: string, taskId: string, quotaMinutes?: num
   return charge ?? 0;
 }
 
-// The staged-run dance shared by every agent-start mutation: insert the pending run
-// row, trigger the task (triggerOrFailRun fails the row if the trigger throws), then
-// stamp triggerRunId into configJson so realtime tokens can be reissued later.
+// Shared by every agent-start mutation; triggerRunId is stamped into configJson so realtime tokens can be reissued later.
 async function stageAndTriggerRun(args: {
   owner: { channelId: string } | { competitorAccountId: string };
   agent: "clerk" | "muse" | "poet";
@@ -812,9 +810,7 @@ export const appRouter = router({
       return { results };
     }),
 
-    // Stats (follower count, name, avatar) are written once at import and never refreshed;
-    // this re-fetches them live the same way upsertCompetitor first did, so the number
-    // stays comparable to the original.
+    // Stats are written once at import; re-fetch the same way upsertCompetitor did so numbers stay comparable.
     refreshStats: protectedProcedure
       .input(competitorIdInput)
       .mutation(async ({ ctx, input }) => {

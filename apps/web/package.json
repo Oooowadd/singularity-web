@@ -1,5 +1,5 @@
 {
-  "name": "@singularity/web",
+  "name": "@goooose/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,10 +14,10 @@
     "@base-ui/react": "^1.4.1",
     "@logto/next": "^4.2.10",
     "@number-flow/react": "^0.6.0",
-    "@singularity/db": "workspace:*",
-    "@singularity/domain": "workspace:*",
-    "@singularity/integrations": "workspace:*",
-    "@singularity/prompts": "workspace:*",
+    "@goooose/db": "workspace:*",
+    "@goooose/domain": "workspace:*",
+    "@goooose/integrations": "workspace:*",
+    "@goooose/prompts": "workspace:*",
     "@tanstack/react-query": "^5.100.10",
     "@trigger.dev/react-hooks": "^4.4.6",
     "@trigger.dev/sdk": "^4.4.6",

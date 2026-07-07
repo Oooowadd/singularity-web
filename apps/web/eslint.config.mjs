@@ -15,7 +15,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@singularity/worker", "@singularity/worker/*", "**/apps/worker/*"],
+              group: ["@goooose/worker", "@goooose/worker/*", "**/apps/worker/*"],
               message: "apps must not import other apps; share code via packages/*.",
             },
           ],

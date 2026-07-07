@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { bibleImportFiles, pipelineRuns, proxySessions, refundRunQuota } from "@singularity/db";
+import { bibleImportFiles, pipelineRuns, proxySessions, refundRunQuota } from "@goooose/db";
 
 function openDb() {
   const client = postgres(process.env.DATABASE_URL!, { prepare: false });

@@ -1,6 +1,6 @@
 # Self-host image for apps/web (Next.js standalone). Vercel does not use this.
-# Build from repo root: docker build -t singularity-web .
-# Run: docker run -p 3000:3000 --env-file .env.local singularity-web
+# Build from repo root: docker build -t goooose-web .
+# Run: docker run -p 3000:3000 --env-file .env.local goooose-web
 FROM node:22-alpine AS base
 RUN corepack enable
 WORKDIR /app
@@ -8,7 +8,7 @@ WORKDIR /app
 FROM base AS build
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @singularity/web build
+RUN pnpm --filter @goooose/web build
 
 FROM base AS runner
 ENV NODE_ENV=production

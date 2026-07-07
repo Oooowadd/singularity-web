@@ -8,7 +8,7 @@
  *   6. fetchReferences batch with mixed types — partial failures kept with error
  *   7. analyzeTopic end-to-end with realistic Chinese topic + 1 text ref
  *
- * Run: pnpm --filter @singularity/db custom-topic-smoke
+ * Run: pnpm --filter @goooose/db custom-topic-smoke
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,8 +19,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { extractYoutubeVideoId, extractXhsNoteId, fetchReference, fetchReferences } =
-  await import("@singularity/integrations/clients/references");
-const { analyzeTopic } = await import("@singularity/domain/services/poet/topic-analyzer");
+  await import("@goooose/integrations/clients/references");
+const { analyzeTopic } = await import("@goooose/domain/services/poet/topic-analyzer");
 
 function header(s: string) {
   console.log(`\n═══ ${s}`);

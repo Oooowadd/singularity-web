@@ -8,7 +8,7 @@ export async function sendApprovalEmail(to: string): Promise<{ sent: boolean; re
   if (!apiKey || !from || !to) {
     return { sent: false, reason: "email_not_configured" };
   }
-  const baseUrl = process.env.LOGTO_BASE_URL ?? "https://app.singularity.example";
+  const baseUrl = process.env.LOGTO_BASE_URL ?? "https://goooose.com";
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -19,12 +19,12 @@ export async function sendApprovalEmail(to: string): Promise<{ sent: boolean; re
       body: JSON.stringify({
         from,
         to: [to],
-        subject: "Singularity 内测申请已通过",
+        subject: "搬砖小鹅 Goooose 内测申请已通过",
         html: [
           "<p>你好，</p>",
-          "<p>你的 Singularity 内测申请已通过，现在可以登录使用了。</p>",
-          `<p><a href="${baseUrl}">点击进入 Singularity</a>（使用申请时的邮箱登录）</p>`,
-          "<p>—— Singularity 团队</p>",
+          "<p>你的搬砖小鹅 Goooose 内测申请已通过，现在可以登录使用了。</p>",
+          `<p><a href="${baseUrl}">点击进入搬砖小鹅 Goooose</a>（使用申请时的邮箱登录）</p>`,
+          "<p>—— 搬砖小鹅 Goooose 团队</p>",
         ].join("\n"),
       }),
     });

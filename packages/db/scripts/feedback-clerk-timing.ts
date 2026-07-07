@@ -1,6 +1,6 @@
 // Root-cause timing for Clerk analyze runs (#perf). Pulls real run durations,
 // per-video averages, and transcript-source mix (caption vs ASR) per run.
-// Run: pnpm --filter @singularity/db exec tsx scripts/feedback-clerk-timing.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/feedback-clerk-timing.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

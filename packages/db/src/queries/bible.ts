@@ -6,10 +6,8 @@ import { projects } from "../schema/project";
 
 export type ResolvedBible = { bible: typeof poetBible.$inferSelect; viaFallback: boolean } | null;
 
-// The Bible a project writes against: its hard pin (project.active_bible_id) first; otherwise
-// the account-level active Bible (Bible is per-account, shared across the account's projects).
-// accountId is the channel/own-account spine. viaFallback flags "served the account active
-// Bible instead of a project pin" so the caller can log it.
+// Bibles are per-account (accountId = channel/own-account spine), shared across its projects;
+// viaFallback = served the account active Bible instead of the project's hard pin, for caller logging.
 export async function resolveActiveBible(
   db: PostgresJsDatabase,
   projectId: string,

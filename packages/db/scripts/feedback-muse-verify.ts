@@ -1,12 +1,12 @@
 // C4 Muse idea-gen verify: 6-field population + facts depth at the new 8192 budget.
-// Run: pnpm --filter @singularity/db exec tsx scripts/feedback-muse-verify.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/feedback-muse-verify.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { desc, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { generateIdeas } from "@singularity/domain/services/muse";
+import { generateIdeas } from "@goooose/domain/services/muse";
 import { channels, museMonitorVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

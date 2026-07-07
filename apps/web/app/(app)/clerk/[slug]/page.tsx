@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { channels, channelSeries, clerkSops, clerkVideos } from "@singularity/db";
+import { channels, channelSeries, clerkSops, clerkVideos } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { formatDuration, formatViews } from "@/lib/format-count";

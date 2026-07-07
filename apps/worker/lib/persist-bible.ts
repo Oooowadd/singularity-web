@@ -2,8 +2,8 @@ import { logger } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 
-import { poetBible, poetDriftEvents, projects, type ImportFlag } from "@singularity/db";
-import type { DriftWarning } from "@singularity/domain/schemas/poet";
+import { poetBible, poetDriftEvents, projects, type ImportFlag } from "@goooose/db";
+import type { DriftWarning } from "@goooose/domain/schemas/poet";
 
 type PersistArgs = {
   channelId: string;

@@ -12,9 +12,9 @@ import {
   projects,
   resolvePrimarySop,
   type CustomTopicReference,
-} from "@singularity/db";
+} from "@goooose/db";
 
-import { formatDurationLabel } from "@singularity/domain/schemas/poet";
+import { formatDurationLabel } from "@goooose/domain/schemas/poet";
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
@@ -102,9 +102,8 @@ export default async function PoetChannelPage({ params }: Props) {
     ]);
 
   const activeBible = activeBibleRow[0] ?? null;
-  // hasSop = what the writer actually resolves (project-bound SOP — incl. a competitor's —
-  // OR the own-channel ai_reference fallback). Checking only own-channel ai_reference falsely
-  // warned "no SOP" when a competitor SOP was selected for the project.
+  // Must mirror what the writer resolves (project-bound SOP — incl. a competitor's — or the
+  // own-channel ai_reference fallback); checking only own ai_reference warns "no SOP" falsely.
   const hasAiReferenceSop = primarySop != null;
 
   return (

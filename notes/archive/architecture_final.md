@@ -1,4 +1,4 @@
-# Singularity Web — 最终架构
+# Goooose Web — 最终架构
 
 **Last revised**: 2026-05-21
 

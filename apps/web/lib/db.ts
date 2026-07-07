@@ -3,7 +3,7 @@ import "server-only";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import * as schema from "@singularity/db";
+import * as schema from "@goooose/db";
 
 const globalForDb = globalThis as unknown as {
   __pgClient?: ReturnType<typeof postgres>;

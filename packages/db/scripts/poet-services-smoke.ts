@@ -1,6 +1,6 @@
 /**
  * Smoke test for Poet pipeline services (bible / drift / scriptWriter / humanizer).
- * Run: pnpm --filter @singularity/db poet-services-smoke
+ * Run: pnpm --filter @goooose/db poet-services-smoke
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,10 +11,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
 const { generateChannelBible, tokenize, checkDrift, extractTopicLine } = await import(
-  "@singularity/domain/services/poet/bible"
+  "@goooose/domain/services/poet/bible"
 );
-const { writeScriptShort } = await import("@singularity/domain/services/poet/script-writer");
-const { humanizeChinese } = await import("@singularity/domain/services/poet/humanizer");
+const { writeScriptShort } = await import("@goooose/domain/services/poet/script-writer");
+const { humanizeChinese } = await import("@goooose/domain/services/poet/humanizer");
 
 const FAKE_BIBLE = `TOPIC: 露营装备实测与避坑指南
 

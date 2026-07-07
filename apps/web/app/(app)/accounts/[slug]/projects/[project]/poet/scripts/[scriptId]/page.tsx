@@ -10,9 +10,9 @@ import {
   poetCustomTopics,
   poetScripts,
   projects,
-} from "@singularity/db";
+} from "@goooose/db";
 
-import { formatDurationLabel } from "@singularity/domain/schemas/poet";
+import { formatDurationLabel } from "@goooose/domain/schemas/poet";
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { formatDateTime } from "@/lib/datetime";

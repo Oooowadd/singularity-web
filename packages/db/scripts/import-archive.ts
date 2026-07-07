@@ -1,7 +1,7 @@
 /**
  * Import archived xlsx data into Supabase, all rows bound to a single user.
  *
- * Run: pnpm --filter @singularity/db import-archive
+ * Run: pnpm --filter @goooose/db import-archive
  *
  * Caveats:
  * - xlsx export truncates every long-text cell to ~301 chars (trailing "…").

@@ -5,7 +5,7 @@ import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { getXhsUserNotes } from "@singularity/integrations/clients/xhs";
+import { getXhsUserNotes } from "@goooose/integrations/clients/xhs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

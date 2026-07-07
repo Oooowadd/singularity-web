@@ -1,5 +1,5 @@
 // Dump INC3 owner-column + project_sops state for one channel/project (id is shared).
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-inc3.ts <channelId>
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-inc3.ts <channelId>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

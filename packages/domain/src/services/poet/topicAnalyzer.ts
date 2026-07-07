@@ -1,8 +1,8 @@
-import { generateTextWithFallback } from "@singularity/integrations/clients/llm";
-import { parseLlmJson } from "@singularity/integrations/utils";
+import { generateTextWithFallback } from "@goooose/integrations/clients/llm";
+import { parseLlmJson } from "@goooose/integrations/utils";
 import { redactUngrounded } from "../grounding";
 import { selectBibleSections } from "./bible";
-import { buildTopicAnalysisPrompt } from "@singularity/prompts/poet";
+import { buildTopicAnalysisPrompt } from "@goooose/prompts/poet";
 import { factCheckVerbatim, type CheckedFact } from "./factCheck";
 import { formatReferencesBlock, type ScriptReference } from "./scriptWriter";
 

@@ -3,7 +3,7 @@
 //  2. Translationese: buildHumanSopPrompt with the upgraded CHINESE_WRAPPER — coined-term count
 //  3. Muse: generateIdeas (8192 budget) — 6-field population + facts depth
 //  4. Duration (#6): computeTargetWordCount / formatDurationLabel / isLongForm
-// Run: pnpm --filter @singularity/db exec tsx scripts/feedback-batch-verify.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/feedback-batch-verify.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -11,15 +11,15 @@ import { generateText } from "ai";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { buildHumanSopPrompt } from "@singularity/prompts/clerk";
-import { llm } from "@singularity/integrations/clients/llm";
-import { generateChannelBible } from "@singularity/domain/services/poet/bible";
-import { generateIdeas } from "@singularity/domain/services/muse";
+import { buildHumanSopPrompt } from "@goooose/prompts/clerk";
+import { llm } from "@goooose/integrations/clients/llm";
+import { generateChannelBible } from "@goooose/domain/services/poet/bible";
+import { generateIdeas } from "@goooose/domain/services/muse";
 import {
   computeTargetWordCount,
   formatDurationLabel,
   isLongForm,
-} from "@singularity/domain/schemas/poet";
+} from "@goooose/domain/schemas/poet";
 import { channels, clerkVideos, museMonitorVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

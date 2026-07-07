@@ -1,6 +1,6 @@
 // Mirrors sops.setPrimary (routers.ts): delete the project's current primary
 // binding, upsert the new one. Used to drive the P-B chain test headlessly.
-// Run: pnpm --filter @singularity/db exec tsx scripts/set-primary-sop.ts <projectId> <sopId>
+// Run: pnpm --filter @goooose/db exec tsx scripts/set-primary-sop.ts <projectId> <sopId>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

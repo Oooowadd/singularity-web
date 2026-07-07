@@ -1,7 +1,7 @@
 // Verifies the batch-1 fixes end to end: zod platform hints, user-scoped usedBy,
 // dedicated running-agents query, race-free user upsert (idempotent no-op on the
 // existing row), and prod presence of the competitor-side indexes now declared in TS.
-// Run: pnpm --filter @singularity/db exec tsx scripts/verify-batch1-fixes.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/verify-batch1-fixes.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

@@ -1,10 +1,10 @@
 // Bible file import stage-2: anchored bible generation from a faithful document
 // transcript, with build-time digit audit (content numbers ⊆ transcript numbers).
-// Thresholds validated in the R6 bake-off (notes/round6-bible导入-研究与决策.md).
+// Thresholds validated in the R6 bake-off (notes/release-v0.6.md).
 
-import type { ImportFlag } from "@singularity/integrations/clients/docTranscribe";
-import { generateTextWithFallback } from "@singularity/integrations/clients/llm";
-import { buildBibleFromDocumentPrompt } from "@singularity/prompts/poet";
+import type { ImportFlag } from "@goooose/integrations/clients/docTranscribe";
+import { generateTextWithFallback } from "@goooose/integrations/clients/llm";
+import { buildBibleFromDocumentPrompt } from "@goooose/prompts/poet";
 import { redactUngrounded } from "../grounding";
 import { checkDrift, extractHostLine, extractTopicLine } from "./bible";
 import type { DriftWarning } from "../../schemas/poet";

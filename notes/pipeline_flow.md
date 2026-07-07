@@ -1,4 +1,4 @@
-# Singularity 三大模块 · 逻辑链路（Working Flow）
+# Goooose 三大模块 · 逻辑链路（Working Flow）
 
 > 目的：把网站底层运行逻辑梳理清楚，方便对齐与定位优化点。
 >

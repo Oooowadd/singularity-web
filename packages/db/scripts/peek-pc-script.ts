@@ -1,6 +1,6 @@
 // Read-only: confirm a generated script's SOP linkage (P-B chain: competitor
 // SOP followed by Poet) and dump its text for quality review.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-pc-script.ts <scriptId>
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-pc-script.ts <scriptId>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

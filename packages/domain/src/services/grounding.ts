@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 
-import { generateTextWithFallback, llm } from "@singularity/integrations/clients/llm";
+import { generateTextWithFallback, llm } from "@goooose/integrations/clients/llm";
 
 // Anti-fabrication pass: a second LLM redacts specifics the source doesn't support,
 // cleans garbled ASR quotes, and fixes clear factual errors about well-known entities.

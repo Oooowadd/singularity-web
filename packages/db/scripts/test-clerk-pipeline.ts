@@ -11,10 +11,10 @@
  *
  * Requires:
  *   - Trigger.dev worker running in another terminal:
- *     pnpm --filter @singularity/worker dev
+ *     pnpm --filter @goooose/worker dev
  *
  * Run:
- *   pnpm --filter @singularity/db exec tsx scripts/test-clerk-pipeline.ts
+ *   pnpm --filter @goooose/db exec tsx scripts/test-clerk-pipeline.ts
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

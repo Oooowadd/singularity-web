@@ -1,13 +1,13 @@
 // INC5a logic gate: a re-import of any existing competitor must dedup — i.e. the two-stage
 // key (provisional + Stage B resolveChannelId for YouTube handles) must equal the stored
 // platform_key. Also confirms the D3 spine covers every channel. Read-only except none.
-// Run: pnpm --filter @singularity/db exec tsx scripts/verify-inc5a-dedup.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/verify-inc5a-dedup.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import postgres from "postgres";
-import { provisionalCompetitorKey } from "@singularity/domain/services/competitors";
-import { resolveChannelId } from "@singularity/integrations/clients/tikhub";
+import { provisionalCompetitorKey } from "@goooose/domain/services/competitors";
+import { resolveChannelId } from "@goooose/integrations/clients/tikhub";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

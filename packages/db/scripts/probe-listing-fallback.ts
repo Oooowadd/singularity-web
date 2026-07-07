@@ -1,6 +1,6 @@
 // Deterministic fallback test: bogus proxy forces the yt-dlp leg to fail, the
 // YouTube Data API leg must serve the listing. Read-only.
-// Run: pnpm --filter @singularity/db exec tsx scripts/probe-listing-fallback.ts <channelUrl>
+// Run: pnpm --filter @goooose/db exec tsx scripts/probe-listing-fallback.ts <channelUrl>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { listChannelVideos } = await import("@singularity/integrations/clients/ytdlp");
+const { listChannelVideos } = await import("@goooose/integrations/clients/ytdlp");
 
 const url = process.argv[2] ?? "https://www.youtube.com/@lyi";
 const t0 = Date.now();

@@ -2,7 +2,7 @@
  * Smoke test for chunked Qwen ASR (long-audio segmentation + stitching).
  * Synthesizes Chinese speech locally (macOS `say`), so it exercises the real
  * extract → segment → per-chunk Qwen → stitch pipeline without YouTube/proxies.
- * Run: pnpm --filter @singularity/db exec tsx scripts/asr-chunk-smoke.ts
+ * Run: pnpm --filter @goooose/db exec tsx scripts/asr-chunk-smoke.ts
  */
 import { execFileSync } from "node:child_process";
 import { readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
@@ -15,7 +15,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { transcribeWithQwen } = await import("@singularity/integrations/clients/asr");
+const { transcribeWithQwen } = await import("@goooose/integrations/clients/asr");
 
 const log = {
   info: (m: string) => console.log(`  [info] ${m}`),
@@ -47,7 +47,7 @@ const FILLER =
   "频道圣经定义了人设与语气，写稿方法论决定了结构与节拍，选题官负责巡视对标提取爆款触发因素。";
 
 async function main() {
-  const before = tmpFiles("singularity-asr-").length;
+  const before = tmpFiles("goooose-asr-").length;
 
   // Case A: short clip → single-shot path (no chunking needed).
   console.log("\n═══ Case A: short audio (single shot)");
@@ -93,7 +93,7 @@ async function main() {
   }
 
   // Temp hygiene: extraction + segment files must all be cleaned up.
-  const after = tmpFiles("singularity-asr-").length;
+  const after = tmpFiles("goooose-asr-").length;
   check("temp files cleaned", after <= before, `before=${before} after=${after}`);
 
   console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);

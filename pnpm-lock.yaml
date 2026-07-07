@@ -23,24 +23,24 @@ importers:
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@goooose/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@goooose/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@goooose/integrations':
+        specifier: workspace:*
+        version: link:../../packages/integrations
+      '@goooose/prompts':
+        specifier: workspace:*
+        version: link:../../packages/prompts
       '@logto/next':
         specifier: ^4.2.10
         version: 4.2.10(next@16.2.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       '@number-flow/react':
         specifier: ^0.6.0
         version: 0.6.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@singularity/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@singularity/domain':
-        specifier: workspace:*
-        version: link:../../packages/domain
-      '@singularity/integrations':
-        specifier: workspace:*
-        version: link:../../packages/integrations
-      '@singularity/prompts':
-        specifier: workspace:*
-        version: link:../../packages/prompts
       '@tanstack/react-query':
         specifier: ^5.100.10
         version: 5.100.10(react@19.2.4)
@@ -153,16 +153,16 @@ importers:
       '@ai-sdk/deepseek':
         specifier: ^2.0.35
         version: 2.0.35(zod@4.4.3)
-      '@singularity/db':
+      '@goooose/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@singularity/domain':
+      '@goooose/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@singularity/integrations':
+      '@goooose/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations
-      '@singularity/prompts':
+      '@goooose/prompts':
         specifier: workspace:*
         version: link:../../packages/prompts
       '@trigger.dev/sdk':
@@ -202,13 +202,13 @@ importers:
       '@ai-sdk/deepseek':
         specifier: ^2.0.35
         version: 2.0.35(zod@4.4.3)
-      '@singularity/domain':
+      '@goooose/domain':
         specifier: workspace:*
         version: link:../domain
-      '@singularity/integrations':
+      '@goooose/integrations':
         specifier: workspace:*
         version: link:../integrations
-      '@singularity/prompts':
+      '@goooose/prompts':
         specifier: workspace:*
         version: link:../prompts
       '@trigger.dev/sdk':
@@ -245,10 +245,10 @@ importers:
 
   packages/domain:
     dependencies:
-      '@singularity/integrations':
+      '@goooose/integrations':
         specifier: workspace:*
         version: link:../integrations
-      '@singularity/prompts':
+      '@goooose/prompts':
         specifier: workspace:*
         version: link:../prompts
       ai:

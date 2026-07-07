@@ -1,15 +1,15 @@
 // End-to-end: real XHS user -> getXhsUserNotes (fresh h265 streams) ->
 // transcribeFromStreams (now Qwen3-ASR primary). Confirms Qwen handles the actual
 // XHS h265 video/mp4 container + Chinese quality; provider field = qwen vs groq.
-// Run: pnpm --filter @singularity/db exec tsx scripts/qwen-xhs-e2e.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/qwen-xhs-e2e.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { getXhsUserNotes } from "@singularity/integrations/clients/xhs";
-import { transcribeFromStreams } from "@singularity/integrations/clients/asr";
+import { getXhsUserNotes } from "@goooose/integrations/clients/xhs";
+import { transcribeFromStreams } from "@goooose/integrations/clients/asr";
 import { clerkVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

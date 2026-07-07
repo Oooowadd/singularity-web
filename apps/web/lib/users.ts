@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { getLogtoContext } from "@logto/next/server-actions";
 
-import { allowedEmails, users, type User } from "@singularity/db";
+import { allowedEmails, users, type User } from "@goooose/db";
 
 import { db } from "./db";
 import { logtoConfig } from "./logto";

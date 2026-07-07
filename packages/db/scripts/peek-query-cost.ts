@@ -1,6 +1,6 @@
 // Read-only: Postgres-reported execution time (compute only, no network) for the
 // heaviest landing-page query — proves DB compute vs wire-time split.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-query-cost.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-query-cost.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

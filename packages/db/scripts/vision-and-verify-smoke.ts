@@ -3,7 +3,7 @@
  *   A. analyzeThumbnail (single-image Claude vision) — used by Clerk
  *   B. channels.verifyUrl flow — YT Data API primary + XHS path
  *
- * Run: pnpm --filter @singularity/db vision-and-verify-smoke
+ * Run: pnpm --filter @goooose/db vision-and-verify-smoke
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,15 +13,15 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { analyzeThumbnail } = await import("@singularity/integrations/clients/vision");
+const { analyzeThumbnail } = await import("@goooose/integrations/clients/vision");
 const {
   fetchChannelMetaByHandle,
   fetchChannelMetaById,
   parseYoutubeChannelUrl,
-} = await import("@singularity/integrations/clients/youtube-data");
-const { isValidYoutubeChannelUrl } = await import("@singularity/integrations/clients/tikhub");
+} = await import("@goooose/integrations/clients/youtube-data");
+const { isValidYoutubeChannelUrl } = await import("@goooose/integrations/clients/tikhub");
 const { isValidXhsProfileUrl, resolveXhsUser } = await import(
-  "@singularity/integrations/clients/xhs"
+  "@goooose/integrations/clients/xhs"
 );
 
 let pass = 0;

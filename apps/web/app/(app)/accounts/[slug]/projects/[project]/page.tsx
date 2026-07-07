@@ -14,7 +14,7 @@ import {
   poetScripts,
   projects,
   projectSops,
-} from "@singularity/db";
+} from "@goooose/db";
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";

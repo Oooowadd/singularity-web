@@ -1,7 +1,7 @@
 /**
  * Smoke test for the analyze-channel pipeline's ASR-fallback branch logic.
  * Exercises the same decision tree without Trigger.dev / DB writes.
- * Run: pnpm --filter @singularity/db asr-branch-smoke
+ * Run: pnpm --filter @goooose/db asr-branch-smoke
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,8 +11,8 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { getVideoWithTranscript } = await import("@singularity/integrations/clients/tikhub");
-const { transcribeYoutubeVideo } = await import("@singularity/integrations/clients/asr");
+const { getVideoWithTranscript } = await import("@goooose/integrations/clients/tikhub");
+const { transcribeYoutubeVideo } = await import("@goooose/integrations/clients/asr");
 
 const ASR_MAX_DURATION_SEC = 60 * 60;
 

@@ -1,8 +1,6 @@
 import Link from "next/link";
 
-// 频道圣经 indicator — account-level, read-only everywhere except the account bible page.
-// "header" = compact pill for the top context-header (persists across the account's pages);
-// "band" = a light read-only band for the project hub.
+// Account-level 频道圣经 indicator — read-only everywhere except the account bible page.
 export function BibleChip({
   name,
   manageHref,

@@ -27,7 +27,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Singularity",
+  title: "搬砖小鹅 Goooose",
 };
 
 export default function RootLayout({

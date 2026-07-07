@@ -2,7 +2,7 @@
  * LIVE quality + context-bound proof for the SOP map-reduce path.
  * READ-ONLY: SELECTs clerk_videos for an own account, runs MAP (summarizeVideoForSop,
  * Flash) over up to 8 videos, then REDUCE (buildAiSopReferencePrompt → Pro). No DB writes.
- * Run: pnpm --filter @singularity/db exec tsx scripts/sop-mapreduce-smoke.ts
+ * Run: pnpm --filter @goooose/db exec tsx scripts/sop-mapreduce-smoke.ts
  *
  * Budget / hierarchical-reduce knobs (mirror analyze-channel.ts; default = production 80k):
  *   REDUCE_CHAR_BUDGET=12000  → forces the hierarchical (partial-reduce) path on a small
@@ -24,11 +24,11 @@ import { channels } from "../src/schema/channels";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { summarizeVideoForSop } = await import("@singularity/domain/services/clerk-map");
+const { summarizeVideoForSop } = await import("@goooose/domain/services/clerk-map");
 const { buildAiSopReferencePrompt, buildSopPartialReducePrompt } = await import(
-  "@singularity/prompts/clerk"
+  "@goooose/prompts/clerk"
 );
-const { llm } = await import("@singularity/integrations/clients/llm");
+const { llm } = await import("@goooose/integrations/clients/llm");
 
 // Optional channel-name override: argv[2] or CHANNEL_NAME selects an own (channel_id-bearing)
 // channel by exact name instead of the auto-pick (most clerk_videos). Reusable harness.

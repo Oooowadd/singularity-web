@@ -1,6 +1,6 @@
 // Read-only: P-B chain recon for a project — its topics, current primary SOP
 // binding, and a target competitor's SOP ids.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-pb-chain.ts <projectId> <competitorAccountId>
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-pb-chain.ts <projectId> <competitorAccountId>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

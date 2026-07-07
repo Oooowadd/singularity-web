@@ -1,7 +1,7 @@
 // Focused re-gen of the steps the WF-2 judge failed/flagged (kai-w): clerk-analysis
 // (anti-fab guard), clerk-hottest-sop (calque glossary), poet-topic-analysis
 // (anti-English-echo). Writes /tmp/eval/regen/*.txt for a quick re-judge.
-// Run: pnpm --filter @singularity/db exec tsx scripts/eval-regen.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/eval-regen.ts
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,9 +10,9 @@ import { generateText } from "ai";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { llm } from "@singularity/integrations/clients/llm";
-import { buildVideoAnalysisPrompt, buildHottestSopPrompt } from "@singularity/prompts/clerk";
-import { analyzeTopic } from "@singularity/domain/services/poet/topic-analyzer";
+import { llm } from "@goooose/integrations/clients/llm";
+import { buildVideoAnalysisPrompt, buildHottestSopPrompt } from "@goooose/prompts/clerk";
+import { analyzeTopic } from "@goooose/domain/services/poet/topic-analyzer";
 import { channels, clerkSops, clerkVideos, poetBible } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

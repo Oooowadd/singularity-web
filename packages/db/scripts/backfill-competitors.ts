@@ -6,14 +6,14 @@
 //   Historical: best-effort muse_monitor_videos.competitor_account_id by source-name match.
 // platform_key policy: XHS id and YouTube @handle are lowercased; canonical YouTube UC ids
 // keep exact case (globally unique + case-sensitive, and usable directly as channel_id).
-// Run: pnpm --filter @singularity/db exec tsx scripts/backfill-competitors.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/backfill-competitors.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import postgres from "postgres";
-import { extractXhsUserId, resolveXhsUser } from "@singularity/integrations/clients/xhs";
-import { parseYoutubeChannelUrl } from "@singularity/integrations/clients/youtube-data";
-import { getChannelInfo, resolveChannelId } from "@singularity/integrations/clients/tikhub";
+import { extractXhsUserId, resolveXhsUser } from "@goooose/integrations/clients/xhs";
+import { parseYoutubeChannelUrl } from "@goooose/integrations/clients/youtube-data";
+import { getChannelInfo, resolveChannelId } from "@goooose/integrations/clients/tikhub";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

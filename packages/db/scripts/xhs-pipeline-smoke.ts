@@ -7,7 +7,7 @@
 // Runs ~15 min, costs ~$3-5 in TikHub + Deepgram + Claude vision + DeepSeek.
 // Skips DB writes — dumps analysis JSON to console for quality eval.
 //
-// Run: pnpm --filter @singularity/db xhs-pipeline-smoke
+// Run: pnpm --filter @goooose/db xhs-pipeline-smoke
 
 import { config } from "dotenv";
 config({ path: new URL("../../../.env.local", import.meta.url) });
@@ -15,22 +15,22 @@ config({ path: new URL("../../../.env.local", import.meta.url) });
 import { generateText } from "ai";
 import { jsonrepair } from "jsonrepair";
 
-import { transcribeFromStreams } from "@singularity/integrations/clients/asr";
-import { llm } from "@singularity/integrations/clients/llm";
-import { analyzeImageStack, analyzeThumbnail } from "@singularity/integrations/clients/vision";
+import { transcribeFromStreams } from "@goooose/integrations/clients/asr";
+import { llm } from "@goooose/integrations/clients/llm";
+import { analyzeImageStack, analyzeThumbnail } from "@goooose/integrations/clients/vision";
 import {
   extractXhsNoteId,
   getXhsNoteDetail,
   getXhsUserNotes,
   type XhsNote,
-} from "@singularity/integrations/clients/xhs";
+} from "@goooose/integrations/clients/xhs";
 import {
   buildAiSopReferencePrompt,
   buildHottestSopPrompt,
   buildHumanSopPrompt,
   buildVideoAnalysisPrompt,
-} from "@singularity/prompts/clerk";
-import { clerkAnalysisSchema } from "@singularity/domain/schemas/clerk";
+} from "@goooose/prompts/clerk";
+import { clerkAnalysisSchema } from "@goooose/domain/schemas/clerk";
 
 // ── Test fixtures (from user-provided URLs) ─────────────────────────
 const ACCOUNTS = {

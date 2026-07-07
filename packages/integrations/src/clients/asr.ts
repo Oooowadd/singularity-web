@@ -40,7 +40,7 @@ function extensionForMime(mime?: string): string {
 async function downloadOnce(url: string, ext: string): Promise<string> {
   const dest = join(
     tmpdir(),
-    `singularity-asr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`,
+    `goooose-asr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`,
   );
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
@@ -225,7 +225,7 @@ export type TranscribeOpts = {
   qwenFirst?: boolean;
 };
 
-// Extract a compact mono 16kHz MP3 so Qwen's base64 request body stays well under
+// Extract a compact mono 16kHz audio clip so Qwen's base64 request body stays well under
 // its ~10MB limit. XHS gives full h265 video (7-12MB) and base64 inflates ~37%, so
 // shipping raw video 413s; a few-minute audio clip is ~1MB. Returns null if ffmpeg
 // is unavailable or fails — caller falls back to the raw file.
@@ -235,7 +235,7 @@ async function extractAudioForQwen(
 ): Promise<string | null> {
   const out = join(
     tmpdir(),
-    `singularity-asr-audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.m4a`,
+    `goooose-asr-audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.m4a`,
   );
   // The Trigger ffmpeg build extension installs to /usr/bin/ffmpeg and exposes it via
   // FFMPEG_PATH — spawned children don't reliably inherit a PATH that includes it.
@@ -290,7 +290,7 @@ async function segmentAudioForQwen(
 ): Promise<string[] | null> {
   const stem = join(
     tmpdir(),
-    `singularity-asr-seg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    `goooose-asr-seg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   );
   const bin = process.env.FFMPEG_PATH || "ffmpeg";
   return await new Promise((resolve) => {
@@ -644,7 +644,7 @@ async function transcribeYoutubeOnce(
 
   const outPath = join(
     tmpdir(),
-    `singularity-asr-${videoId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.m4a`,
+    `goooose-asr-${videoId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.m4a`,
   );
   onPhase?.("downloading");
   try {

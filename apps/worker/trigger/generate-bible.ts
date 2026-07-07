@@ -2,14 +2,14 @@ import { logger, metadata, task } from "@trigger.dev/sdk";
 import { desc, eq } from "drizzle-orm";
 import { generateText } from "ai";
 
-import { channels, clerkVideos, pipelineRuns } from "@singularity/db";
+import { channels, clerkVideos, pipelineRuns } from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { persistBible } from "../lib/persist-bible";
 import { userRunsQueue } from "../lib/queues";
-import { extractHostLine, generateChannelBible } from "@singularity/domain/services/poet/bible";
-import { llm } from "@singularity/integrations/clients/llm";
-import { safeText } from "@singularity/integrations/utils";
+import { extractHostLine, generateChannelBible } from "@goooose/domain/services/poet/bible";
+import { llm } from "@goooose/integrations/clients/llm";
+import { safeText } from "@goooose/integrations/utils";
 
 type Payload = {
   channelId: string;

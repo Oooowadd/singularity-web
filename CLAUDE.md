@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 它是什么
 
-AI 内容教练 web SaaS。目标用户：中国小型创作者（主战 XHS + YouTube）。核心交付：看对标 → 出选题 → 写稿全链路。
+**搬砖小鹅 Goooose**（goooose.com，2026-07 由 Singularity 更名）。AI 内容教练 web SaaS。目标用户：中国小型创作者（主战 XHS + YouTube）。核心交付：看对标 → 出选题 → 写稿全链路。
 
 ## 锁定的技术栈
 
@@ -75,8 +75,8 @@ archive 路径见文末"前身仓库"，仅用于追溯原始逻辑、查 prompt
 
 ```bash
 pnpm install
-pnpm --filter @singularity/web dev          # Next.js dev
-pnpm --filter @singularity/worker dev       # Trigger.dev worker（另开窗口）
+pnpm --filter @goooose/web dev          # Next.js dev
+pnpm --filter @goooose/worker dev       # Trigger.dev worker（另开窗口）
 
 pnpm build                                  # 全仓 turbo build
 pnpm typecheck                              # 全仓 tsc --noEmit
@@ -86,11 +86,11 @@ pnpm lint
 Smoke 测试（手动跑，未接 Playwright/Vitest）：
 
 ```bash
-pnpm --filter @singularity/db poet-services-smoke
-pnpm --filter @singularity/db muse-services-smoke
-pnpm --filter @singularity/db xhs-client-smoke
-pnpm --filter @singularity/db vision-and-verify-smoke
-pnpm --filter @singularity/db asr-fallback-smoke
+pnpm --filter @goooose/db poet-services-smoke
+pnpm --filter @goooose/db muse-services-smoke
+pnpm --filter @goooose/db xhs-client-smoke
+pnpm --filter @goooose/db vision-and-verify-smoke
+pnpm --filter @goooose/db asr-fallback-smoke
 ```
 
 `.env.local` 只在仓库根目录维护一份；`apps/web/.env.local` 和 `apps/worker/.env.local` 由 `scripts/link-env.js` postinstall 自动 symlink 过去。

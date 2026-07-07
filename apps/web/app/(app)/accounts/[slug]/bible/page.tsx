@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
-import { channels, poetBible } from "@singularity/db";
+import { channels, poetBible } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";

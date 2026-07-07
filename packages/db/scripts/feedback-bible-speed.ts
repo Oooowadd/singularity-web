@@ -1,13 +1,13 @@
 // #4 Bible generation speed test. Same real prompt, vary model + maxOutputTokens.
 // Measures latency + output completeness to ground the speedup recommendation.
-// Run: pnpm --filter @singularity/db exec tsx scripts/feedback-bible-speed.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/feedback-bible-speed.ts
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { generateText } from "ai";
-import { buildChannelBiblePrompt } from "@singularity/prompts/poet";
-import { llm } from "@singularity/integrations/clients/llm";
+import { buildChannelBiblePrompt } from "@goooose/prompts/poet";
+import { llm } from "@goooose/integrations/clients/llm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

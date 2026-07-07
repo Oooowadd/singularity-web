@@ -1,5 +1,5 @@
 {
-  "name": "@singularity/worker",
+  "name": "@goooose/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
-    "@singularity/db": "workspace:*",
-    "@singularity/domain": "workspace:*",
-    "@singularity/integrations": "workspace:*",
-    "@singularity/prompts": "workspace:*",
+    "@goooose/db": "workspace:*",
+    "@goooose/domain": "workspace:*",
+    "@goooose/integrations": "workspace:*",
+    "@goooose/prompts": "workspace:*",
     "@trigger.dev/sdk": "^4.4.4",
     "ai": "^6.0.184",
     "drizzle-orm": "^0.45.2",

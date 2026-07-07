@@ -1,4 +1,4 @@
-# @singularity/ui
+# @goooose/ui
 
 Shared shadcn/ui components reused across `apps/web` (and any future apps).
 

@@ -1,7 +1,7 @@
 /**
  * Deepgram Nova-3 transcription smoke.
  * Target: the crypto video that Groq Whisper just failed on.
- * Run: pnpm --filter @singularity/db deepgram-smoke
+ * Run: pnpm --filter @goooose/db deepgram-smoke
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

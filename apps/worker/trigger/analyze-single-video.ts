@@ -7,14 +7,14 @@ import {
   clerkVideos,
   competitorAccounts,
   pipelineRuns,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { userRunsQueue } from "../lib/queues";
-import { redactUngrounded } from "@singularity/domain/services/grounding";
-import { llm } from "@singularity/integrations/clients/llm";
-import { safeText } from "@singularity/integrations/utils";
-import { buildHottestSopPrompt } from "@singularity/prompts/clerk";
+import { redactUngrounded } from "@goooose/domain/services/grounding";
+import { llm } from "@goooose/integrations/clients/llm";
+import { safeText } from "@goooose/integrations/utils";
+import { buildHottestSopPrompt } from "@goooose/prompts/clerk";
 import { generateText } from "ai";
 
 type Payload = {

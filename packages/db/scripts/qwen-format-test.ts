@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { getXhsUserNotes } from "@singularity/integrations/clients/xhs";
+import { getXhsUserNotes } from "@goooose/integrations/clients/xhs";
 import { clerkVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

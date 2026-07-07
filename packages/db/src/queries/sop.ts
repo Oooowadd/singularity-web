@@ -6,9 +6,8 @@ import { projectSops } from "../schema/project";
 
 export type ResolvedSop = { id: string; contentMd: string };
 
-// The SOP a project writes/reads against: its primary-role binding in project_sops; otherwise
-// the account's own-channel ai_reference SOP (accountId = channel spine) so an unbound project
-// still resolves a sensible default.
+// Falls back to the account's own-channel ai_reference SOP (accountId = channel spine) so an
+// unbound project still resolves a sensible default.
 export async function resolvePrimarySop(
   db: PostgresJsDatabase,
   projectId: string,

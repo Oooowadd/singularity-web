@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { ImportFlag } from "@singularity/db";
+import type { ImportFlag } from "@goooose/db";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -1,14 +1,14 @@
 import { AbortTaskRunError, logger, metadata, task } from "@trigger.dev/sdk";
 import { asc, eq } from "drizzle-orm";
 
-import { bibleImportChunks, bibleImportFiles, channels, pipelineRuns } from "@singularity/db";
+import { bibleImportChunks, bibleImportFiles, channels, pipelineRuns } from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { persistBible } from "../lib/persist-bible";
 import { userRunsQueue } from "../lib/queues";
-import { generateBibleFromDocument } from "@singularity/domain/services/poet/import-bible";
-import { transcribeDocument } from "@singularity/integrations/clients/docTranscribe";
-import { safeText } from "@singularity/integrations/utils";
+import { generateBibleFromDocument } from "@goooose/domain/services/poet/import-bible";
+import { transcribeDocument } from "@goooose/integrations/clients/docTranscribe";
+import { safeText } from "@goooose/integrations/utils";
 
 type Payload = {
   channelId: string;

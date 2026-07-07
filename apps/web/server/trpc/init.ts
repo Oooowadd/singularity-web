@@ -3,8 +3,8 @@ import "server-only";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
-import { createUsageSink, type User } from "@singularity/db";
-import { runWithUsage } from "@singularity/integrations/metering";
+import { createUsageSink, type User } from "@goooose/db";
+import { runWithUsage } from "@goooose/integrations/metering";
 
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";

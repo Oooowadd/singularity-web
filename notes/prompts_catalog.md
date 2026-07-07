@@ -1,4 +1,4 @@
-# Singularity Prompt 目录（模板版）
+# Goooose Prompt 目录（模板版）
 
 > 本文列出三大模块（Clerk / Muse / Poet）用到的全部 prompt，按模块分节，配可点击源码链接。
 > 与 [pipeline_flow.md](./pipeline_flow.md) 互补：那份讲「流程里哪一步用哪个 prompt」，本文讲「prompt 本身长什么样」。
@@ -7,7 +7,7 @@
 > 多数 prompt 的中文 / 英文输出由 `language` 参数控制，本文展示中文版（个别强制英文的已标注）。可选段落有内容时才插入。
 >
 > **本文为自动生成，请勿手改。** 改了 prompt 后重新生成：
-> `pnpm --filter @singularity/db exec tsx scripts/gen-prompts-catalog.ts`
+> `pnpm --filter @goooose/db exec tsx scripts/gen-prompts-catalog.ts`
 
 
 ---

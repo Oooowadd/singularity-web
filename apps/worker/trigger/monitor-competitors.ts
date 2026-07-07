@@ -13,33 +13,33 @@ import {
   pipelineRuns,
   projectCompetitors,
   resolveActiveBible,
-} from "@singularity/db";
+} from "@goooose/db";
 
 import { withMeteredRunDb } from "../lib/metered-run";
 import { userRunsQueue } from "../lib/queues";
-import { selectBibleSections } from "@singularity/domain/services/poet/bible";
+import { selectBibleSections } from "@goooose/domain/services/poet/bible";
 import {
   likelyChineseText,
   renderTranscriptWithTimestamps,
   transcribeFromStreams,
   transcribeYoutubeVideo,
-} from "@singularity/integrations/clients/asr";
-import { withProxyRetry, type ProxyPool } from "@singularity/integrations/proxy";
+} from "@goooose/integrations/clients/asr";
+import { withProxyRetry, type ProxyPool } from "@goooose/integrations/proxy";
 import {
   getVideoMetadataYtdlp,
   listChannelVideos,
-} from "@singularity/integrations/clients/ytdlp";
+} from "@goooose/integrations/clients/ytdlp";
 import {
   getXhsUserNotes,
   type XhsNote,
-} from "@singularity/integrations/clients/xhs";
-import { isRealTranscript } from "@singularity/domain/schemas/muse";
+} from "@goooose/integrations/clients/xhs";
+import { isRealTranscript } from "@goooose/domain/schemas/muse";
 import {
   analyzeViralTrigger,
   classifyVideo,
   generateIdeas,
-} from "@singularity/domain/services/muse";
-import { asPositiveNumber, parseDurationToSec, safeText, sleep } from "@singularity/integrations/utils";
+} from "@goooose/domain/services/muse";
+import { asPositiveNumber, parseDurationToSec, safeText, sleep } from "@goooose/integrations/utils";
 
 const ASR_MAX_DURATION_SEC = 60 * 60;
 const DEFAULT_NUM_IDEAS = 5;

@@ -1,4 +1,4 @@
-import { checkDrift } from "@singularity/domain/services/poet/bible";
+import { checkDrift } from "@goooose/domain/services/poet/bible";
 
 type Case = { name: string; user: string; topic: string; content?: string; expectDrift: boolean };
 

@@ -8,7 +8,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { channels, museIdeas, museMonitorVideos, pipelineRuns } from "@singularity/db";
+import { channels, museIdeas, museMonitorVideos, pipelineRuns } from "@goooose/db";
 
 async function dumpForSlug(slug: string) {
   const client = postgres(process.env.DATABASE_URL!, { prepare: false });

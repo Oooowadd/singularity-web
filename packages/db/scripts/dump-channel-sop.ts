@@ -1,5 +1,5 @@
 // Read-only: dump a channel's SOPs to /tmp for inspection.
-// Run: pnpm --filter @singularity/db exec tsx scripts/dump-channel-sop.ts <channelSlug>
+// Run: pnpm --filter @goooose/db exec tsx scripts/dump-channel-sop.ts <channelSlug>
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

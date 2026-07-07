@@ -1,6 +1,6 @@
 // P-C acceptance gate (read-only): one-owner CHECKs validated, zero violating rows,
 // competitor dedup index present, competitor-run stamps consistent end to end.
-// Run: pnpm --filter @singularity/db exec tsx scripts/verify-pc.ts [competitorAccountId]
+// Run: pnpm --filter @goooose/db exec tsx scripts/verify-pc.ts [competitorAccountId]
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

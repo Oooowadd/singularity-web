@@ -1,5 +1,5 @@
 // Verify INC4 owner cols on muse_monitor_videos + muse_ideas for a run.
-// Run: pnpm --filter @singularity/db exec tsx scripts/peek-muse-inc4.ts <channelId> <runId>
+// Run: pnpm --filter @goooose/db exec tsx scripts/peek-muse-inc4.ts <channelId> <runId>
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

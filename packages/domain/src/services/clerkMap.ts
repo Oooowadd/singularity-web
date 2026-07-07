@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 
-import { llm, type LlmTier } from "@singularity/integrations/clients/llm";
-import { buildVideoMapSummaryPrompt } from "@singularity/prompts/clerk";
+import { llm, type LlmTier } from "@goooose/integrations/clients/llm";
+import { buildVideoMapSummaryPrompt } from "@goooose/prompts/clerk";
 
 // A valid summary is 300-550 words; anything this short is a flaky/empty/truncated generation.
 const MIN_SUMMARY_CHARS = 120;

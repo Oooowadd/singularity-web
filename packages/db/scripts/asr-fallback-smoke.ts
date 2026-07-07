@@ -1,6 +1,6 @@
 /**
  * Smoke test for the production ASR helper.
- * Run: pnpm --filter @singularity/db asr-fallback-smoke
+ * Run: pnpm --filter @goooose/db asr-fallback-smoke
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
 
-const { transcribeYoutubeVideo } = await import("@singularity/integrations/clients/asr");
+const { transcribeYoutubeVideo } = await import("@goooose/integrations/clients/asr");
 
 const PROBES: Array<{ label: string; videoId: string; expectAsr: "yes" | "no" }> = [
   { label: "Rick Astley (audio present)", videoId: "dQw4w9WgXcQ", expectAsr: "yes" },

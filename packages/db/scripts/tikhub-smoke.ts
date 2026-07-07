@@ -2,7 +2,7 @@
  * TikHub D5 comprehensive smoke test — verifies every endpoint we'll need
  * for Clerk (YouTube analyzer), Muse (competitor monitor), and XHS support.
  *
- * Run: pnpm --filter @singularity/db tikhub-smoke
+ * Run: pnpm --filter @goooose/db tikhub-smoke
  *
  * Pacing: 1.2s between calls to avoid the 1/sec per-route rate limit.
  * Total cost: ~$0.025 across ~13 calls.

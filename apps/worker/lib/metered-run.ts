@@ -1,7 +1,7 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 
-import { createUsageBuffer, withRunDb } from "@singularity/db";
-import { runWithUsage } from "@singularity/integrations/metering";
+import { createUsageBuffer, withRunDb } from "@goooose/db";
+import { runWithUsage } from "@goooose/integrations/metering";
 
 // withRunDb + usage attribution: buffer events during the task, flush in one
 // insert before withRunDb closes the client (fire-and-forget would race it).

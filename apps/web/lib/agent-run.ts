@@ -3,7 +3,7 @@ import "server-only";
 import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
 import { auth } from "@trigger.dev/sdk";
 
-import { channels, competitorAccounts, pipelineRuns } from "@singularity/db";
+import { channels, competitorAccounts, pipelineRuns } from "@goooose/db";
 
 import { db } from "./db";
 
@@ -21,9 +21,7 @@ export async function getActiveAgentRun(
   owner: string | AgentRunOwner,
   userId: string,
   agent: "clerk" | "muse" | "poet",
-  // Optional command filter: clerk now has two commands (channel analysis + single-video
-  // SOP). The channel run button must reattach only to its own command, not hijack a
-  // single-video run's progress panel.
+  // Command filter — clerk has two commands; the channel panel must not reattach to a single-video run.
   command?: string,
 ): Promise<ActiveAgentRun | null> {
   const ownerObj: AgentRunOwner = typeof owner === "string" ? { channelId: owner } : owner;

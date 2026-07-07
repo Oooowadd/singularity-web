@@ -1,6 +1,6 @@
 // One-off: enforce single active bible per channel (#9). Dedupe existing
 // duplicate-active rows (keep most recent), then add the partial unique index.
-// Idempotent. Run: pnpm --filter @singularity/db exec tsx scripts/apply-bible-active-index.ts
+// Idempotent. Run: pnpm --filter @goooose/db exec tsx scripts/apply-bible-active-index.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

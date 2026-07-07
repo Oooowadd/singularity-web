@@ -1,6 +1,6 @@
 // Verify Qwen3-ASR-Flash (Alibaba Model Studio, Singapore) works from Node via the
 // OpenAI-compatible endpoint, incl. base64 data-URI input (our XHS pipeline path).
-// Run: pnpm --filter @singularity/db exec tsx scripts/qwen-asr-smoke.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/qwen-asr-smoke.ts
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

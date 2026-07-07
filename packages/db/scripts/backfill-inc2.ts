@@ -1,7 +1,7 @@
 // INC2a deterministic backfill (idempotent, transactional). own_accounts.id == projects.id
 // == channels.id (D3 spine), so every owner column is a trivial self-copy. Competitor
 // extraction (Stage A/B) is a separate script (needs the URL helpers / network).
-// Run: pnpm --filter @singularity/db exec tsx scripts/backfill-inc2.ts
+// Run: pnpm --filter @goooose/db exec tsx scripts/backfill-inc2.ts
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";

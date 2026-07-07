@@ -1,4 +1,4 @@
-# Singularity Web — 功能 运维
+# Goooose Web — 功能 运维
 
 **Last revised**: 2026-06-11
 
@@ -34,7 +34,7 @@
 ## 仓库结构
 
 ```
-singularity-web/
+goooose-web/
 ├── apps/
 │   ├── web/                       # Next.js 应用
 │   │   ├── app/(app)/             # 已登录页面

@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 
 import { eq } from "drizzle-orm";
 
-import { loginEvents, users } from "@singularity/db";
+import { loginEvents, users } from "@goooose/db";
 
 import { db } from "@/lib/db";
 import { logtoConfig } from "@/lib/logto";

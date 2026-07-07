@@ -2,12 +2,12 @@
 // to exercise the P-C conversion against prod: 5-table guard, active-run guard, key
 // resolution, reuse-or-create, clerk re-owning, explicit spine deletes (no FK cascade).
 // Dry-run by default; --execute performs the transaction.
-// Run: pnpm --filter @singularity/db exec tsx scripts/convert-pc-test.ts <channelId> [--execute]
+// Run: pnpm --filter @goooose/db exec tsx scripts/convert-pc-test.ts <channelId> [--execute]
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import postgres from "postgres";
-import { provisionalCompetitorKey } from "@singularity/domain/services/competitors";
+import { provisionalCompetitorKey } from "@goooose/domain/services/competitors";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });

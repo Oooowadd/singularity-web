@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   isValidXhsProfileUrl,
   isValidYoutubeChannelUrl,
-} from "@singularity/integrations/validators";
+} from "@goooose/integrations/validators";
 
 export const platformSchema = z.enum(["youtube", "xhs"]);
 

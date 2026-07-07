@@ -2,7 +2,7 @@
 // transcripts (English YouTube + Chinese XHS). Validates JSON parseability,
 // 15-key completeness, timestamp-citation fidelity, latency — gate for
 // downgrading analysis to Flash. Run:
-// pnpm --filter @singularity/db exec tsx scripts/feedback-ab-analysis.ts
+// pnpm --filter @goooose/db exec tsx scripts/feedback-ab-analysis.ts
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,8 +11,8 @@ import { generateText } from "ai";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { buildVideoAnalysisPrompt } from "@singularity/prompts/clerk";
-import { llm } from "@singularity/integrations/clients/llm";
+import { buildVideoAnalysisPrompt } from "@goooose/prompts/clerk";
+import { llm } from "@goooose/integrations/clients/llm";
 import { channels, clerkVideos } from "../src/schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

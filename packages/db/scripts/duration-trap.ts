@@ -4,10 +4,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import dotenv from "dotenv"; import postgres from "postgres"; import { drizzle } from "drizzle-orm/postgres-js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../.env.local") });
-const { poetBible, poetCustomTopics, clerkSops } = await import("@singularity/db");
+const { poetBible, poetCustomTopics, clerkSops } = await import("@goooose/db");
 const { eq, and, desc } = await import("drizzle-orm");
-const { writeScript } = await import("@singularity/domain/services/poet/script-writer");
-const { computeTargetWordCount, countWords } = await import("@singularity/domain/schemas/poet");
+const { writeScript } = await import("@goooose/domain/services/poet/script-writer");
+const { computeTargetWordCount, countWords } = await import("@goooose/domain/schemas/poet");
 const client = postgres(process.env.DATABASE_URL!, { prepare: false }); const db = drizzle(client);
 
 const CH = "1676e2a3-becd-4755-8d1d-4c9fb44890bf"; // AI红发魔女 (colleague's channel)

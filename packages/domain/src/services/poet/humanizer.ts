@@ -2,8 +2,8 @@
 
 import { generateText } from "ai";
 
-import { llm } from "@singularity/integrations/clients/llm";
-import { buildChineseHumanizerPrompt } from "@singularity/prompts/poet";
+import { llm } from "@goooose/integrations/clients/llm";
+import { buildChineseHumanizerPrompt } from "@goooose/prompts/poet";
 
 export async function humanizeChinese(scriptText: string, maxChars?: number): Promise<string> {
   try {
