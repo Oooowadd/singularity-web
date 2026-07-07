@@ -22,7 +22,7 @@ export function planLimits(plan: string) {
 }
 
 export const IMAGE_POST_MINUTES = 5;
-export const GENERATION_MINUTES = { bible: 5, topic: 3, singleVideo: 2 } as const;
+export const GENERATION_MINUTES = { bible: 5, bibleImport: 10, topic: 3, singleVideo: 2 } as const;
 
 export function videoMinutes(durationSec?: number | null): number {
   if (!durationSec || durationSec <= 0) return IMAGE_POST_MINUTES;

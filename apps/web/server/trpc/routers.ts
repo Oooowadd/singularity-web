@@ -5,7 +5,11 @@ import { TRPCError } from "@trpc/server";
 import { auth, runs, tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 
+import { createHash } from "node:crypto";
+
 import {
+  bibleImportChunks,
+  bibleImportFiles,
   channels,
   channelSeries,
   checkAccountRail,
@@ -70,16 +74,21 @@ import { approveIdeaInput, dismissIdeaInput, startMonitorInput } from "./schemas
 import { createProjectInput, deleteProjectInput, updateProjectInput } from "./schemas/projects";
 import {
   analyzeCustomTopicInput,
+  BIBLE_IMPORT_CHUNK_BYTES,
+  createBibleUploadInput,
   createCustomTopicInput,
   deleteBibleInput,
   deleteCustomTopicInput,
   deleteScriptInput,
   generateBibleInput,
   generateScriptFromCustomTopicInput,
+  finalizeBibleImportInput,
   generateScriptInput,
+  resolveImportFlagInput,
   switchActiveBibleInput,
   updateBibleInput,
   updateCustomTopicInput,
+  uploadBibleChunkInput,
 } from "./schemas/poet";
 
 function slugify(name: string): string {
@@ -175,6 +184,7 @@ async function triggerOrFailRun(
 // video minutes at run end (overshoot bounded by the per-user concurrency cap).
 const GENERATION_TASK_MINUTES: Record<string, number> = {
   "poet-generate-bible": GENERATION_MINUTES.bible,
+  "poet-import-bible": GENERATION_MINUTES.bibleImport,
   "poet-analyze-custom-topic": GENERATION_MINUTES.topic,
   "clerk-analyze-single-video": GENERATION_MINUTES.singleVideo,
 };
@@ -1800,6 +1810,145 @@ export const appRouter = router({
         });
       }),
 
+
+    createBibleUpload: protectedProcedure
+      .input(createBibleUploadInput)
+      .mutation(async ({ ctx, input }) => {
+        const [channel] = await db
+          .select({ id: channels.id })
+          .from(channels)
+          .where(and(eq(channels.id, input.channelId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!channel) throw new TRPCError({ code: "NOT_FOUND" });
+        if (input.chunkCount !== Math.ceil(input.size / BIBLE_IMPORT_CHUNK_BYTES)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "分片数量与文件大小不符" });
+        }
+        const [file] = await db
+          .insert(bibleImportFiles)
+          .values({
+            userId: ctx.user.id,
+            channelId: input.channelId,
+            filename: input.filename,
+            mime: input.mime,
+            size: input.size,
+            sha256: input.sha256,
+            expectedChunks: input.chunkCount,
+          })
+          .returning({ id: bibleImportFiles.id });
+        if (!file) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        return { fileId: file.id };
+      }),
+
+    uploadBibleChunk: protectedProcedure
+      .input(uploadBibleChunkInput)
+      .mutation(async ({ ctx, input }) => {
+        const [file] = await db
+          .select()
+          .from(bibleImportFiles)
+          .where(and(eq(bibleImportFiles.id, input.fileId), eq(bibleImportFiles.userId, ctx.user.id)))
+          .limit(1);
+        if (!file) throw new TRPCError({ code: "NOT_FOUND" });
+        if (file.status !== "uploading") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "上传已结束，不能追加分片" });
+        }
+        if (input.idx >= file.expectedChunks) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "分片序号越界" });
+        }
+        const bytes = Buffer.from(input.dataBase64, "base64");
+        if (bytes.length === 0 || bytes.length > BIBLE_IMPORT_CHUNK_BYTES) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "分片大小异常" });
+        }
+        // Upsert on (file_id, idx): retries and out-of-order arrival are safe.
+        await db
+          .insert(bibleImportChunks)
+          .values({ fileId: file.id, idx: input.idx, bytes: new Uint8Array(bytes) })
+          .onConflictDoUpdate({
+            target: [bibleImportChunks.fileId, bibleImportChunks.idx],
+            set: { bytes: new Uint8Array(bytes) },
+          });
+        return { received: input.idx };
+      }),
+
+    finalizeBibleImport: protectedProcedure
+      .input(finalizeBibleImportInput)
+      .mutation(async ({ ctx, input }) => {
+        const [file] = await db
+          .select()
+          .from(bibleImportFiles)
+          .where(and(eq(bibleImportFiles.id, input.fileId), eq(bibleImportFiles.userId, ctx.user.id)))
+          .limit(1);
+        if (!file) throw new TRPCError({ code: "NOT_FOUND" });
+        if (file.status !== "uploading") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "该上传已处理过" });
+        }
+        await assertNoActiveRun(file.channelId, "poet");
+
+        const chunks = await db
+          .select({ idx: bibleImportChunks.idx, bytes: bibleImportChunks.bytes })
+          .from(bibleImportChunks)
+          .where(eq(bibleImportChunks.fileId, file.id))
+          .orderBy(bibleImportChunks.idx);
+        if (chunks.length !== file.expectedChunks) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `上传不完整（${chunks.length}/${file.expectedChunks} 分片）` });
+        }
+        const assembled = Buffer.concat(chunks.map((c) => Buffer.from(c.bytes)));
+        const markInvalid = async (message: string) => {
+          await db.update(bibleImportFiles).set({ status: "invalid" }).where(eq(bibleImportFiles.id, file.id));
+          throw new TRPCError({ code: "BAD_REQUEST", message });
+        };
+        if (assembled.length !== file.size) await markInvalid("文件大小与上传声明不符，请重新上传");
+        const digest = createHash("sha256").update(assembled).digest("hex");
+        if (digest !== file.sha256) await markInvalid("文件校验失败（sha256 不匹配），请重新上传");
+        // Magic bytes: reject renamed/garbage files before spending any quota.
+        if (file.mime === "application/pdf" && assembled.subarray(0, 4).toString("latin1") !== "%PDF") {
+          await markInvalid("文件不是有效的 PDF");
+        }
+        if (
+          file.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" &&
+          !(assembled[0] === 0x50 && assembled[1] === 0x4b && assembled[2] === 0x03 && assembled[3] === 0x04)
+        ) {
+          await markInvalid("文件不是有效的 .docx");
+        }
+        if (file.mime === "text/markdown" || file.mime === "text/plain") {
+          try {
+            new TextDecoder("utf-8", { fatal: true }).decode(assembled);
+          } catch {
+            await markInvalid("文本文件不是有效的 UTF-8 编码");
+          }
+        }
+
+        await db.update(bibleImportFiles).set({ status: "ready" }).where(eq(bibleImportFiles.id, file.id));
+        return stageAndTriggerRun({
+          userId: ctx.user.id,
+          owner: { channelId: file.channelId },
+          agent: "poet",
+          taskId: "poet-import-bible",
+          config: { language: input.language, kind: "bible-import", filename: file.filename },
+          payload: { fileId: file.id, name: input.name, language: input.language },
+          quotaMinutes: GENERATION_MINUTES.bibleImport,
+        });
+      }),
+
+    resolveImportFlag: protectedProcedure
+      .input(resolveImportFlagInput)
+      .mutation(async ({ ctx, input }) => {
+        const [row] = await db
+          .select({ bible: poetBible })
+          .from(poetBible)
+          .innerJoin(channels, eq(channels.id, poetBible.channelId))
+          .where(and(eq(poetBible.id, input.bibleId), eq(channels.userId, ctx.user.id)))
+          .limit(1);
+        if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+        const flags = [...(row.bible.importFlags ?? [])];
+        if (!flags[input.flagIndex]) throw new TRPCError({ code: "BAD_REQUEST", message: "存疑项不存在" });
+        flags[input.flagIndex] = { ...flags[input.flagIndex]!, resolved: true };
+        await db
+          .update(poetBible)
+          .set({ importFlags: flags, updatedAt: new Date() })
+          .where(eq(poetBible.id, input.bibleId));
+        return { remaining: flags.filter((f) => !f.resolved).length };
+      }),
+
     updateBible: protectedProcedure
       .input(updateBibleInput)
       .mutation(async ({ ctx, input }) => {
@@ -1837,6 +1986,14 @@ export const appRouter = router({
           .where(and(eq(poetBible.id, input.bibleId), eq(channels.userId, ctx.user.id)))
           .limit(1);
         if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+        // Field-by-field review gate: imported bibles activate only after every flag is confirmed.
+        const unresolved = (target.poet_bible.importFlags ?? []).filter((f) => !f.resolved).length;
+        if (unresolved > 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `该圣经还有 ${unresolved} 个存疑项未确认，请先在详情页逐项确认后再激活`,
+          });
+        }
 
         await db
           .update(poetBible)

@@ -306,6 +306,10 @@ export function AdminPanel({ selfId }: { selfId: string }) {
             <span className="font-mono text-muted-foreground">5 分钟</span>
           </div>
           <div className="flex justify-between">
+            <span>文件导入圣经</span>
+            <span className="font-mono text-muted-foreground">10 分钟/次</span>
+          </div>
+          <div className="flex justify-between">
             <span>选题分析</span>
             <span className="font-mono text-muted-foreground">3 分钟</span>
           </div>

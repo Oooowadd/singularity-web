@@ -13,6 +13,42 @@ export const updateBibleInput = z.object({
   content: z.string().min(20).optional(),
 });
 
+// Chunked upload: Vercel's 4.5MB body cap forces ≤2MB raw chunks (base64 ~2.7MB).
+export const BIBLE_IMPORT_CHUNK_BYTES = 2 * 1024 * 1024;
+export const BIBLE_IMPORT_MAX_BYTES = 15 * 1024 * 1024;
+export const BIBLE_IMPORT_MIMES = [
+  "text/markdown",
+  "text/plain",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+] as const;
+
+export const createBibleUploadInput = z.object({
+  channelId: z.string().uuid(),
+  filename: z.string().min(1).max(255),
+  mime: z.enum(BIBLE_IMPORT_MIMES),
+  size: z.number().int().min(1).max(BIBLE_IMPORT_MAX_BYTES),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  chunkCount: z.number().int().min(1).max(8),
+});
+
+export const uploadBibleChunkInput = z.object({
+  fileId: z.string().uuid(),
+  idx: z.number().int().min(0).max(7),
+  dataBase64: z.string().min(1).max(3_500_000),
+});
+
+export const finalizeBibleImportInput = z.object({
+  fileId: z.string().uuid(),
+  name: z.string().max(120).optional(),
+  language: z.enum(["en", "zh"]).default("zh"),
+});
+
+export const resolveImportFlagInput = z.object({
+  bibleId: z.string().uuid(),
+  flagIndex: z.number().int().min(0).max(200),
+});
+
 export const switchActiveBibleInput = z.object({
   bibleId: z.string().uuid(),
   // Account-level pages omit projectId; only a project context sets the per-project pin.

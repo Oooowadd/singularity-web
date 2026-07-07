@@ -135,7 +135,7 @@ export default async function PoetChannelPage({ params }: Props) {
                 publicAccessToken: activeRun.publicAccessToken,
                 startedAt: activeRun.startedAt,
                 kind:
-                  activeRun.command === "poet-generate-bible"
+                  ["poet-generate-bible", "poet-import-bible"].includes(activeRun.command)
                     ? "bible"
                     : activeRun.command === "poet-analyze-custom-topic"
                       ? "analyze"

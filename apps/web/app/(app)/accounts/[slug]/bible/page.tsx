@@ -14,6 +14,7 @@ import { ensureCurrentUser } from "@/lib/users";
 import { BibleGenerateSheet } from "../projects/[project]/poet/_components/bible-generate-sheet";
 import { BibleHistory } from "../projects/[project]/poet/_components/bible-history";
 import { BibleRunProgress } from "./_components/bible-run-progress";
+import { ImportReviewCard } from "./_components/import-review-card";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -43,7 +44,7 @@ export default async function AccountBiblePage({ params }: Props) {
 
   // Only watch a bible run here — an active script run belongs to the project poet page.
   const activeBibleRun =
-    poetRun && poetRun.command === "poet-generate-bible" ? poetRun : null;
+    poetRun && ["poet-generate-bible", "poet-import-bible"].includes(poetRun.command) ? poetRun : null;
 
   const a = encodeURIComponent(channel.slug);
   const activeBible = bibles.find((b) => b.isActive) ?? null;
@@ -80,6 +81,12 @@ export default async function AccountBiblePage({ params }: Props) {
             : null
         }
       />
+
+      {bibles
+        .filter((b) => (b.importFlags ?? []).some((f) => !f.resolved))
+        .map((b) => (
+          <ImportReviewCard key={b.id} bibleId={b.id} bibleName={b.name} flags={b.importFlags ?? []} />
+        ))}
 
       {activeBible ? (
         <article className="flex flex-col gap-3 rounded-lg border bg-card p-5">

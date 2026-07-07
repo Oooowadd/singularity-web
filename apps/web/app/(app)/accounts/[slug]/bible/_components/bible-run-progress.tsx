@@ -13,7 +13,9 @@ import { trpc } from "@/lib/trpc";
 // Dedicated to the account bible page: it has account context but no project,
 // so PoetRunProgress (which needs projectSlug for its 查看脚本 action) doesn't fit.
 const BIBLE_STAGES: Stage[] = [
-  { label: "AI 生成圣经", matches: (p) => p === "writing bible" },
+  { label: "读取文件", matches: (p) => p === "loading file" },
+  { label: "转写文档", matches: (p) => p === "transcribing document" },
+  { label: "AI 生成圣经", matches: (p) => p === "writing bible" || p === "saving" },
 ];
 
 type ActiveRun = {
@@ -148,9 +150,17 @@ function ProgressCard({
     if (!run) return;
     if (run.status === "COMPLETED") {
       const out = run.output as
-        | { drifted?: boolean; driftReason?: string | null; topicClaimed?: string }
+        | {
+            drifted?: boolean;
+            driftReason?: string | null;
+            topicClaimed?: string;
+            needsReview?: boolean;
+            flagCount?: number;
+          }
         | undefined;
-      if (out?.drifted) {
+      if (out?.needsReview) {
+        settledRef.current(true, `圣经已导入，有 ${out.flagCount ?? 0} 个存疑项待确认 — 逐项确认后才能激活`);
+      } else if (out?.drifted) {
         settledRef.current(true, `圣经已生成，但检测到偏题（${out.driftReason ?? "请查看"}）`);
       } else {
         settledRef.current(true, `圣经已生成${out?.topicClaimed ? ` · ${out.topicClaimed}` : ""}`);
@@ -168,7 +178,16 @@ function ProgressCard({
     <div className="flex w-full flex-col gap-3 rounded-lg border bg-card p-4">
       <div className="flex items-center justify-between gap-3 text-xs">
         <span className="min-w-0 truncate font-medium text-foreground">
-          生成圣经 · {progress?.phase === "writing bible" ? "AI 生成圣经中" : "准备中…"}
+          生成圣经 ·{" "}
+          {progress?.phase === "writing bible"
+            ? "AI 生成圣经中"
+            : progress?.phase === "transcribing document"
+              ? "转写文档中"
+              : progress?.phase === "loading file"
+                ? "读取文件中"
+                : progress?.phase === "saving"
+                  ? "保存中"
+                  : "准备中…"}
           <span className="font-normal text-muted-foreground"> · 完成前无法启动同 agent 新任务</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
@@ -189,8 +208,14 @@ function ProgressCard({
       </div>
       <AgentTimeline stages={BIBLE_STAGES} currentPhase={progress?.phase} accentClass="text-poet" />
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        {/* Single-LLM window (bible) — heartbeat shimmer, no count bar. */}
-        <div className="h-full w-1/3 animate-pulse bg-poet" />
+        {progress?.phase === "transcribing document" && (progress?.total ?? 0) > 1 ? (
+          <div
+            className="h-full bg-poet transition-all"
+            style={{ width: `${Math.min(100, Math.round(((progress?.current ?? 0) / (progress?.total ?? 1)) * 100))}%` }}
+          />
+        ) : (
+          <div className="h-full w-1/3 animate-pulse bg-poet" />
+        )}
       </div>
       {detail ? <span className="line-clamp-2 text-xs text-muted-foreground">{detail}</span> : null}
     </div>

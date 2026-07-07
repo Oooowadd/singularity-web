@@ -7,7 +7,7 @@ export const ETA_JOB_COMMANDS: Record<EtaJobKey, { agent: string; commands: stri
   "clerk.analyze": { agent: "clerk", commands: ["analyze-channel", "clerk-analyze-channel"] },
   "muse.monitor": { agent: "muse", commands: ["monitor-competitors", "muse-monitor-competitors"] },
   "poet.script": { agent: "poet", commands: ["generate-script", "poet-generate-script"] },
-  "poet.bible": { agent: "poet", commands: ["generate-bible", "poet-generate-bible"] },
+  "poet.bible": { agent: "poet", commands: ["generate-bible", "poet-generate-bible", "poet-import-bible"] },
 };
 
 // Cold-start linear fallback (seconds) when <5 historical samples; rough by design — percentile history takes over.
