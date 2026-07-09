@@ -22,7 +22,7 @@ export async function sendApprovalEmail(to: string): Promise<{ sent: boolean; re
         subject: "搬砖小鹅 Goooose 内测申请已通过",
         html: [
           "<p>你好，</p>",
-          "<p>你的搬砖小鹅 Goooose 内测申请已通过，现在可以登录使用了。</p>",
+          "<p>你的搬砖小鹅 Goooose 内测申请已通过，现在可以登录使用啦🎉</p>",
           `<p><a href="${baseUrl}">点击进入搬砖小鹅 Goooose</a>（使用申请时的邮箱登录）</p>`,
           "<p>—— 搬砖小鹅 Goooose 团队</p>",
         ].join("\n"),
