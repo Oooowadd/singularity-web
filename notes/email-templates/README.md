@@ -1,6 +1,6 @@
 # 邮件模板
 
-统一视觉：520px 白卡片 + 暖灰底 `#F5F4F0`、鹅喙橙 `#E8850C`、三块砖分隔线（搬砖梗）、"Goooose" 用 Georgia 斜体（邮件环境无法加载 Caveat/快乐体）。全部 inline style + table 布局，兼容 Gmail / QQ 邮箱 / Apple Mail。
+统一视觉（科技简约，Vercel / shadcn 一派）：纯白底、左对齐 480px 栏、中性灰阶、黑色主按钮；唯一品牌色是鹅喙橙 `#E8850C` 的 logo 小方块 + "Goooose" 字标（正文不出现"搬砖小鹅"，发件人栏已带）。全部 inline style + table 布局，兼容 Gmail / QQ 邮箱 / Apple Mail。
 
 | 模板 | 用途 | 状态 |
 |---|---|---|

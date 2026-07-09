@@ -2,22 +2,10 @@ import "server-only";
 
 // Email HTML runs in a hostile environment (Gmail/QQ mail strip <style>, no web
 // fonts, tables only) — everything below is inline-styled and table-laid-out.
-const FONT_CJK =
-  "-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
-const FONT_BRAND_EN = "Georgia,'Times New Roman',serif";
-const ORANGE = "#E8850C";
-
-// Three little bricks — the 搬砖 brand motif, doubles as a divider.
-const BRICK_DIVIDER = `
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-  <tr>
-    <td width="22" height="6" bgcolor="${ORANGE}" style="background-color:${ORANGE};border-radius:3px;font-size:0;line-height:0;">&nbsp;</td>
-    <td width="8" style="font-size:0;line-height:0;">&nbsp;</td>
-    <td width="22" height="6" bgcolor="#F2A94F" style="background-color:#F2A94F;border-radius:3px;font-size:0;line-height:0;">&nbsp;</td>
-    <td width="8" style="font-size:0;line-height:0;">&nbsp;</td>
-    <td width="22" height="6" bgcolor="#FBDFB4" style="background-color:#FBDFB4;border-radius:3px;font-size:0;line-height:0;">&nbsp;</td>
-  </tr>
-</table>`;
+// Visual system: white ground, left-aligned 480px column, neutral grays, black
+// primary button; the only brand color is the orange logo mark.
+const FONT =
+  "-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
 
 export function renderEmailShell(args: {
   preheader: string;
@@ -29,31 +17,36 @@ export function renderEmailShell(args: {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>搬砖小鹅 Goooose</title>
+<title>Goooose</title>
 </head>
-<body style="margin:0;padding:0;background-color:#F5F4F0;">
+<body style="margin:0;padding:0;background-color:#FFFFFF;">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${args.preheader}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F5F4F0" style="background-color:#F5F4F0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="background-color:#FFFFFF;">
   <tr>
-    <td align="center" style="padding:48px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
         <tr>
-          <td align="center" style="padding-bottom:28px;">
-            <span style="font-family:${FONT_CJK};font-size:22px;font-weight:700;color:#1A1A1A;letter-spacing:1px;">搬砖小鹅</span>
-            <span style="font-family:${FONT_BRAND_EN};font-style:italic;font-size:23px;font-weight:700;color:${ORANGE};">&nbsp;Goooose</span>
-          </td>
-        </tr>
-        <tr>
-          <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;border:1px solid #EBE8E1;border-radius:16px;padding:44px 40px 40px;">
-            ${args.bodyHtml}
-          </td>
-        </tr>
-        <tr>
-          <td align="center" style="padding-top:28px;">
-            <p style="margin:0;font-family:${FONT_CJK};font-size:12px;line-height:1.9;color:#A8A29E;">
-              此邮件由系统自动发送，请勿直接回复<br>
-              &copy; 搬砖小鹅 Goooose &middot; <a href="https://goooose.com" style="color:#A8A29E;text-decoration:underline;">goooose.com</a>
-            </p>
+          <td style="padding:56px 24px 48px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="13" height="13" bgcolor="#E8850C" style="background-color:#E8850C;border-radius:3px;font-size:0;line-height:0;">&nbsp;</td>
+                <td style="padding-left:9px;font-family:${FONT};font-size:17px;font-weight:700;color:#0A0A0A;letter-spacing:-0.2px;">Goooose</td>
+              </tr>
+            </table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="padding-top:40px;">${args.bodyHtml}</td></tr>
+            </table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:44px;">
+              <tr>
+                <td height="1" bgcolor="#EAEAEA" style="background-color:#EAEAEA;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+              <tr>
+                <td style="padding-top:20px;font-family:${FONT};font-size:12px;line-height:1.9;color:#A3A3A3;">
+                  此邮件由系统自动发送，请勿直接回复<br>
+                  &copy; Goooose &middot; <a href="https://goooose.com" style="color:#A3A3A3;text-decoration:underline;">goooose.com</a>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
@@ -66,19 +59,18 @@ export function renderEmailShell(args: {
 
 export function renderApprovalEmail(baseUrl: string): string {
   const bodyHtml = `
-${BRICK_DIVIDER}
-<h1 style="margin:26px 0 0;font-family:${FONT_CJK};font-size:22px;font-weight:700;color:#1A1A1A;text-align:center;letter-spacing:0.5px;">内测申请已通过&nbsp;🎉</h1>
-<p style="margin:22px 0 0;font-family:${FONT_CJK};font-size:15px;line-height:2;color:#57534E;text-align:center;">
-  你好，你的搬砖小鹅 Goooose 内测申请已通过，<br>现在可以登录使用啦
+<h1 style="margin:0;font-family:${FONT};font-size:20px;font-weight:600;color:#0A0A0A;letter-spacing:-0.3px;">内测申请已通过</h1>
+<p style="margin:16px 0 0;font-family:${FONT};font-size:14px;line-height:1.9;color:#525252;">
+  你好，你的 Goooose 内测申请已通过，现在可以登录使用啦🎉
 </p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:32px auto 0;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
   <tr>
-    <td align="center" bgcolor="${ORANGE}" style="background-color:${ORANGE};border-radius:10px;">
-      <a href="${baseUrl}" target="_blank" style="display:inline-block;padding:13px 40px;font-family:${FONT_CJK};font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:1px;">进入搬砖小鹅</a>
+    <td bgcolor="#0A0A0A" style="background-color:#0A0A0A;border-radius:8px;">
+      <a href="${baseUrl}" target="_blank" style="display:inline-block;padding:11px 26px;font-family:${FONT};font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;">进入 Goooose</a>
     </td>
   </tr>
 </table>
-<p style="margin:18px 0 0;font-family:${FONT_CJK};font-size:13px;line-height:1.8;color:#A8A29E;text-align:center;">
+<p style="margin:16px 0 0;font-family:${FONT};font-size:13px;line-height:1.8;color:#A3A3A3;">
   使用申请时的邮箱登录
 </p>`;
   return renderEmailShell({
