@@ -59,9 +59,10 @@ export function renderEmailShell(args: {
 
 export function renderApprovalEmail(baseUrl: string): string {
   const bodyHtml = `
-<h1 style="margin:0;font-family:${FONT};font-size:20px;font-weight:600;color:#0A0A0A;letter-spacing:-0.3px;">内测申请已通过</h1>
+<h1 style="margin:0;font-family:${FONT};font-size:20px;font-weight:600;color:#0A0A0A;letter-spacing:-0.3px;">欢迎加入 Goooose 内测</h1>
 <p style="margin:16px 0 0;font-family:${FONT};font-size:14px;line-height:1.9;color:#525252;">
-  你好，你的 Goooose 内测申请已通过，现在可以登录使用啦🎉
+  你的申请已通过，现在可以登录使用🎉<br>
+  登录后从添加第一个对标账号开始，跑通「看对标 → 出选题 → 写稿」。
 </p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
   <tr>
@@ -74,7 +75,7 @@ export function renderApprovalEmail(baseUrl: string): string {
   使用申请时的邮箱登录
 </p>`;
   return renderEmailShell({
-    preheader: "内测申请已通过，现在可以登录使用啦",
+    preheader: "你的申请已通过，现在可以登录使用",
     bodyHtml,
   });
 }
