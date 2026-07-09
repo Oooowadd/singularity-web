@@ -4,9 +4,11 @@
 
 | 模板 | 用途 | 状态 |
 |---|---|---|
-| （代码内）`apps/web/lib/email.ts` `renderApprovalEmail` | 内测审批通过通知（Resend 发送） | 已上线 |
-| `logto-verification-code.html` | Logto 登录验证码（`{{code}}` 为 Logto 模板变量） | 备用，尚未接入 |
+| （代码内）`apps/web/lib/email.ts` `renderApprovalEmail` | 内测审批通过通知（Resend REST 发送） | 已上线 |
+| `logto-verification-code.html` | Logto 验证码（`{{code}}` 为 Logto 模板变量） | 已接入（2026-07-09） |
 
-## 接入 Logto 验证码模板（将来切换时）
+## Logto 验证码接线现状
 
-前置：Logto Cloud → Connectors → Email connector 换成自定义（Resend SMTP 或 HTTP API），发件人 `noreply@goooose.com`（域名已在 Resend 验证）。将本模板填入 usageType `SignIn` / `Register` / `ForgotPassword` / `Generic` 的 template 字段，`{{code}}` 保留原样。切换风险：验证码是登录生死线，先在测试租户或低峰时段验证再切生产；切换时机见 beta.md（QQ/163 送达问题出现或公测前）。
+Logto 邮件连接器已从内置 logto-email 换成 **SMTP → Resend**（`smtp.resend.com:587`，user `resend`，pass 为 Resend API key），发件人 `搬砖小鹅 Goooose <noreply@goooose.com>`。本模板按 6 个 usageType（SignIn / Register / ForgotPassword / Generic / OrganizationInvitation / UserPermissionValidation）生成变体写入连接器 config，只有标题 / 动作行 / 主题不同。改模板后重新接入：改本文件 → 用 Logto Management API `PATCH /api/connectors/{id}` 更新 config（当时的构建脚本思路：读本文件做三处文本替换生成变体）。
+
+注意：验证码与审批邮件共享 Resend 免费档额度（100 封/天）；验证码是登录生死线，改动连接器前先用 `POST /api/connectors/simple-mail-transfer-protocol/test` 验证配置。回滚 = 删除 SMTP 连接器后重建 `logto-email`（内置服务无需 config）。

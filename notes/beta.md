@@ -21,7 +21,7 @@
 | AI 流式    | Vercel AI SDK                                |
 | 长任务     | Trigger.dev v4 (Hobby, $10/mo)               |
 | Auth       | Logto Cloud（自定义域 auth.goooose.com）     |
-| 邮件       | Resend（审批通知，发信域 goooose.com）       |
+| 邮件       | Resend（审批通知 + Logto 验证码，发信域 goooose.com）|
 | DB         | Supabase Pro (Postgres only) + Drizzle       |
 | LLM 主链   | DeepSeek V4 Pro + Flash（reasoning enabled） |
 | LLM vision | Claude Sonnet 4.6                            |
