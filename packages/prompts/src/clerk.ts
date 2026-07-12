@@ -350,7 +350,7 @@ ${args.videosData}
 
 **Section 3: Cover / Thumbnail Playbook**
 - Visual pattern checklist (composition, color, faces, text overlays, props)
-- Diagnostic table: For each analyzed video, one line: \`Title — Cover element X works because Y\`
+- Diagnostic table: For each analyzed video, one line: \`<the video's actual title> — Cover element X works because Y\`. Start each line with that video's real title copied from the data above — never the literal word "Title" or a generic label.
 - Title-line patterns that pair with the visual style
 
 **Section 4: Hook Playbook**
@@ -510,7 +510,7 @@ export function buildHottestSopPrompt(args: HottestArgs): string {
   const commentsInstruction = args.commentsSummary
     ? `
 
-After the Retention Tape, append a **Viewer Resonance** section: synthesize the comments above into a one-paragraph answer to "why DID this video go viral?" Cross-reference specific moments from the transcript with the themes viewers raised. Quote 1-2 comments verbatim if they directly explain a structural choice.`
+After Retention Mechanics, append a **Viewer Resonance** section: synthesize the comments above into a one-paragraph answer to "why DID this video go viral?" Cross-reference specific moments from the transcript with the themes viewers raised. Quote 1-2 comments verbatim if they directly explain a structural choice.`
     : '';
 
   const hasTimestamps = /\[\d+:\d{2}\]/.test(args.transcript);
@@ -540,7 +540,23 @@ Create a time-segmented structural breakdown. Break the video into 5-8 Parts; gi
 - **How it Works (Psychology)**: 2-3 sentences on the cognitive lever
 - **Hooks in this Section**: each as \`[Hook Type]: "verbatim line"\`
 
-After the Parts, append a **Retention Tape** section: a single chronological list of every retention move (open loop, rehook, specificity spike, pattern break), each with a 5-word description.${commentsInstruction}
+After the Parts, append these sections (mirror the channel-level SOP's blueprint depth, but derived from THIS video only):
+
+**Script Structure Blueprint**
+- **Beat Template** table: Beat # | Beat Name | Time Range (sec-to-sec within the ${args.durationSec}s runtime, not percentages) | Purpose | Signature Move — abstracted so a writer could reuse it for a new script
+- **Item / Demonstration Template** (only if the video uses recurring item-by-item segments): per-item internal structure — Setup phrase → Reveal → Reaction line → Transition phrase, with verbatim phrasings as examples
+- **Emotional Escalation Map**: how energy/stakes shift over the runtime, citing peak moments
+
+**Storytelling Framework**
+- **Primary Framework**: name + 2-3 sentence definition + how this video walks through it beat by beat
+- **Narrative Arc Shape**: the emotional arc as a sequence (e.g. "calm → tension → reveal → relief → punchline") with cited examples
+- **Signature Moves**: 2-4 recurring narrative devices in this video (catchphrases, structural tics, recurring sound-bites) with quoted examples
+
+**Retention Mechanics**
+- **Open Loops**: specific open-loop phrases with where opened and where closed
+- **Rehook Phrases**: verbatim list of every "stay with me / here's the crazy part" line
+- **Specificity Spikes**: concrete numbers, names, dates, amounts that re-grab attention
+- **Pattern Breaks**: tone shifts, cuts, recap interludes${commentsInstruction}
 
 **Grounding (HARD RULE).** Base every field ONLY on what the Full Transcript above actually contains. Quote only lines that appear verbatim in the transcript — never invent quotes, stats, prices, product features, amenities, timestamps, or CTAs. Do NOT expand a bare phrase or aphorism into a fabricated full-sentence "hook line" and present it as something the creator said; if the transcript only contains a short phrase, quote just that phrase. If the transcript is thin, short, or clearly has no real speech, keep the breakdown minimal and say so plainly — do not embellish to fill the template.
 
