@@ -1,0 +1,69 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+export type TocItem = { id: string; title: string };
+
+// Sticky section rail for the SOP reader: scroll-spy highlights the section in view,
+// clicks smooth-scroll to it. Desktop = vertical rail beside the doc; mobile = a
+// horizontal scroller pinned above it.
+export function SopToc({ items }: { items: TocItem[] }) {
+  const [active, setActive] = useState(items[0]?.id ?? "");
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  useEffect(() => {
+    const headings = items
+      .map((it) => document.getElementById(it.id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (headings.length === 0) return;
+
+    // A heading counts as "current" once its top passes the upper third of the
+    // viewport; track the last one to cross so fast scrolls don't leave it blank.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) setActive(e.target.id);
+        }
+      },
+      { rootMargin: "-20% 0px -70% 0px", threshold: 0 },
+    );
+    for (const h of headings) observer.observe(h);
+    return () => observer.disconnect();
+  }, [items]);
+
+  const go = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (!el) return;
+    setActive(id);
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  if (items.length < 3) return null;
+
+  return (
+    <nav aria-label="SOP 章节" className="sop-toc">
+      <p className="sop-toc-label">章节</p>
+      <ul className="sop-toc-list">
+        {items.map((it, i) => {
+          const isActive = active === it.id;
+          return (
+            <li key={it.id}>
+              <a
+                href={`#${it.id}`}
+                onClick={(e) => go(e, it.id)}
+                aria-current={isActive ? "true" : undefined}
+                className="sop-toc-link"
+                data-active={isActive ? "" : undefined}
+              >
+                <span className="sop-toc-num">{i + 1}</span>
+                <span className="sop-toc-text">{it.title}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}

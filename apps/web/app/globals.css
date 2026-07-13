@@ -253,10 +253,62 @@
   @apply my-3 border-l-2 border-muted-foreground/50 pl-4 italic text-muted-foreground;
 }
 
-/* SOP document reader (SopReader). Manual-grade reading: CJK-comfortable measure,
-   ## sections as anchored chapters with a clerk-accent tick, playbook tables as
-   scrollable striped cards, verbatim quotes as flat (non-italic — italics render
-   poorly in CJK) callouts. */
+/* SOP document reader (SopReader). Manual-grade reading: sticky section rail +
+   CJK-comfortable measure, ## sections as anchored chapters with a clerk-accent
+   tick, playbook tables as scrollable striped cards, verbatim quotes as flat
+   (non-italic — italics render poorly in CJK) callouts. */
+.sop-reader {
+  @apply flex flex-col gap-5;
+}
+@media (min-width: 1024px) {
+  .sop-reader {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start; /* let the rail be shorter than the doc so sticky engages */
+  }
+}
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+/* Section rail */
+.sop-toc {
+  @apply flex flex-col gap-2;
+}
+@media (min-width: 1024px) {
+  .sop-toc {
+    position: sticky;
+    top: 4.5rem;
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+  }
+}
+.sop-toc-label {
+  @apply px-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground;
+}
+.sop-toc-list {
+  @apply flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0;
+}
+.sop-toc-link {
+  @apply flex shrink-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors lg:border-transparent lg:py-1.5;
+}
+.sop-toc-link:hover {
+  @apply border-clerk/40 bg-muted/40 text-foreground lg:border-transparent;
+}
+.sop-toc-link[data-active] {
+  @apply border-clerk/40 bg-clerk/10 font-medium text-foreground lg:border-transparent lg:bg-clerk/10;
+}
+.sop-toc-num {
+  @apply font-mono text-[10px] text-clerk;
+}
+.sop-toc-text {
+  @apply max-w-40 truncate lg:max-w-full;
+}
 .prose-sop {
   @apply max-w-[46rem] text-[15px] leading-7 text-foreground/90;
 }

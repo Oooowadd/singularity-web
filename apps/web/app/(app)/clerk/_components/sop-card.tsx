@@ -72,11 +72,11 @@ export function SopCard({
           {showDelete ? <DeleteSopButton sopId={sop.id} sopLabel={label} /> : null}
         </div>
       </summary>
-      <SopContent text={sop.contentMd} />
+      <SopContent text={sop.contentMd} idPrefix={sop.id} />
     </details>
   );
 }
 
-export function SopContent({ text }: { text: string }) {
-  return <SopReader text={text} className="border-t pt-5" />;
+export function SopContent({ text, idPrefix }: { text: string; idPrefix?: string }) {
+  return <SopReader text={text} idPrefix={idPrefix} className="border-t pt-5" />;
 }
