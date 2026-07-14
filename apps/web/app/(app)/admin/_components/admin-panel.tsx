@@ -261,9 +261,15 @@ export function AdminPanel({ selfId }: { selfId: string }) {
 
   const codes = trpc.admin.listCodes.useQuery();
   const [codeMinutes, setCodeMinutes] = useState("100");
+  const [codeAccess, setCodeAccess] = useState(false);
   const createCode = trpc.admin.createCode.useMutation({
     onSuccess: (created) => {
-      toast.success(`已生成：${created.code}（${created.grant?.minutes ?? 0} 分钟）`);
+      const parts = [
+        created.grant?.access ? "准入" : null,
+        created.grant?.minutes ? `${created.grant.minutes} 分钟` : null,
+      ].filter(Boolean);
+      void navigator.clipboard.writeText(created.code).catch(() => {});
+      toast.success(`已生成并复制：${created.code}（${parts.join(" + ")}）`);
       void utils.admin.listCodes.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -430,19 +436,27 @@ export function AdminPanel({ selfId }: { selfId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>时长兑换码</CardTitle>
+          <CardTitle>兑换码</CardTitle>
           <CardDescription>
-            生成后发给用户，在「用量与额度」页兑换；加到对方当月额度，本月有效
+            时长码在「用量与额度」页兑换，加到对方当月额度；勾选「内测准入」生成的码可在落地页/申请页激活内测资格（可与时长组合）
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant={codeAccess ? "default" : "outline"}
+              onClick={() => setCodeAccess((v) => !v)}
+            >
+              内测准入
+            </Button>
+            <span className="text-xs text-muted-foreground">+</span>
             {MINUTE_PRESETS.map((p) => (
               <Button
                 key={p}
                 size="sm"
                 variant={codeMinutes === String(p) ? "default" : "outline"}
-                onClick={() => setCodeMinutes(String(p))}
+                onClick={() => setCodeMinutes(codeMinutes === String(p) ? "" : String(p))}
               >
                 {p} 分钟
               </Button>
@@ -454,8 +468,13 @@ export function AdminPanel({ selfId }: { selfId: string }) {
               placeholder="自定义"
             />
             <Button
-              disabled={createCode.isPending || !Number(codeMinutes)}
-              onClick={() => createCode.mutate({ minutes: Number(codeMinutes) })}
+              disabled={createCode.isPending || (!codeAccess && !Number(codeMinutes))}
+              onClick={() =>
+                createCode.mutate({
+                  minutes: Number(codeMinutes) || undefined,
+                  access: codeAccess,
+                })
+              }
             >
               生成兑换码
             </Button>
@@ -465,7 +484,7 @@ export function AdminPanel({ selfId }: { selfId: string }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>码</TableHead>
-                  <TableHead>时长</TableHead>
+                  <TableHead>内容</TableHead>
                   <TableHead>使用</TableHead>
                   <TableHead>使用者</TableHead>
                   <TableHead>状态</TableHead>
@@ -491,7 +510,12 @@ export function AdminPanel({ selfId }: { selfId: string }) {
                           {c.code}
                         </button>
                       </TableCell>
-                      <TableCell className="text-xs">{c.grant?.minutes ?? 0} 分钟</TableCell>
+                      <TableCell className="text-xs">
+                        <span className="flex items-center gap-1.5">
+                          {c.grant?.access ? <Badge variant="outline">准入</Badge> : null}
+                          {c.grant?.minutes ? `${c.grant.minutes} 分钟` : c.grant?.access ? null : "—"}
+                        </span>
+                      </TableCell>
                       <TableCell className="font-mono text-xs">
                         {c.usedCount}/{c.maxUses}
                       </TableCell>
