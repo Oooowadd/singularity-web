@@ -1,0 +1,31 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { APP_VERSION_LABEL } from "@/lib/version";
+
+import { ApplyForm } from "./apply-form";
+
+export const metadata: Metadata = {
+  title: "申请内测 · 搬砖小鹅 Goooose",
+  description: "填写内测申请问卷，通过后内测码会发到你的邮箱。",
+};
+
+export default function ApplyPage() {
+  return (
+    <div className="flex min-h-svh flex-col bg-background">
+      <header className="flex items-center justify-between px-6 py-5 sm:px-10">
+        <Link href="/" className="font-brand text-xl leading-none">
+          搬砖小鹅 <span className="font-display italic">Goooose</span>
+        </Link>
+        <span className="text-xs text-muted-foreground">内测申请问卷</span>
+      </header>
+      <main className="flex flex-1 items-start justify-center px-6 py-10 sm:items-center sm:py-6">
+        <ApplyForm />
+      </main>
+      <footer className="flex items-center justify-center gap-3 px-6 pb-8 text-xs text-muted-foreground">
+        <span>© 2026 搬砖小鹅 Goooose</span>
+        <span className="font-mono text-[10px] tracking-widest uppercase">{APP_VERSION_LABEL}</span>
+      </footer>
+    </div>
+  );
+}

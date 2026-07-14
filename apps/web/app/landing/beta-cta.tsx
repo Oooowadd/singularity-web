@@ -1,14 +1,12 @@
 "use client";
 
 import { ArrowRight, Ticket } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-
-// Swap for the real Tencent Survey link before launch (one-line change).
-const BETA_SURVEY_URL = "https://wj.qq.com/";
 
 // Must match BETA_CODE_COOKIE in server/access-code.ts (client file can't import server-only).
 const CODE_COOKIE = "goooose_beta_code";
@@ -41,11 +39,7 @@ export function BetaCta() {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-3">
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button
-          render={<a href={BETA_SURVEY_URL} target="_blank" rel="noopener noreferrer" />}
-          nativeButton={false}
-          size="lg"
-        >
+        <Button render={<Link href="/apply" />} nativeButton={false} size="lg">
           申请内测
           <ArrowRight data-icon="inline-end" />
         </Button>
