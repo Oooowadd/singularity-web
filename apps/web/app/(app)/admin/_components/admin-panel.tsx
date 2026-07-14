@@ -45,6 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { questionTitle, SUMMARY_QUESTION_IDS } from "@/lib/beta-survey";
 import { trpc } from "@/lib/trpc";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -325,6 +326,8 @@ export function AdminPanel({ selfId }: { selfId: string }) {
           </div>
         </CardContent>
       </Card>
+
+      <BetaApplicationsCard />
 
       <Card>
         <CardHeader>
@@ -739,5 +742,181 @@ export function AdminPanel({ selfId }: { selfId: string }) {
 
       <UserDetailSheet userId={detailUserId} onClose={() => setDetailUserId(null)} />
     </div>
+  );
+}
+
+const BETA_STATUS_LABEL: Record<string, string> = {
+  new: "新申请",
+  contacted: "已联系",
+  invited: "已发码",
+};
+
+function BetaApplicationsCard() {
+  const utils = trpc.useUtils();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const apps = trpc.admin.listBetaApplications.useQuery();
+  const updateApp = trpc.admin.updateBetaApplication.useMutation({
+    onSuccess: () => void utils.admin.listBetaApplications.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+  const inviteCode = trpc.admin.createCode.useMutation({
+    onError: (err) => toast.error(err.message),
+  });
+  const allowEmail = trpc.admin.addAllowedEmail.useMutation({
+    onError: (err) => toast.error(err.message),
+  });
+
+  const sendCode = async (id: string, email: string) => {
+    const created = await inviteCode.mutateAsync({ access: true, note: `问卷邀请 ${email}` });
+    await navigator.clipboard.writeText(created.code).catch(() => {});
+    toast.success(`准入码已生成并复制：${created.code}`);
+    updateApp.mutate({ id, status: "invited" });
+    void utils.admin.listCodes.invalidate();
+  };
+
+  const allowlist = async (id: string, email: string) => {
+    const res = await allowEmail.mutateAsync({ email, note: "问卷邀请" });
+    toast.success(res.approved > 0 ? "已加入白名单并放行该用户" : "已加入白名单，登录即放行");
+    updateApp.mutate({ id, status: "invited" });
+    void utils.admin.listAllowedEmails.invalidate();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>内测问卷申请</CardTitle>
+        <CardDescription>
+          来自落地页公开问卷（/apply）。发码 = 生成准入码并复制，通过邮件/微信手动发给对方；加白 = 该邮箱登录即自动放行
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {apps.data?.length ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>时间</TableHead>
+                <TableHead>邮箱</TableHead>
+                <TableHead>微信</TableHead>
+                <TableHead>摘要</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {apps.data.map((a) => {
+                const summary = SUMMARY_QUESTION_IDS.map((qid) => a.answers[qid])
+                  .filter((v): v is string => typeof v === "string" && v.length > 0)
+                  .join(" · ");
+                const expanded = expandedId === a.id;
+                return (
+                  <>
+                    <TableRow key={a.id}>
+                      <TableCell
+                        className="font-mono text-xs text-muted-foreground"
+                        title={new Date(a.updatedAt).toLocaleString("zh-CN")}
+                      >
+                        {new Date(a.updatedAt).toLocaleDateString("zh-CN")}
+                      </TableCell>
+                      <TableCell className="text-xs">{a.email}</TableCell>
+                      <TableCell className="text-xs">{a.wechat ?? "—"}</TableCell>
+                      <TableCell className="max-w-56 text-xs">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() => setExpandedId(expanded ? null : a.id)}
+                        >
+                          {summary || "(点击查看)"}
+                          {a.submitCount > 1 ? (
+                            <span className="ml-1 text-muted-foreground">×{a.submitCount}</span>
+                          ) : null}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            a.status === "invited"
+                              ? "success"
+                              : a.status === "contacted"
+                                ? "outline"
+                                : "secondary"
+                          }
+                        >
+                          {BETA_STATUS_LABEL[a.status] ?? a.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {a.status === "new" ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={updateApp.isPending}
+                              onClick={() => updateApp.mutate({ id: a.id, status: "contacted" })}
+                            >
+                              已联系
+                            </Button>
+                          ) : null}
+                          {a.status !== "invited" ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={inviteCode.isPending}
+                                onClick={() => void sendCode(a.id, a.email)}
+                              >
+                                发码
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={allowEmail.isPending}
+                                onClick={() => void allowlist(a.id, a.email)}
+                              >
+                                加白
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expanded ? (
+                      <TableRow key={`${a.id}-detail`}>
+                        <TableCell colSpan={6} className="bg-muted/30">
+                          <div className="flex flex-col gap-1.5 py-1 text-xs">
+                            {Object.entries(a.answers).map(([qid, v]) => (
+                              <div key={qid} className="flex gap-2">
+                                <span className="shrink-0 text-muted-foreground">
+                                  {questionTitle(qid)}
+                                </span>
+                                <span>{Array.isArray(v) ? v.join("、") : v}</span>
+                              </div>
+                            ))}
+                            {a.social ? (
+                              <div className="flex gap-2">
+                                <span className="shrink-0 text-muted-foreground">主账号</span>
+                                <a
+                                  href={a.social}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline"
+                                >
+                                  {a.social}
+                                </a>
+                              </div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </>
+                );
+              })}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-sm text-muted-foreground">还没有问卷申请</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
