@@ -1,94 +1,101 @@
-// Beta survey question set — shared by the /apply stepper, the server-side zod
-// check, and the admin summary. Editing questions: bump SURVEY_VERSION, never the DB.
+// Beta survey question set (题目设计方案 v2) — shared by the /apply stepper, the
+// server-side zod check, and the admin summary. Editing questions: bump
+// SURVEY_VERSION, never the DB.
 
-export const SURVEY_VERSION = 1;
+export const SURVEY_VERSION = 2;
 
 export type SurveyQuestion = {
   id: string;
-  type: "single" | "multi" | "text";
+  type: "single" | "multi";
   title: string;
   hint?: string;
-  options?: string[];
-  // Renders an "其他" choice with an inline input, stored as `${id}_other`.
+  options: string[];
+  // Renders an "其他（请注明）" choice with an inline input, stored as `${id}_other`.
   allowOther?: boolean;
   required?: boolean;
+  // Multi only: hard cap on selections.
+  maxSelect?: number;
+  // Multi only: picking this option clears the rest (and vice versa).
+  exclusiveOption?: string;
 };
 
 export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
-    id: "platform",
+    id: "role",
     type: "single",
-    title: "你主要在哪个平台做内容？",
-    options: ["小红书", "抖音", "B站", "YouTube", "视频号", "多平台都发", "还没开始，准备起号"],
-    required: true,
-  },
-  {
-    id: "category",
-    type: "single",
-    title: "你的内容方向？",
-    options: ["知识科普 · 教程", "生活方式 · vlog", "测评 · 种草", "剧情 · 娱乐", "商业IP · 个人品牌"],
+    title: "你目前主要的创作身份是？",
+    options: [
+      "影视 / 短剧从业者（导演、制片、剪辑等）",
+      "AI 短片 / MV / 广告片创作者",
+      "MCN 从业者",
+      "内容行业编导",
+      "内容行业操盘手",
+      "自媒体创作者",
+      "设计类视觉创作者",
+    ],
     allowOther: true,
     required: true,
   },
   {
-    id: "followers",
+    id: "ai_hours",
     type: "single",
-    title: "现在的粉丝量级？",
-    options: ["还没发布", "1千以下", "1千 - 1万", "1万 - 10万", "10万以上"],
+    title: "过去 3 个月，你平均每周花多少时间在 AI 内容创作工具上？",
+    options: [
+      "几乎没用过",
+      "偶尔玩玩，每周 2 小时以内",
+      "每周 2-10 小时，会拿来做点正经的事",
+      "每周 >10 小时，已经离不开这些工具",
+    ],
     required: true,
   },
   {
-    id: "cadence",
-    type: "single",
-    title: "更新节奏？",
-    options: ["每周 3 条以上", "每周 1-2 条", "偶尔更，想稳定下来", "还没开始更"],
+    id: "workload",
+    type: "multi",
+    title: "在内容生产环节中，你目前投入的精力/时间最多、最希望被“减负”的是？",
+    hint: "最多选 3 项",
+    options: [
+      "选题调研与灵感捕捉",
+      "脚本 / 文案撰写",
+      "拍摄执行与素材整理",
+      "剪辑与后期制作",
+      "标题 / 封面 / 标签优化",
+      "多平台排期与分发",
+      "数据复盘与效果分析",
+      "团队协作与进度管理",
+    ],
     required: true,
+    maxSelect: 3,
   },
   {
     id: "pains",
     type: "multi",
-    title: "这些环节，哪些是你真的卡过、烦过的？",
-    hint: "可多选，也可以全不选",
+    title: "以下这些场景，哪些是你真的经历过、并且真的烦过的？",
+    hint: "如果都没有可以全不选",
     options: [
-      "不知道拍什么，选题靠灵光一现",
-      "看了很多对标账号，学不出人家的套路",
-      "写脚本太慢，一条稿磨几小时",
-      "AI 写的稿一股机器味，不敢直接用",
-      "数据不稳定，爆过一次再也复制不了",
-      "以上基本没遇到",
+      "跨工具反复切换，创作流总被打断",
+      "素材存了但管理混乱，经常找不到",
+      "文件太大、太多、跨端同步速度慢",
+      "自己的创作成果被拿去训练模型或移作他用",
+      "以上痛点基本没遇到过",
     ],
     allowOther: true,
-  },
-  {
-    id: "tools",
-    type: "multi",
-    title: "你现在用什么辅助创作？",
-    options: ["ChatGPT · DeepSeek 等直接对话", "剪映等成片工具", "基本纯手工"],
-    allowOther: true,
-    required: true,
+    exclusiveOption: "以上痛点基本没遇到过",
   },
   {
     id: "commitment",
     type: "single",
-    title: "拿到内测资格后，你的参与程度大概是？",
-    hint: "这决定我们优先把名额给谁",
+    title: "如果我们邀请你参与内测，你愿意参与的程度大概是？",
     options: [
       "我只是好奇看看",
-      "会认真试用，顺手给反馈",
-      "愿意深度共创，持续反馈 + 访谈",
+      "我可以试用，顺手填一份简短反馈",
+      "我愿意深度参与产品迭代，持续反馈和参与共创和访谈",
     ],
     required: true,
-  },
-  {
-    id: "wish",
-    type: "text",
-    title: "最希望搬砖小鹅帮你解决的一件事？",
-    hint: "选填，一句话就行",
   },
 ];
 
 // Admin list shows these inline; the rest appear in the expanded view.
-export const SUMMARY_QUESTION_IDS = ["platform", "followers", "commitment"];
+export const SUMMARY_QUESTION_IDS = ["role", "ai_hours", "commitment"];
 
 export function questionTitle(id: string): string {
   const base = id.endsWith("_other") ? id.slice(0, -"_other".length) : id;

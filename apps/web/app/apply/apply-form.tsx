@@ -7,14 +7,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { SURVEY_QUESTIONS, SURVEY_VERSION, type SurveyQuestion } from "@/lib/beta-survey";
 import { trpc } from "@/lib/trpc";
 
 type Answers = Record<string, string | string[]>;
 type Phase = "intro" | number | "contact" | "success";
 
-const OTHER = "其他";
+const OTHER = "其他（请注明）";
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 export function ApplyForm() {
@@ -67,7 +66,7 @@ export function ApplyForm() {
         <ul className="flex flex-col gap-3 text-sm leading-relaxed">
           <li className="flex gap-2.5">
             <Clock3 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            这份问卷大约需要 1 分钟，其中 3 题是选填。
+            这份问卷大约需要 1 分钟。
           </li>
           <li className="flex gap-2.5">
             <ListChecks className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -79,11 +78,11 @@ export function ApplyForm() {
           </li>
           <li className="flex gap-2.5">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            提交即表示同意我们处理这些信息；仅用于内测筛选，不作他用。
+            提交即表示同意我们处理这些信息——仅用于内测筛选，我们不会做营销群发，也不会卖给第三方。
           </li>
         </ul>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {["约 1 分钟", `${totalSteps} 个问题`, "3 题选填", "仅用于内测筛选"].map((t) => (
+          {["约 1 分钟", `${totalSteps} 个问题`, "邮箱必填 · 其余联系方式选填", "仅用于内测筛选"].map((t) => (
             <span key={t} className="rounded-full border px-2.5 py-1">
               {t}
             </span>
@@ -212,19 +211,31 @@ function QuestionStep({
   otherText: string | string[] | undefined;
   setAnswer: (id: string, value: string | string[]) => void;
 }) {
-  const selected = (opt: string) =>
-    q.type === "multi" ? Array.isArray(value) && value.includes(opt) : value === opt;
+  const cur = q.type === "multi" ? (Array.isArray(value) ? value : []) : [];
+  const selected = (opt: string) => (q.type === "multi" ? cur.includes(opt) : value === opt);
+  const atCap = q.maxSelect !== undefined && cur.length >= q.maxSelect;
 
   const toggle = (opt: string) => {
-    if (q.type === "multi") {
-      const cur = Array.isArray(value) ? value : [];
-      setAnswer(q.id, cur.includes(opt) ? cur.filter((o) => o !== opt) : [...cur, opt]);
-    } else {
+    if (q.type !== "multi") {
       setAnswer(q.id, value === opt ? "" : opt);
+      return;
     }
+    let nextVal: string[];
+    if (cur.includes(opt)) {
+      nextVal = cur.filter((o) => o !== opt);
+    } else if (q.exclusiveOption && opt === q.exclusiveOption) {
+      // "没遇到过" contradicts every concrete pain — it stands alone.
+      nextVal = [opt];
+    } else {
+      const base = q.exclusiveOption ? cur.filter((o) => o !== q.exclusiveOption) : cur;
+      if (q.maxSelect !== undefined && base.length >= q.maxSelect) return;
+      nextVal = [...base, opt];
+    }
+    setAnswer(q.id, nextVal);
+    if (!nextVal.includes(OTHER)) setAnswer(`${q.id}_other`, "");
   };
 
-  const options = q.allowOther ? [...(q.options ?? []), OTHER] : (q.options ?? []);
+  const options = q.allowOther ? [...q.options, OTHER] : q.options;
   const showOther = q.allowOther && selected(OTHER);
 
   return (
@@ -237,35 +248,28 @@ function QuestionStep({
         </p>
       </div>
 
-      {q.type === "text" ? (
-        <Textarea
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => setAnswer(q.id, e.target.value)}
-          rows={4}
-          maxLength={2000}
-          placeholder="随便聊聊，或者跳过"
-        />
-      ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {options.map((opt) => {
-            const on = selected(opt);
-            return (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => toggle(opt)}
-                aria-pressed={on}
-                className={`flex items-center justify-between gap-3 rounded-lg border p-3.5 text-left text-sm transition-colors ${
-                  on ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                }`}
-              >
-                <span>{opt}</span>
-                {on ? <Check className="size-4 shrink-0 text-primary" /> : null}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map((opt) => {
+          const on = selected(opt);
+          const capped =
+            q.type === "multi" && atCap && !on && !(q.exclusiveOption && opt === q.exclusiveOption);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              aria-pressed={on}
+              disabled={capped}
+              className={`flex items-center justify-between gap-3 rounded-lg border p-3.5 text-left text-sm transition-colors ${
+                on ? "border-primary bg-primary/5" : capped ? "opacity-40" : "hover:bg-muted/50"
+              }`}
+            >
+              <span>{opt}</span>
+              {on ? <Check className="size-4 shrink-0 text-primary" /> : null}
+            </button>
+          );
+        })}
+      </div>
 
       {showOther ? (
         <Input
@@ -298,8 +302,8 @@ function ContactStep({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
-        <h2 className="text-xl font-semibold leading-snug">最后，留下你的联系方式</h2>
-        <p className="text-xs text-muted-foreground">邮箱必填，其他选填</p>
+        <h2 className="text-xl font-semibold leading-snug">请留下你的联系方式</h2>
+        <p className="text-xs text-muted-foreground">邮箱必填，其余选填</p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="apply-email">邮箱（必填）</Label>
@@ -311,7 +315,9 @@ function ContactStep({
           placeholder="you@example.com"
           maxLength={200}
         />
-        <p className="text-xs text-muted-foreground">内测码会发到这里；之后请用这个邮箱登录。</p>
+        <p className="text-xs text-muted-foreground">
+          内测邀请、产品更新都会从这里发。我们不会做营销群发，也不会卖给第三方。
+        </p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="apply-wechat">微信号（选填）</Label>
@@ -321,18 +327,22 @@ function ContactStep({
           onChange={(e) => setWechat(e.target.value)}
           maxLength={100}
         />
-        <p className="text-xs text-muted-foreground">通过后拉你进种子用户群，沟通更快。</p>
+        <p className="text-xs text-muted-foreground">
+          如你希望更即时的反馈，我们会邀请你进入种子用户群。
+        </p>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="apply-social">主账号链接（选填）</Label>
+        <Label htmlFor="apply-social">小红书 / X / 即刻 / B站 ID（选填）</Label>
         <Input
           id="apply-social"
           value={social}
           onChange={(e) => setSocial(e.target.value)}
-          placeholder="小红书 / 抖音主页链接"
+          placeholder="ID 或主页链接"
           maxLength={200}
         />
-        <p className="text-xs text-muted-foreground">帮我们更快了解你的内容。</p>
+        <p className="text-xs text-muted-foreground">
+          如果你希望发布产品相关测评，我们会给予最大的资源扶持。
+        </p>
       </div>
     </div>
   );
