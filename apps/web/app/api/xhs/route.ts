@@ -10,16 +10,11 @@ import { ensureCurrentUser } from "@/lib/users";
 const NOTE_ID = /^[a-f0-9]{16,32}$/i;
 const usageSink = createUsageSink(db);
 
-// xsec_tokens outlive this by a wide margin, so a short cache keeps click-through fresh
-// while cutting the paid TikHub call on repeat clicks (and bounding a hammering loop).
-const CACHE_TTL_MS = 30 * 60_000;
+const CACHE_TTL_MS = 30 * 60_000; // well under token lifetime, so cached tokens stay valid
 const tokenCache = new Map<string, { token: string; exp: number }>();
 
-// Lazy xsec_token resolver. Web XHS blocks tokenless note URLs and share tokens expire, so
-// instead of baking a token into the stored URL at analysis time we fetch a fresh one at
-// click time and 302 to the note. Gated like protectedProcedure (approved beta users only)
-// and metered, since it spends the shared TikHub key. On failure we still 302 to the bare
-// URL (no worse than before).
+// Fresh xsec_token at click time (tokens expire, so we don't bake them in). Approved-gated
+// and metered because it spends the shared TikHub key.
 export async function GET(request: Request): Promise<NextResponse> {
   const noteId = new URL(request.url).searchParams.get("note") ?? "";
   if (!NOTE_ID.test(noteId)) return new NextResponse("invalid note id", { status: 400 });

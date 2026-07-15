@@ -38,7 +38,6 @@ export function SopToc({ items }: { items: TocItem[] }) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     history.replaceState(null, "", `#${id}`);
-    // Move focus to the section so keyboard/SR users land there, not on the rail link.
     el.setAttribute("tabindex", "-1");
     el.focus({ preventScroll: true });
   };

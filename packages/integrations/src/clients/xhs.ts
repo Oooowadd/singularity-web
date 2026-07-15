@@ -93,8 +93,7 @@ export { findXhsShortLink, isValidXhsProfileUrl } from "../validators";
 
 import { findXhsShortLink } from "../validators";
 
-// Follow the xhslink.com short-link redirect server-side. The timeout stops a stalled
-// xhslink from hanging the run; any failure passes the input through unchanged.
+// Follow the xhslink.com short-link redirect. Timeout so a stalled xhslink can't hang the run.
 export async function expandXhsShortLink(input: string): Promise<string> {
   const short = findXhsShortLink(input);
   if (!short) return input;
@@ -115,8 +114,7 @@ export function isValidXhsNoteUrl(input: string): boolean {
   return extractXhsNoteId(input) !== null;
 }
 
-// Regex-scan, not new URL(): share cards wrap the URL in text, so parsing the whole
-// string throws and drops the token.
+// Regex-scan, not new URL(): share cards wrap the URL in text, which new URL() rejects.
 export function extractXsecToken(input: string): string | null {
   const m = input.match(/[?&]xsec_token=([^&\s"'<>#]+)/);
   if (!m) return null;

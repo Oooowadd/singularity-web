@@ -1,5 +1,4 @@
-// Route XHS note links through the lazy token resolver (/api/xhs) so click-through
-// always gets a fresh xsec_token. Non-XHS URLs (YouTube, etc.) pass through unchanged.
+// Route XHS note links through /api/xhs for a fresh token; non-XHS URLs pass through.
 const XHS_NOTE = /xiaohongshu\.com\/(?:explore|discovery\/item)\/([a-f0-9]{16,32})/i;
 
 export function xhsGoHref(url: string | null | undefined): string {

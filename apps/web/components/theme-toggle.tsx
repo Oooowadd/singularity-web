@@ -5,8 +5,7 @@ import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 
-// Both icons render; the `.dark` class on <html> (set by next-themes before paint)
-// swaps them via CSS, so there's no mount-gate state and no hydration flash.
+// Both icons render, swapped by CSS on the `.dark` class — no mount-gate state, no flash.
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
 

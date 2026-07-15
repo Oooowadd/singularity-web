@@ -67,8 +67,7 @@ export async function SopReader({
     ),
   };
 
-  // The rail (and the 2-col grid) only appear when SopToc renders — see its items>=3
-  // guard. Without this the lone doc column would land in the 190px rail track.
+  // Two-col grid only when SopToc renders (items>=3), else the doc lands in the rail track.
   const railClass = items.length >= 3 ? " sop-reader--with-rail" : "";
 
   return (
