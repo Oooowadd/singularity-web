@@ -59,7 +59,7 @@ export default function LandingPage() {
         <span className="font-brand text-xl leading-none">
           搬砖小鹅 <span className="font-display italic">Goooose</span>
         </span>
-        <Button render={<Link href="/api/auth/sign-in" />} variant="ghost" size="sm">
+        <Button render={<Link href="/api/auth/sign-in" prefetch={false} />} variant="ghost" size="sm">
           登录
         </Button>
       </header>
@@ -108,7 +108,7 @@ export default function LandingPage() {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <Button render={<Link href="/api/auth/sign-in" />} size="lg">
+          <Button render={<Link href="/api/auth/sign-in" prefetch={false} />} size="lg">
             登录使用
           </Button>
           <p className="text-xs text-muted-foreground">

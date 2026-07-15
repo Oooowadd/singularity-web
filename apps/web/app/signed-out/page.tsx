@@ -10,7 +10,7 @@ export default function SignedOutPage() {
       <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
         {APP_VERSION_LABEL}
       </span>
-      <Button render={<Link href="/api/auth/sign-in" />} size="lg">
+      <Button render={<Link href="/api/auth/sign-in" prefetch={false} />} size="lg">
         重新登录
       </Button>
     </div>
