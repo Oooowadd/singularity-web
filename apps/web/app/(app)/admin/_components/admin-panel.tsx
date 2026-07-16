@@ -748,7 +748,7 @@ export function AdminPanel({ selfId }: { selfId: string }) {
 const BETA_STATUS_LABEL: Record<string, string> = {
   new: "新申请",
   contacted: "已联系",
-  invited: "已发码",
+  invited: "已邀请",
 };
 
 function BetaApplicationsCard() {
