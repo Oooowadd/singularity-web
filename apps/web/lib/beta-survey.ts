@@ -1,14 +1,11 @@
 // Beta survey question set (题目设计方案 v2) — shared by the /apply stepper and the
-// admin queue. The server stores answers as opaque jsonb and does NOT validate them
-// against this set, so anything read back out must tolerate unknown keys.
-// Editing questions: bump SURVEY_VERSION, never the DB.
+// admin queue. The server never validates answers against this set, so readers must
+// tolerate unknown keys. Editing questions: bump SURVEY_VERSION, never the DB.
 
 export const SURVEY_VERSION = 2;
 
-// Zod 4's own email pattern, shared verbatim by the /apply gate and the server schema
-// so the two cannot drift. A looser client gate is worse than none: it waves through
-// what the server rejects (张三@qq.com from a stray IME, a trailing dot, a 1-char TLD),
-// and the applicant's reward for finishing all six steps is a raw zod blob.
+// Zod's own email pattern. Shared with the server schema — a looser gate here would
+// wave through what the server rejects.
 export const EMAIL_RE =
   /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
 
@@ -109,8 +106,7 @@ export const OTHER_OPTION = "其他（请注明）";
 
 type Answers = Record<string, string | string[]>;
 
-// Resolves what the applicant actually meant: picking 其他 stores the literal option
-// text, so the real answer lives in the sibling `${id}_other` key.
+// Picking 其他 stores the literal option text; the real answer is in `${id}_other`.
 export function answerText(answers: Answers, id: string): string {
   const raw = answers[id];
   const other = answers[`${id}_other`];
@@ -121,9 +117,8 @@ export function answerText(answers: Answers, id: string): string {
   return "";
 }
 
-// Drives the admin detail view. Iterates the question set, never the stored object:
-// jsonb orders keys by length then bytewise, so Object.entries would render the
-// survey out of order and strand each `_other` far from its question.
+// Iterates the question set, not the stored object: jsonb orders keys by length then
+// bytewise, so Object.entries would render the survey out of order.
 export function surveyRows(answers: Answers): Array<{ id: string; title: string; value: string }> {
   const rows = SURVEY_QUESTIONS.map((q) => ({
     id: q.id,

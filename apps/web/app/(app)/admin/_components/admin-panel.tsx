@@ -777,7 +777,7 @@ function BetaApplicationsCard() {
       void utils.admin.listBetaApplications.invalidate();
       void utils.admin.listCodes.invalidate();
     } catch {
-      // mutateAsync rejects after its own onError toast; swallow so it isn't unhandled.
+      // onError already toasted; swallow so the rejection isn't unhandled.
     }
   };
 
@@ -788,7 +788,7 @@ function BetaApplicationsCard() {
       await updateApp.mutateAsync({ id, status: "invited" });
       void utils.admin.listAllowedEmails.invalidate();
     } catch {
-      // addAllowedEmail is idempotent, so a retry after a half-failure is safe.
+      // onError already toasted; addAllowedEmail is idempotent so a retry is safe.
     }
   };
 

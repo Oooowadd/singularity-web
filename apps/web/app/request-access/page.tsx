@@ -16,8 +16,7 @@ export default async function RequestAccessPage({
   const user = await ensureCurrentUser();
   if (!user) redirect("/api/auth/sign-in");
   if (user.accessStatus === "approved") redirect("/");
-  // Compared against a literal, never rendered — the value is in the URL and a
-  // reflected message would be a free phishing surface on a page about access.
+  // Compared, never rendered — a reflected message would be a phishing surface here.
   const codeFailed = (await searchParams).code === "failed";
 
   return (

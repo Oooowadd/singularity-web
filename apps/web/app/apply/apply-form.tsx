@@ -52,8 +52,7 @@ export function ApplyForm() {
     return typeof v === "string" && v.length > 0;
   };
 
-  // An unanswered question already reads as unanswered, but a typo'd email and a
-  // blank 其他 both look finished — without a reason the dead button is unexplainable.
+  // Only the states that look finished get a reason; an unanswered question doesn't.
   const emailError =
     email.trim().length > 0 && !EMAIL_RE.test(email.trim())
       ? "请填写完整的邮箱地址，例如 you@example.com"

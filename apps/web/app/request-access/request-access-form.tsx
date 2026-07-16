@@ -41,8 +41,7 @@ export function RequestAccessForm({
   });
   const redeemCode = trpc.access.redeemBetaCode.useMutation({
     onSuccess: (r) => {
-      // A code already redeemed by this account comes back approved:false if an admin
-      // has since revoked access — claiming success would bounce them right back here.
+      // approved:false = already redeemed by this account but access since revoked.
       if (!r.approved) {
         toast.error("这个内测码你已经用过了，但账号仍未开通 — 请联系我们");
         return;

@@ -116,9 +116,8 @@ export const accessRouter = router({
   submitBetaApplication: publicProcedure
     .input(
       z.object({
-        // Same regex the /apply gate uses (zod's own email pattern), so the two can't
-        // disagree; .regex over .email only to replace zod's English blob — tRPC puts
-        // the raw issue JSON in error.message and this form renders it inline.
+        // .regex over .email so the message is Chinese: tRPC puts the raw zod issue
+        // JSON in error.message and /apply renders it inline.
         email: z.string().trim().toLowerCase().regex(EMAIL_RE, "请填写正确的邮箱地址").max(200),
         wechat: z.string().trim().max(100).optional(),
         social: z.string().trim().max(200).optional(),
@@ -152,9 +151,8 @@ export const accessRouter = router({
           .onConflictDoUpdate({
             target: betaApplications.email,
             set: {
-              // Coalesce, don't overwrite: the stepper never prefills, so a resubmit
-              // that leaves the optional contact fields blank would otherwise wipe the
-              // only non-email way to reach this applicant.
+              // The stepper never prefills, so a blank resubmit would otherwise wipe
+              // the only non-email way to reach this applicant.
               wechat: sql`coalesce(${input.wechat || null}, ${betaApplications.wechat})`,
               social: sql`coalesce(${input.social || null}, ${betaApplications.social})`,
               answers: input.answers,
@@ -332,9 +330,8 @@ export const adminRouter = router({
       return { ok: true };
     }),
 
-  // Mint the invite code and mark the row in one transaction. Split across two
-  // mutations, a failed status write left a live access code with nothing pointing
-  // at it, and the retry minted a second one.
+  // One transaction: split across two mutations, a failed status write left a live
+  // access code with nothing pointing at it, and the retry minted a second.
   inviteBetaApplicationByCode: adminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {

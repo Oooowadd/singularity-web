@@ -50,9 +50,7 @@ export async function GET(request: NextRequest) {
     }
     (await cookies()).delete(BETA_CODE_COOKIE);
   }
-  // redirect() throws, so it must stay outside every try above. A code that raced
-  // out or expired between the landing check and here would otherwise drop the user
-  // on a different page with no idea what became of the code they just entered.
+  // redirect() throws — it must stay outside every try above.
   if (codeFailed) redirect("/request-access?code=failed");
   redirect("/welcome");
 }
