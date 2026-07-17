@@ -6,6 +6,7 @@ import {
 } from "./asr";
 import { getVideoMetadataYtdlp } from "./ytdlp";
 import { expandXhsShortLink, extractXhsNoteId, extractXsecToken, getXhsNoteDetail } from "./xhs";
+import { getDouyinVideoDetail } from "./douyin";
 
 export { extractXhsNoteId };
 
@@ -37,7 +38,7 @@ export function extractYoutubeVideoId(url: string): string | null {
 }
 
 export type ReferenceInput = {
-  kind: "youtube" | "xhs" | "text";
+  kind: "youtube" | "xhs" | "douyin" | "text";
   url?: string;
   text?: string;
   title?: string;
@@ -183,6 +184,43 @@ async function fetchXhsReference(ref: ReferenceInput): Promise<FetchedReference>
   }
 }
 
+// Douyin references take desc text only — no ASR (mirrors the XHS path).
+export async function fetchDouyinReference(ref: ReferenceInput): Promise<FetchedReference> {
+  const url = ref.url ?? "";
+  const fetchedAt = new Date().toISOString();
+  try {
+    const video = await getDouyinVideoDetail(url);
+    if (!video) {
+      return {
+        type: "douyin",
+        url,
+        title: ref.title || "Douyin (not found)",
+        content: "",
+        error: `Could not resolve Douyin video from: ${url}`,
+        fetchedAt,
+      };
+    }
+    const content = video.desc.trim();
+    return {
+      type: "douyin",
+      url,
+      title: ref.title || video.title || `Douyin · ${video.awemeId}`,
+      content,
+      source: content ? "text" : "none",
+      fetchedAt,
+    };
+  } catch (err) {
+    return {
+      type: "douyin",
+      url,
+      title: ref.title || "Douyin",
+      content: "",
+      error: (err as Error).message.slice(0, 200),
+      fetchedAt,
+    };
+  }
+}
+
 export async function fetchReference(
   ref: ReferenceInput,
   opts: { pool?: ProxyPool } = {},
@@ -198,6 +236,7 @@ export async function fetchReference(
   }
   if (ref.kind === "youtube") return fetchYoutubeReference(ref, opts.pool);
   if (ref.kind === "xhs") return fetchXhsReference(ref);
+  if (ref.kind === "douyin") return fetchDouyinReference(ref);
   return {
     type: ref.kind,
     url: ref.url,

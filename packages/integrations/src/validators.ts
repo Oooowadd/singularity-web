@@ -46,3 +46,32 @@ export function isValidXhsProfileUrl(input: string): boolean {
     return false;
   }
 }
+
+// sec_user_id always opens with the MS4wLjABAAAA prefix; live samples run 55 or 76 chars total.
+const DOUYIN_SEC_UID_RE = /^MS4wLjABAAAA[A-Za-z0-9_-]{43,64}$/;
+// Mobile share pastes wrap a v.douyin.com short link in card text, so scan for an embedded URL.
+const DOUYIN_SHORT_LINK_RE = /https?:\/\/v\.douyin\.com\/[A-Za-z0-9_-]+/i;
+
+export function findDouyinShortLink(input: string): string | null {
+  return input.match(DOUYIN_SHORT_LINK_RE)?.[0] ?? null;
+}
+
+export function isValidDouyinProfileUrl(input: string): boolean {
+  const s = input.trim();
+  if (!s) return false;
+  if (DOUYIN_SEC_UID_RE.test(s)) return true;
+  // Short links can't be resolved here (browser-safe, no network) — accept and let the server expand.
+  if (findDouyinShortLink(s)) return true;
+  try {
+    const u = new URL(s);
+    const host = u.hostname.toLowerCase();
+    // Covers douyin.com, www.douyin.com and iesdouyin.com (share host).
+    if (!host.endsWith("douyin.com")) return false;
+    return (
+      /\/user\/MS4wLjABAAAA[A-Za-z0-9_-]{43,64}/.test(u.pathname) ||
+      /\/share\/user\/MS4wLjABAAAA[A-Za-z0-9_-]{43,64}/.test(u.pathname)
+    );
+  } catch {
+    return false;
+  }
+}

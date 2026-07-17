@@ -13,6 +13,7 @@
     "./clients/docTranscribe": "./src/clients/docTranscribe.ts",
     "./clients/youtube-data": "./src/clients/youtube-data.ts",
     "./clients/xhs": "./src/clients/xhs.ts",
+    "./clients/douyin": "./src/clients/douyin.ts",
     "./clients/ytdlp": "./src/clients/ytdlp.ts",
     "./utils": "./src/utils.ts",
     "./validators": "./src/validators.ts",

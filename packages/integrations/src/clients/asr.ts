@@ -223,6 +223,9 @@ export type TranscribeOpts = {
   // Try Qwen before Deepgram (e.g. CJK-titled videos — Deepgram returns empty or
   // garbled Mandarin). Deepgram still runs as fallback if Qwen yields nothing.
   qwenFirst?: boolean;
+  // Skip the h265-last/size sort in transcribeFromStreams — the caller's order is
+  // intentional (Douyin h265 carries audio, unlike XHS).
+  preserveOrder?: boolean;
 };
 
 // Extract a compact mono 16kHz audio clip so Qwen's base64 request body stays well under
@@ -533,12 +536,13 @@ export async function transcribeFromStreams(
     return null;
   }
   const isH265 = (s: StreamCandidate) => /h265|hevc/i.test(`${s.codec ?? ""} ${s.label ?? ""}`);
-  const sorted = [...streams]
-    .filter((s) => s.url)
-    .sort(
-      (a, b) =>
-        Number(isH265(a)) - Number(isH265(b)) || (a.sizeHint ?? Infinity) - (b.sizeHint ?? Infinity),
-    );
+  const filtered = [...streams].filter((s) => s.url);
+  const sorted = opts.preserveOrder
+    ? filtered
+    : filtered.sort(
+        (a, b) =>
+          Number(isH265(a)) - Number(isH265(b)) || (a.sizeHint ?? Infinity) - (b.sizeHint ?? Infinity),
+      );
   if (sorted.length === 0) {
     logger?.warn(`${tag}: no streams with URLs`);
     return null;
