@@ -96,7 +96,7 @@ export const poetDriftEvents = pgTable("poet_drift_events", {
 });
 
 export type CustomTopicReference = {
-  kind: "youtube" | "xhs" | "text";
+  kind: "youtube" | "xhs" | "douyin" | "text";
   url?: string;
   text?: string;
   title?: string;

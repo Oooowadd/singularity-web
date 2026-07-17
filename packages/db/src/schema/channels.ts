@@ -2,7 +2,7 @@ import { index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "
 
 import { users } from "./users";
 
-export const platformEnum = pgEnum("platform", ["youtube", "xhs"]);
+export const platformEnum = pgEnum("platform", ["youtube", "xhs", "douyin"]);
 
 export const channels = pgTable(
   "channels",
