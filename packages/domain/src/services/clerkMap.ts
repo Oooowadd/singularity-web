@@ -15,7 +15,7 @@ export async function summarizeVideoForSop(args: {
   title: string;
   views: number | null;
   durationSec: number | null;
-  contentType?: "video" | "xhs_image" | "xhs_video";
+  contentType?: "video" | "xhs_image" | "xhs_video" | "douyin_image" | "douyin_video";
   transcript: string | null;
   analysis: string;
   language?: "en" | "zh";

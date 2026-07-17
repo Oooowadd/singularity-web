@@ -19,6 +19,27 @@ export const XHS_VIDEO_PREAMBLE = `NOTE: This is a Xiaohongshu (小红书) short
 - IMPORTANT: for ANY key that asks for [m:ss] (opening_structure, script_structure, rehooks_used, retention_pattern, cta_placement, key_takeaways), use APPROXIMATE ranges like "~0-10s" or "~中段" — never invent precise [m:ss] markers. Ignore instructions below demanding exact [m:ss]; this post has no real timeline.
 `;
 
+export const DOUYIN_IMAGE_PREAMBLE = `NOTE: This is a Douyin (抖音) IMAGE-CAROUSEL post (图文), not a video. Adapt your analysis:
+- "thumbnail_description" → describe the first image's composition and visual hook
+- "opening_hook" → the caption's title line and first sentence that hooks the reader
+- "opening_hook_type" → classify the text hook type (e.g., "Question", "Bold Claim", "List Preview")
+- "hooks_throughout" → text hooks, slide breaks, and emotional pivots across the carousel (no timestamps — use slide/section numbers)
+- "script_structure" → text structure: intro → body sections → conclusion/CTA
+- "duration_sec" is not applicable; focus on text flow and reading engagement
+- The "transcript" below is the post's full caption text (title + description + hashtags)
+- "Views" shown is a weighted engagement score (likes + collects + comments + shares) unless labeled as real plays
+- IMPORTANT: there is NO timeline. For ALL keys (incl. opening_structure, script_structure, rehooks_used, retention_pattern, cta_placement, key_takeaways), cite slide/section numbers or reading order (开头 / 第2张 / 结尾), NEVER [m:ss] timestamps. Ignore any instruction below that asks for [m:ss] — it does not apply to image posts.
+`;
+
+export const DOUYIN_VIDEO_PREAMBLE = `NOTE: This is a Douyin (抖音) video, not a YouTube video.
+- The engagement metric shown as "Views" may be a weighted engagement score (likes + collects + comments + shares) when real play counts are unavailable
+- Douyin spans short-form (15s-3min) to long-form (10min+). Judge hooks and retention against the actual duration_sec
+- The "transcript" may include both the caption text (title + hashtags) and an ASR-transcribed audio track
+- The transcript has NO timestamps — estimate timing based on word count and duration_sec, but clearly mark estimates as approximate (e.g., "~0-10s")
+- Do NOT fabricate specific timestamps that are not in the transcript
+- IMPORTANT: for ANY key that asks for [m:ss] (opening_structure, script_structure, rehooks_used, retention_pattern, cta_placement, key_takeaways), use APPROXIMATE ranges like "~0-10s" or "~中段" — never invent precise [m:ss] markers. Ignore instructions below demanding exact [m:ss]; this transcript has no real timeline.
+`;
+
 // De-translationese style guide shared by CHINESE_WRAPPER (Clerk SOP + Bible) and the Poet zh script prompts.
 export const ZH_STYLE_GUIDE = `用简体中文输出全文。这是给中国内容创作者看的实战手册，必须读起来像一个资深中文编导在讲话，不能有翻译腔或 AI 腔。
 
@@ -88,7 +109,7 @@ type VideoAnalysisArgs = {
   transcript: string | null;
   chapters?: ChapterArg[];
   sponsorChapters?: SponsorChapterArg[];
-  contentType?: 'video' | 'xhs_image' | 'xhs_video';
+  contentType?: 'video' | 'xhs_image' | 'xhs_video' | 'douyin_image' | 'douyin_video';
   language?: 'en' | 'zh';
 };
 
@@ -110,7 +131,11 @@ export function buildVideoAnalysisPrompt(args: VideoAnalysisArgs): string {
       ? XHS_IMAGE_PREAMBLE
       : contentType === 'xhs_video'
         ? XHS_VIDEO_PREAMBLE
-        : '';
+        : contentType === 'douyin_image'
+          ? DOUYIN_IMAGE_PREAMBLE
+          : contentType === 'douyin_video'
+            ? DOUYIN_VIDEO_PREAMBLE
+            : '';
 
   const isVideo = contentType === 'video';
   const timestampInstruction = isVideo
@@ -196,7 +221,7 @@ type VideoMapSummaryArgs = {
   title: string;
   views: number | null;
   durationSec: number | null;
-  contentType?: 'video' | 'xhs_image' | 'xhs_video';
+  contentType?: 'video' | 'xhs_image' | 'xhs_video' | 'douyin_image' | 'douyin_video';
   transcript: string | null;
   // Pre-rendered compact block of this video's structured analysis fields.
   analysis: string;
@@ -209,7 +234,9 @@ type VideoMapSummaryArgs = {
 export function buildVideoMapSummaryPrompt(args: VideoMapSummaryArgs): string {
   const language = args.language ?? 'en';
   const contentType = args.contentType ?? 'video';
-  const isVideo = contentType === 'video';
+  // douyin_video reads as "video" but its metric is still an engagement proxy.
+  const isVideo = contentType === 'video' || contentType === 'douyin_video';
+  const hasRealViews = contentType === 'video';
   const hasTimestamps = !!args.transcript && /\[\d+:\d{2}\]/.test(args.transcript);
 
   const tcRule = !args.transcript
@@ -232,7 +259,7 @@ export function buildVideoMapSummaryPrompt(args: VideoMapSummaryArgs): string {
 
 ## Source Information
 - **Title:** ${args.title}
-- **${isVideo ? 'Views' : 'Engagement score'}:** ${args.views?.toLocaleString('en-US') ?? 'unknown'}
+- **${hasRealViews ? 'Views' : 'Engagement score'}:** ${args.views?.toLocaleString('en-US') ?? 'unknown'}
 - **Duration:** ${args.durationSec ?? 'unknown'} seconds
 
 ## Structured Analysis

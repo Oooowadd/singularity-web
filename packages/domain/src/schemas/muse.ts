@@ -25,10 +25,10 @@ export const ideasResponseSchema = z.object({
 export type Idea = z.infer<typeof ideaSchema>;
 
 // Fabrication guard: viral_trigger must not run on empty/fake transcripts.
-// XHS image-post "transcripts" are title+desc (real authored, ~80-300 chars),
-// so the lower 50-char floor still catches empty posts.
+// Image-post "transcripts" (XHS/Douyin) are title+desc (real authored, ~80-300
+// chars), so the lower 50-char floor still catches empty posts.
 export const MIN_REAL_TRANSCRIPT_CHARS = 200;
-export const MIN_REAL_TRANSCRIPT_CHARS_XHS_IMAGE = 50;
+export const MIN_REAL_TRANSCRIPT_CHARS_IMAGE_POST = 50;
 
 const WARNING_MARKERS = [
   "[WARNING: Video transcription failed",
@@ -36,15 +36,16 @@ const WARNING_MARKERS = [
   "[WARNING: Video transcription",
 ];
 
+export type MonitorContentType = "video" | "xhs_video" | "xhs_image" | "douyin_video" | "douyin_image";
+
 export function isRealTranscript(
   text: string | null | undefined,
-  contentType: "video" | "xhs_video" | "xhs_image" = "video",
+  contentType: MonitorContentType = "video",
 ): boolean {
   if (!text) return false;
   if (WARNING_MARKERS.some((m) => text.includes(m))) return false;
-  const floor =
-    contentType === "xhs_image"
-      ? MIN_REAL_TRANSCRIPT_CHARS_XHS_IMAGE
-      : MIN_REAL_TRANSCRIPT_CHARS;
+  const floor = contentType.endsWith("_image")
+    ? MIN_REAL_TRANSCRIPT_CHARS_IMAGE_POST
+    : MIN_REAL_TRANSCRIPT_CHARS;
   return text.trim().length >= floor;
 }
