@@ -1005,7 +1005,7 @@ export const analyzeChannel = task({
           let all = await getDouyinUserVideos(secUid, fetchLimit);
           if (payload.recencyMonths) {
             const cutoff = Date.now() / 1000 - payload.recencyMonths * 30 * 86400;
-            all = all.filter((v) => v.isTop || v.createTime >= cutoff);
+            all = all.filter((v) => v.createTime >= cutoff);
           }
           if (dySource === "popular") {
             all.sort((a, b) => b.engagementScore - a.engagementScore);
