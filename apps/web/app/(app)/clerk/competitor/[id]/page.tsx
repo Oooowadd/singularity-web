@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { followerNoun, formatDuration, formatFollowerCount, formatViews } from "@/lib/format-count";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import { getActiveAgentRun } from "@/lib/agent-run";
 import { xhsGoHref } from "@/lib/xhs-go";
 import { formatDateTime } from "@/lib/datetime";
@@ -52,6 +53,9 @@ export default async function ClerkCompetitorPage({ params }: Props) {
   if (!competitor) notFound();
 
   const isXhs = competitor.platform === "xhs";
+  const itemUnit =
+    competitor.platform === "douyin" ? "条作品" : isXhs ? "篇笔记" : "个视频";
+  const itemNoun = competitor.platform === "douyin" ? "作品" : isXhs ? "笔记" : "视频";
   const [videos, sops, activeRun] = await Promise.all([
     db
       .select()
@@ -98,7 +102,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
               </Badge>
             </div>
             <span className="text-xs text-muted-foreground">
-              {isXhs ? "小红书" : "YouTube"}
+              {PLATFORM_LABEL[competitor.platform]}
               {competitor.subscriberCount != null
                 ? ` · ${formatFollowerCount(competitor.subscriberCount)} ${followerNoun(competitor.platform)}`
                 : ""}
@@ -110,7 +114,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
             </span>
           </div>
           <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
-            {videos.length} {isXhs ? "篇笔记" : "个视频"}
+            {videos.length} {itemUnit}
           </Badge>
           {primarySops.length > 0 ? (
             <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
@@ -141,7 +145,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-card/40 p-10 text-sm text-muted-foreground">
           <span>还没拆解过这个对标</span>
           <span className="text-xs">
-            点上方「开始分析」— Clerk 会拆解 TA 的{isXhs ? "笔记" : "视频"}，沉淀出可复用的 SOP
+            点上方「开始分析」— Clerk 会拆解 TA 的{itemNoun}，沉淀出可复用的 SOP
           </span>
         </div>
       ) : (
@@ -185,7 +189,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
                     {formatViews(v.views)}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
-                    {v.contentType === "xhs_image" ? "图文" : formatDuration(v.durationSec)}
+                    {v.contentType.endsWith("_image") ? "图文" : formatDuration(v.durationSec)}
                   </TableCell>
                   <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">
                     {formatDateTime(v.analyzedAt)}
@@ -205,7 +209,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-medium text-muted-foreground">脚本撰写 SOP</h2>
             <p className="text-xs text-muted-foreground">
-              SOP 是这个账号全部拆解的实时汇总（基于 {videos.length} 条{isXhs ? "笔记" : "视频"}），每次分析后自动刷新到最新。
+              SOP 是这个账号全部拆解的实时汇总（基于 {videos.length} 条{itemNoun}），每次分析后自动刷新到最新。
             </p>
           </div>
           <div className="flex flex-col gap-4">
@@ -225,7 +229,7 @@ export default async function ClerkCompetitorPage({ params }: Props) {
       {singleVideoSops.length > 0 ? (
         <details className="flex flex-col gap-3 rounded-lg border bg-card/50 p-4 text-sm" open>
           <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
-            单条拆解 SOP（{singleVideoSops.length}）· 针对单条{isXhs ? "笔记" : "视频"}的深度拆解
+            单条拆解 SOP（{singleVideoSops.length}）· 针对单条{itemNoun}的深度拆解
           </summary>
           <div className="mt-3 flex flex-col gap-4">
             {singleVideoSops.map((sop) => (

@@ -13,7 +13,11 @@ import { formatDateTime } from "@/lib/datetime";
 import { followerNoun, formatFollowerCount } from "@/lib/format-count";
 import { stripMarkdown } from "@/lib/strip-markdown";
 import { ensureCurrentUser } from "@/lib/users";
-import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
+import {
+  isValidDouyinProfileUrl,
+  isValidXhsProfileUrl,
+  isValidYoutubeChannelUrl,
+} from "@/server/trpc/schemas/channels";
 
 import { DeleteChannelButton } from "../_components/delete-channel-button";
 import { EditChannelSheet } from "../_components/edit-channel-sheet";
@@ -50,14 +54,17 @@ export default async function AccountDetailPage({ params }: Props) {
   ]);
 
   const a = encodeURIComponent(channel.slug);
-  const itemNoun = channel.platform === "xhs" ? "篇笔记" : "个视频";
+  const itemNoun =
+    channel.platform === "douyin" ? "条作品" : channel.platform === "xhs" ? "篇笔记" : "个视频";
   const activeBible = activeBibleRows.find((b) => b.isActive) ?? null;
   const analyzed = (clerkVideoCount?.c ?? 0) > 0;
   // No real homepage URL → nothing to pull, so the refresh button is hidden.
   const canRefresh =
     channel.platform === "xhs"
       ? isValidXhsProfileUrl(channel.platformUrl)
-      : isValidYoutubeChannelUrl(channel.platformUrl);
+      : channel.platform === "douyin"
+        ? isValidDouyinProfileUrl(channel.platformUrl)
+        : isValidYoutubeChannelUrl(channel.platformUrl);
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">

@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 
 type RefDraft = {
-  kind: "youtube" | "xhs" | "text";
+  kind: "youtube" | "xhs" | "douyin" | "text";
   url?: string;
   text?: string;
   title?: string;
@@ -43,6 +43,7 @@ type Props = {
 const KIND_LABEL: Record<RefDraft["kind"], string> = {
   youtube: "YouTube 链接",
   xhs: "小红书链接",
+  douyin: "抖音链接",
   text: "粘贴文本",
 };
 
@@ -108,7 +109,7 @@ export function CustomTopicCreateSheet({ channelId, projectId, hasActiveBible }:
         <SheetHeader>
           <SheetTitle>新建自定义选题</SheetTitle>
           <SheetDescription>
-            描述你想写的主题，可附加 YouTube / 小红书链接或粘贴文本作为素材。提交后点「分析」让 AI 拆解。
+            描述你想写的主题，可附加 YouTube / 小红书 / 抖音链接或粘贴文本作为素材。提交后点「分析」让 AI 拆解。
           </SheetDescription>
         </SheetHeader>
 
@@ -148,6 +149,7 @@ export function CustomTopicCreateSheet({ channelId, projectId, hasActiveBible }:
                           <SelectGroup>
                             <SelectItem value="youtube">{KIND_LABEL.youtube}</SelectItem>
                             <SelectItem value="xhs">{KIND_LABEL.xhs}</SelectItem>
+                            <SelectItem value="douyin">{KIND_LABEL.douyin}</SelectItem>
                             <SelectItem value="text">{KIND_LABEL.text}</SelectItem>
                           </SelectGroup>
                         </SelectContent>
@@ -176,7 +178,9 @@ export function CustomTopicCreateSheet({ channelId, projectId, hasActiveBible }:
                         placeholder={
                           r.kind === "youtube"
                             ? "https://www.youtube.com/watch?v=..."
-                            : "https://www.xiaohongshu.com/explore/..."
+                            : r.kind === "douyin"
+                              ? "https://www.douyin.com/video/... 或 v.douyin.com 短链"
+                              : "https://www.xiaohongshu.com/explore/..."
                         }
                       />
                     )}
@@ -205,6 +209,15 @@ export function CustomTopicCreateSheet({ channelId, projectId, hasActiveBible }:
                     disabled={refs.length >= 10}
                   >
                     + 小红书
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addRef("douyin")}
+                    disabled={refs.length >= 10}
+                  >
+                    + 抖音
                   </Button>
                   <Button
                     type="button"

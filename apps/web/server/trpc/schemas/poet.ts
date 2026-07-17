@@ -66,7 +66,7 @@ export const generateScriptInput = z.object({
 });
 
 export const customTopicReferenceInput = z.object({
-  kind: z.enum(["youtube", "xhs", "text"]),
+  kind: z.enum(["youtube", "xhs", "douyin", "text"]),
   url: z.string().url().optional(),
   text: z.string().max(20000).optional(),
   title: z.string().max(200).optional(),

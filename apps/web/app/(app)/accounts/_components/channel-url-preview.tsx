@@ -4,10 +4,11 @@ import { CheckCircle2, ExternalLink, Loader2, Search, XCircle } from "lucide-rea
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import { trpc } from "@/lib/trpc";
 
 type Props = {
-  platform: "youtube" | "xhs";
+  platform: "youtube" | "xhs" | "douyin";
   url: string;
 };
 
@@ -21,6 +22,17 @@ type Preview =
       interactionsCount: number;
       description: string;
       ipLocation: string;
+    }
+  | {
+      platform: "douyin";
+      name: string;
+      url: string;
+      avatarUrl: string | null;
+      subscriberCount: number | null;
+      awemeCount: number | null;
+      uniqueId: string;
+      ipLocation: string;
+      signature: string;
     }
   | {
       platform: "youtube";
@@ -101,19 +113,14 @@ export function ChannelUrlPreview({ platform, url }: Props) {
 }
 
 function PreviewCard({ preview, url }: { preview: Preview; url: string }) {
+  const description = preview.platform === "douyin" ? preview.signature : preview.description;
   return (
     <div className="flex flex-col gap-2 rounded-md border bg-card p-3">
       <div className="flex items-center gap-2">
         <span className="truncate text-sm font-semibold">{preview.name}</span>
-        {preview.platform === "xhs" ? (
-          <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-400">
-            小红书
-          </span>
-        ) : (
-          <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-400">
-            YouTube
-          </span>
-        )}
+        <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-400">
+          {PLATFORM_LABEL[preview.platform]}
+        </span>
       </div>
 
       {preview.platform === "xhs" ? (
@@ -121,6 +128,13 @@ function PreviewCard({ preview, url }: { preview: Preview; url: string }) {
           <span>粉丝 {formatCount(preview.fansCount)}</span>
           <span>获赞与收藏 {formatCount(preview.interactionsCount)}</span>
           {preview.redId ? <span>小红书号 {preview.redId}</span> : null}
+          {preview.ipLocation ? <span>IP {preview.ipLocation}</span> : null}
+        </div>
+      ) : preview.platform === "douyin" ? (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted-foreground">
+          <span>粉丝 {formatCount(preview.subscriberCount)}</span>
+          <span>作品 {formatCount(preview.awemeCount)}</span>
+          {preview.uniqueId ? <span>抖音号 {preview.uniqueId}</span> : null}
           {preview.ipLocation ? <span>IP {preview.ipLocation}</span> : null}
         </div>
       ) : (
@@ -132,8 +146,8 @@ function PreviewCard({ preview, url }: { preview: Preview; url: string }) {
         </div>
       )}
 
-      {preview.description ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground">{preview.description}</p>
+      {description ? (
+        <p className="line-clamp-2 text-xs text-muted-foreground">{description}</p>
       ) : null}
 
       <a

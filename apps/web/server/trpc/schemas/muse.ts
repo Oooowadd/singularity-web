@@ -10,8 +10,8 @@ export const startMonitorInput = z.object({
   competitorAccountIds: z.array(z.string().uuid()).max(50).optional(),
   // Unbound competitors to include just for this run (one-off, not permanent 巡视对象).
   extraCompetitorAccountIds: z.array(z.string().uuid()).max(50).optional(),
-  // XHS-only content filter (YouTube competitors are unaffected).
-  xhsContentType: z.enum(["all", "video", "image"]).default("all"),
+  // Video/image filter for XHS + Douyin competitors; YouTube unaffected.
+  contentFilter: z.enum(["all", "video", "image"]).default("all"),
 });
 
 export type StartMonitorInput = z.infer<typeof startMonitorInput>;

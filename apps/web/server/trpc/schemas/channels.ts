@@ -1,20 +1,24 @@
 import { z } from "zod";
 
 import {
+  isValidDouyinProfileUrl,
   isValidXhsProfileUrl,
   isValidYoutubeChannelUrl,
 } from "@goooose/integrations/validators";
 
-export const platformSchema = z.enum(["youtube", "xhs"]);
+export const platformSchema = z.enum(["youtube", "xhs", "douyin"]);
 
-function validateChannelUrl(platform: "youtube" | "xhs", url: string): boolean {
-  return platform === "youtube" ? isValidYoutubeChannelUrl(url) : isValidXhsProfileUrl(url);
+function validateChannelUrl(platform: "youtube" | "xhs" | "douyin", url: string): boolean {
+  if (platform === "xhs") return isValidXhsProfileUrl(url);
+  if (platform === "douyin") return isValidDouyinProfileUrl(url);
+  return isValidYoutubeChannelUrl(url);
 }
 
-const PLATFORM_URL_HINT: Record<"youtube" | "xhs", string> = {
+const PLATFORM_URL_HINT: Record<"youtube" | "xhs" | "douyin", string> = {
   youtube:
     "YouTube 频道 URL 必须是 /@handle、/channel/UCxxx、/c/name 或 /user/name 形式",
   xhs: "小红书主页 URL：电脑端 xiaohongshu.com/user/profile/... 或手机端分享的 xhslink.com 链接均可",
+  douyin: "抖音主页 URL：https://www.douyin.com/user/... 或 v.douyin.com 分享短链",
 };
 
 export const createChannelInput = z
@@ -61,4 +65,4 @@ export const updateChannelInput = z
 export type UpdateChannelInput = z.infer<typeof updateChannelInput>;
 
 // Re-exported so forms can validate without pulling in the full shared/clients path.
-export { isValidYoutubeChannelUrl, isValidXhsProfileUrl };
+export { isValidYoutubeChannelUrl, isValidXhsProfileUrl, isValidDouyinProfileUrl };

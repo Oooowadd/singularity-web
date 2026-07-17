@@ -6,8 +6,8 @@ export function formatFollowerCount(n: number | null | undefined): string {
   return String(n);
 }
 
-export function followerNoun(platform: "youtube" | "xhs"): string {
-  return platform === "xhs" ? "粉丝" : "订阅";
+export function followerNoun(platform: "youtube" | "xhs" | "douyin"): string {
+  return platform === "youtube" ? "订阅" : "粉丝";
 }
 
 export function formatViews(views: number | null): string {

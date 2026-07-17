@@ -40,14 +40,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { RefreshCompetitorButton } from "@/components/refresh-competitor-button";
 import { formatFollowerCount } from "@/lib/format-count";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import { trpc } from "@/lib/trpc";
-import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
+import {
+  isValidDouyinProfileUrl,
+  isValidXhsProfileUrl,
+  isValidYoutubeChannelUrl,
+} from "@/server/trpc/schemas/channels";
 
-function inferPlatform(url: string): "youtube" | "xhs" {
-  return url.includes("xiaohongshu") ? "xhs" : "youtube";
+function inferPlatform(url: string): "youtube" | "xhs" | "douyin" {
+  if (/douyin\.com|iesdouyin\.com/.test(url)) return "douyin";
+  if (/xiaohongshu|xhslink/.test(url)) return "xhs";
+  return "youtube";
 }
-function isValidFormat(platform: "youtube" | "xhs", url: string): boolean {
-  return platform === "xhs" ? isValidXhsProfileUrl(url) : isValidYoutubeChannelUrl(url);
+function isValidFormat(platform: "youtube" | "xhs" | "douyin", url: string): boolean {
+  if (platform === "xhs") return isValidXhsProfileUrl(url);
+  if (platform === "douyin") return isValidDouyinProfileUrl(url);
+  return isValidYoutubeChannelUrl(url);
 }
 
 const STATUS_LABEL: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "secondary" }> = {
@@ -65,7 +74,7 @@ export function CompetitorsManager() {
   const [importOpen, setImportOpen] = useState(false);
   const [text, setText] = useState("");
   const [results, setResults] = useState<
-    Array<{ url: string; platform: "youtube" | "xhs"; status: string; id: string | null }> | null
+    Array<{ url: string; platform: "youtube" | "xhs" | "douyin"; status: string; id: string | null }> | null
   >(null);
 
   const parsed = useMemo(() => {
@@ -142,6 +151,7 @@ export function CompetitorsManager() {
                 <p className="font-mono">YouTube · https://www.youtube.com/@mkbhd</p>
                 <p className="font-mono">YouTube · https://www.youtube.com/channel/UCxxxx</p>
                 <p className="font-mono">小红书 · https://www.xiaohongshu.com/user/profile/&#123;24位&#125;</p>
+                <p className="font-mono">抖音 · https://www.douyin.com/user/... 或 v.douyin.com 短链</p>
               </div>
 
               <Field>
@@ -151,7 +161,7 @@ export function CompetitorsManager() {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   rows={6}
-                  placeholder={"https://www.youtube.com/@example\nhttps://www.xiaohongshu.com/user/profile/..."}
+                  placeholder={"https://www.youtube.com/@example\nhttps://www.xiaohongshu.com/user/profile/...\nhttps://www.douyin.com/user/..."}
                 />
               </Field>
 
@@ -165,7 +175,7 @@ export function CompetitorsManager() {
                         <XCircle className="size-3 shrink-0 text-destructive" />
                       )}
                       <Badge variant="outline" className="shrink-0">
-                        {p.platform === "xhs" ? "小红书" : "YouTube"}
+                        {PLATFORM_LABEL[p.platform]}
                       </Badge>
                       <span className="truncate font-mono text-[10px] text-muted-foreground">
                         {p.url.slice(0, 46)}
@@ -239,7 +249,7 @@ export function CompetitorsManager() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{c.platform === "xhs" ? "小红书" : "YouTube"}</Badge>
+                  <Badge variant="outline">{PLATFORM_LABEL[c.platform]}</Badge>
                   {c.needsResolution ? (
                     <Badge variant="warning" className="ml-1">
                       待解析

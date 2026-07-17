@@ -27,6 +27,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import {
   createChannelInput,
+  isValidDouyinProfileUrl,
   isValidXhsProfileUrl,
   isValidYoutubeChannelUrl,
 } from "@/server/trpc/schemas/channels";
@@ -45,7 +46,7 @@ export function NewAccountSheet({ size = "sm", trigger }: Props) {
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [platform, setPlatform] = useState<"youtube" | "xhs">("youtube");
+  const [platform, setPlatform] = useState<"youtube" | "xhs" | "douyin">("youtube");
   const [platformUrl, setPlatformUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -66,12 +67,18 @@ export function NewAccountSheet({ size = "sm", trigger }: Props) {
     const url = platformUrl.trim();
     if (url) {
       const isValidUrl =
-        platform === "youtube" ? isValidYoutubeChannelUrl(url) : isValidXhsProfileUrl(url);
+        platform === "youtube"
+          ? isValidYoutubeChannelUrl(url)
+          : platform === "douyin"
+            ? isValidDouyinProfileUrl(url)
+            : isValidXhsProfileUrl(url);
       if (!isValidUrl) {
         setError(
           platform === "youtube"
             ? "URL 不符合 YouTube 频道格式（应为 /@handle、/channel/UCxxx、/c/name 或 /user/name）"
-            : "URL 不符合小红书主页格式（应为 https://www.xiaohongshu.com/user/profile/{24位hex}）",
+            : platform === "douyin"
+              ? "URL 不符合抖音主页格式（应为 https://www.douyin.com/user/... 或 v.douyin.com 分享短链）"
+              : "URL 不符合小红书主页格式（应为 https://www.xiaohongshu.com/user/profile/{24位hex}）",
         );
         return;
       }
@@ -117,14 +124,15 @@ export function NewAccountSheet({ size = "sm", trigger }: Props) {
 
             <Field>
               <FieldLabel htmlFor="account-platform">平台</FieldLabel>
-              <Select value={platform} onValueChange={(v) => setPlatform(v as "youtube" | "xhs")}>
+              <Select value={platform} onValueChange={(v) => setPlatform(v as "youtube" | "xhs" | "douyin")}>
                 <SelectTrigger id="account-platform">
-                  {platform === "youtube" ? "YouTube" : "XHS (小红书)"}
+                  {platform === "youtube" ? "YouTube" : platform === "douyin" ? "抖音" : "XHS (小红书)"}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="youtube">YouTube</SelectItem>
                     <SelectItem value="xhs">XHS (小红书)</SelectItem>
+                    <SelectItem value="douyin">抖音</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -140,7 +148,9 @@ export function NewAccountSheet({ size = "sm", trigger }: Props) {
                 placeholder={
                   platform === "youtube"
                     ? "https://www.youtube.com/@channel"
-                    : "https://www.xiaohongshu.com/user/profile/..."
+                    : platform === "douyin"
+                      ? "https://www.douyin.com/user/... 或 v.douyin.com 分享短链"
+                      : "https://www.xiaohongshu.com/user/profile/..."
                 }
               />
               <p className="text-[11px] leading-snug text-muted-foreground">

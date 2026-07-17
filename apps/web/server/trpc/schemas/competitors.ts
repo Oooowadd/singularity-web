@@ -5,7 +5,7 @@ import { z } from "zod";
 export const importCompetitorsInput = z.object({
   projectId: z.string().uuid().optional(),
   competitors: z
-    .array(z.object({ platform: z.enum(["youtube", "xhs"]), url: z.string().min(1) }))
+    .array(z.object({ platform: z.enum(["youtube", "xhs", "douyin"]), url: z.string().min(1) }))
     .min(1)
     .max(50),
 });

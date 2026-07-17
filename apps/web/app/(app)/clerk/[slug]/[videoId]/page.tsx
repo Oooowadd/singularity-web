@@ -31,6 +31,8 @@ import { xhsGoHref } from "@/lib/xhs-go";
 import { db } from "@/lib/db";
 import { ensureCurrentUser } from "@/lib/users";
 
+import { ContentTypeBadge } from "../../_components/content-type-badge";
+import { TranscriptSourceBadge } from "../../_components/transcript-source-badge";
 import { VideoTimelineBar } from "./_components/video-timeline-bar";
 
 type Props = { params: Promise<{ slug: string; videoId: string }> };
@@ -118,28 +120,6 @@ function MetaTile({
   );
 }
 
-function TranscriptSourceBadge({
-  source,
-  hasTranscript,
-}: {
-  source: string | null;
-  hasTranscript: boolean;
-}) {
-  if (!hasTranscript) {
-    return <span className="font-mono text-xs text-muted-foreground">无字幕</span>;
-  }
-  if (source === "caption") return <Badge variant="secondary">字幕</Badge>;
-  if (source === "asr" || source === "xhs_asr") return <Badge variant="outline">AI 转写</Badge>;
-  if (source === "xhs_text") return <Badge variant="secondary">正文</Badge>;
-  return <span className="font-mono text-xs text-muted-foreground">无字幕</span>;
-}
-
-function ContentTypeLabel({ type }: { type: string }) {
-  if (type === "xhs_image") return <>图文</>;
-  if (type === "xhs_video") return <>短视频</>;
-  return <>视频</>;
-}
-
 export default async function ClerkVideoDetailPage({ params }: Props) {
   const { slug: rawSlug, videoId: rawVideoId } = await params;
   const slug = decodeURIComponent(rawSlug);
@@ -167,7 +147,7 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
   if (!video) notFound();
 
   const isXhs = video.contentType.startsWith("xhs_");
-  const isImagePost = video.contentType === "xhs_image";
+  const isImagePost = video.contentType.endsWith("_image");
   const hasTimeline =
     !!video.durationSec &&
     ((video.chapters?.length ?? 0) > 0 || (video.sponsorChapters?.length ?? 0) > 0);
@@ -207,9 +187,7 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
               <ExternalLink className="size-3 shrink-0" />
             </a>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="text-[10px]">
-                <ContentTypeLabel type={video.contentType} />
-              </Badge>
+              <ContentTypeBadge contentType={video.contentType} />
               {video.openingHookType ? (
                 <Badge variant="secondary" className="font-mono text-[10px]">
                   <span style={{ overflowWrap: "anywhere" }}>{video.openingHookType}</span>

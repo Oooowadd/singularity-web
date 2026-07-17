@@ -37,7 +37,7 @@ export type ClerkTarget =
 type Props = {
   target: ClerkTarget;
   channelName: string;
-  platform: "youtube" | "xhs";
+  platform: "youtube" | "xhs" | "douyin";
   disabled: boolean;
   onStarted: (run: ActiveRun) => void;
 };
@@ -66,6 +66,12 @@ const SOURCE_OPTIONS_XHS: Array<{ value: Source; label: string; hint: string }> 
   { value: "urls", label: "指定链接", hint: "粘小红书笔记 URL，每行一个" },
 ];
 
+const SOURCE_OPTIONS_DOUYIN: Array<{ value: Source; label: string; hint: string }> = [
+  { value: "newest", label: "最新作品", hint: "账号最新发布的 N 个作品" },
+  { value: "popular", label: "热门作品", hint: "近期作品里按互动分最高的 N 个" },
+  { value: "urls", label: "指定链接", hint: "粘抖音作品 URL，每行一个" },
+];
+
 const MODE_OPTIONS: Array<{ value: Mode; label: string; hint: string }> = [
   { value: "overwrite", label: "从头分析", hint: "覆盖该视频已有的分析结果" },
   { value: "incremental", label: "仅新视频", hint: "跳过已经分析过的视频" },
@@ -74,7 +80,7 @@ const MODE_OPTIONS: Array<{ value: Mode; label: string; hint: string }> = [
 // Mirror the worker's id extraction (xhs.ts / analyze-channel.ts) so a paste that can't
 // resolve to a note/video id is caught before the run — including share-card text blobs
 // where the URL is wrapped in title/emoji.
-function lineResolvesToId(line: string, platform: "youtube" | "xhs"): boolean {
+function lineResolvesToId(line: string, platform: "youtube" | "xhs" | "douyin"): boolean {
   if (platform === "xhs") {
     return (
       /^[a-f0-9]{16,32}$/i.test(line) ||
@@ -82,6 +88,15 @@ function lineResolvesToId(line: string, platform: "youtube" | "xhs"): boolean {
       // Mobile share short links can't be resolved in the browser; the worker
       // expands the redirect server-side.
       /https?:\/\/(?:[\w-]+\.)?xhslink\.com\//i.test(line)
+    );
+  }
+  if (platform === "douyin") {
+    return (
+      /\/video\/\d{15,21}/.test(line) ||
+      /iesdouyin\.com\/share\/video\/\d+/i.test(line) ||
+      // Mobile share short links resolve server-side.
+      /https?:\/\/v\.douyin\.com\/[A-Za-z0-9_-]+/i.test(line) ||
+      /^\d{19}$/.test(line)
     );
   }
   return (
@@ -105,8 +120,13 @@ export function ClerkStartSheet({
   const [urls, setUrls] = useState("");
   const [recency, setRecency] = useState<Recency>("all");
   const [language, setLanguage] = useState<Language>("zh");
-  const SOURCE_OPTIONS = platform === "xhs" ? SOURCE_OPTIONS_XHS : SOURCE_OPTIONS_YT;
-  const itemLabel = platform === "xhs" ? "笔记" : "视频";
+  const SOURCE_OPTIONS =
+    platform === "xhs"
+      ? SOURCE_OPTIONS_XHS
+      : platform === "douyin"
+        ? SOURCE_OPTIONS_DOUYIN
+        : SOURCE_OPTIONS_YT;
+  const itemLabel = platform === "xhs" ? "笔记" : platform === "douyin" ? "作品" : "视频";
   const [error, setError] = useState<string | null>(null);
 
   const startMutation = trpc.clerk.startAnalysis.useMutation({
@@ -135,7 +155,13 @@ export function ClerkStartSheet({
             .filter((s) => s.length > 0)
         : [];
     if (source === "urls" && videoIds.length === 0) {
-      setError(platform === "xhs" ? "请粘贴至少 1 个小红书笔记 URL" : "请粘贴至少 1 个视频 URL");
+      setError(
+        platform === "xhs"
+          ? "请粘贴至少 1 个小红书笔记 URL"
+          : platform === "douyin"
+            ? "请粘贴至少 1 个抖音作品 URL"
+            : "请粘贴至少 1 个视频 URL",
+      );
       return;
     }
     if (source === "urls") {
@@ -237,7 +263,9 @@ export function ClerkStartSheet({
                   placeholder={
                     platform === "xhs"
                       ? "https://www.xiaohongshu.com/explore/...&#10;…"
-                      : "https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/abc123def45&#10;…"
+                      : platform === "douyin"
+                        ? "https://www.douyin.com/video/...&#10;https://v.douyin.com/xxxx（分享短链）&#10;…"
+                        : "https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/abc123def45&#10;…"
                   }
                   rows={6}
                   className="font-mono text-xs"
@@ -245,7 +273,9 @@ export function ClerkStartSheet({
                 <p className="text-xs text-muted-foreground">
                   {platform === "xhs"
                     ? "支持 xiaohongshu.com/explore · /discovery/item"
-                    : "支持 youtube.com/watch · youtu.be · /shorts · /embed"}
+                    : platform === "douyin"
+                      ? "支持 douyin.com/video · v.douyin.com 短链 · iesdouyin 分享"
+                      : "支持 youtube.com/watch · youtu.be · /shorts · /embed"}
                 </p>
               </Field>
             )}
@@ -274,7 +304,7 @@ export function ClerkStartSheet({
               </p>
             </Field>
 
-            {platform === "youtube" && source !== "urls" ? (
+            {(platform === "youtube" || platform === "douyin") && source !== "urls" ? (
               <Field>
                 <FieldLabel>时间范围</FieldLabel>
                 <div className="flex gap-2">

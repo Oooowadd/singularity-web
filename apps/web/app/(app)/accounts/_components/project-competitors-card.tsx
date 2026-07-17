@@ -9,6 +9,7 @@ import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { followerNoun, formatFollowerCount } from "@/lib/format-count";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Sheet,
@@ -21,13 +22,21 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { isValidXhsProfileUrl, isValidYoutubeChannelUrl } from "@/server/trpc/schemas/channels";
+import {
+  isValidDouyinProfileUrl,
+  isValidXhsProfileUrl,
+  isValidYoutubeChannelUrl,
+} from "@/server/trpc/schemas/channels";
 
-function inferPlatform(url: string): "youtube" | "xhs" {
-  return url.includes("xiaohongshu") ? "xhs" : "youtube";
+function inferPlatform(url: string): "youtube" | "xhs" | "douyin" {
+  if (/douyin\.com|iesdouyin\.com/.test(url)) return "douyin";
+  if (/xiaohongshu|xhslink/.test(url)) return "xhs";
+  return "youtube";
 }
-function isValidFormat(platform: "youtube" | "xhs", url: string): boolean {
-  return platform === "xhs" ? isValidXhsProfileUrl(url) : isValidYoutubeChannelUrl(url);
+function isValidFormat(platform: "youtube" | "xhs" | "douyin", url: string): boolean {
+  if (platform === "xhs") return isValidXhsProfileUrl(url);
+  if (platform === "douyin") return isValidDouyinProfileUrl(url);
+  return isValidYoutubeChannelUrl(url);
 }
 
 // project.id == channel.id during the expand phase, so the channel page passes channel.id.
@@ -143,7 +152,7 @@ export function ProjectCompetitorsCard({
                         <div className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate font-medium">{c.name ?? c.url}</span>
                           <span className="text-[10px] text-muted-foreground">
-                            {c.platform === "xhs" ? "小红书" : "YouTube"}
+                            {PLATFORM_LABEL[c.platform]}
                             {c.subscriberCount != null
                               ? ` · ${formatFollowerCount(c.subscriberCount)} ${followerNoun(c.platform)}`
                               : ""}
@@ -181,7 +190,7 @@ export function ProjectCompetitorsCard({
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   rows={4}
-                  placeholder={"https://www.youtube.com/@example\nhttps://www.xiaohongshu.com/user/profile/..."}
+                  placeholder={"https://www.youtube.com/@example\nhttps://www.xiaohongshu.com/user/profile/...\nhttps://www.douyin.com/user/..."}
                 />
                 {parsed.length > 0 ? (
                   <p className="text-[10px] text-muted-foreground">
@@ -230,7 +239,7 @@ export function ProjectCompetitorsCard({
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm font-medium">{c.name ?? c.url}</span>
                   <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span>{c.platform === "xhs" ? "小红书" : "YouTube"}</span>
+                    <span>{PLATFORM_LABEL[c.platform]}</span>
                     {c.subscriberCount != null ? (
                       <span>
                         {formatFollowerCount(c.subscriberCount)} {followerNoun(c.platform)}

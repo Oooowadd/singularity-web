@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { StaggerItem } from "@/components/stagger-item";
 import { followerNoun, formatFollowerCount } from "@/lib/format-count";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import {
   Table,
   TableBody,
@@ -264,7 +265,7 @@ export default async function MuseChannelPage({ params }: Props) {
                 <span className="flex flex-col leading-tight">
                   <span className="max-w-[160px] truncate font-medium">{c.name ?? c.url}</span>
                   <span className="text-[10px] text-muted-foreground">
-                    {c.platform === "xhs" ? "小红书" : "YouTube"}
+                    {PLATFORM_LABEL[c.platform]}
                     {c.subscriberCount != null
                       ? ` · ${formatFollowerCount(c.subscriberCount)} ${followerNoun(c.platform)}`
                       : ""}

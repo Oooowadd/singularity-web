@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { ClerkTabs } from "./_components/clerk-tabs";
 import { followerNoun, formatFollowerCount } from "@/lib/format-count";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import { formatDate } from "@/lib/datetime";
 import { db } from "@/lib/db";
 import { SOP_LABEL, SOP_ORDER } from "@/lib/sop-labels";
@@ -95,7 +96,7 @@ export default async function ClerkLandingPage() {
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-medium">{c.name ?? c.url}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {c.platform === "xhs" ? "小红书" : "YouTube"}
+                        {PLATFORM_LABEL[c.platform]}
                         {c.subscriberCount != null
                           ? ` · ${formatFollowerCount(c.subscriberCount)} ${followerNoun(c.platform)}`
                           : ""}

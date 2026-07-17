@@ -23,7 +23,7 @@ type Props = {
   channelName: string;
   // Own targets only — powers the「去生成圣经」finish action.
   channelSlug?: string;
-  platform: "youtube" | "xhs";
+  platform: "youtube" | "xhs" | "douyin";
   initialActive?: (ActiveRun & { startedAt?: Date | string }) | null;
 };
 

@@ -19,16 +19,17 @@ import {
 } from "@/components/ui/sheet";
 import { cleanProfileName } from "@/lib/display-name";
 import { followerNoun, formatFollowerCount } from "@/lib/format-count";
+import { PLATFORM_LABEL } from "@/lib/platform";
 import { trpc } from "@/lib/trpc";
 
 type Language = "zh" | "en";
-type XhsContentType = "all" | "video" | "image";
+type ContentFilter = "all" | "video" | "image";
 
 export type MuseCompetitor = {
   id: string;
   name: string | null;
   url: string;
-  platform: "youtube" | "xhs";
+  platform: "youtube" | "xhs" | "douyin";
   avatarUrl: string | null;
   subscriberCount: number | null;
 };
@@ -49,8 +50,8 @@ const LANGUAGE_OPTIONS: Array<{ value: Language; label: string; hint: string }> 
   { value: "en", label: "English ideas", hint: "适合英文目标频道" },
 ];
 
-const XHS_CONTENT_OPTIONS: Array<{ value: XhsContentType; label: string; hint: string }> = [
-  { value: "all", label: "全部内容", hint: "视频 + 图文笔记" },
+const CONTENT_FILTER_OPTIONS: Array<{ value: ContentFilter; label: string; hint: string }> = [
+  { value: "all", label: "全部内容", hint: "视频 + 图文" },
   { value: "video", label: "仅视频", hint: "音频转写后分析" },
   { value: "image", label: "仅图文", hint: "标题 + 正文分析" },
 ];
@@ -62,7 +63,7 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
   const [maxVideos, setMaxVideos] = useState<(typeof VIDEOS_PER_COMPETITOR)[number]>(10);
   const [numIdeas, setNumIdeas] = useState<(typeof IDEAS_PER_VIDEO)[number]>(5);
   const [language, setLanguage] = useState<Language>("zh");
-  const [xhsContentType, setXhsContentType] = useState<XhsContentType>("all");
+  const [contentFilter, setContentFilter] = useState<ContentFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(competitors.map((c) => c.id)),
   );
@@ -90,6 +91,9 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
   const hasYt =
     selected.some((c) => c.platform === "youtube") ||
     extraSelected.some((c) => c.platform === "youtube");
+  const hasDouyin =
+    selected.some((c) => c.platform === "douyin") ||
+    extraSelected.some((c) => c.platform === "douyin");
 
   const toggle = (id: string) => {
     setSelectedIds((prev) => {
@@ -133,18 +137,21 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
       ...(extraSelected.length > 0
         ? { extraCompetitorAccountIds: extraSelected.map((c) => c.id) }
         : {}),
-      xhsContentType,
+      contentFilter,
     });
   };
 
   const totalCount = selected.length + extraSelected.length;
   const totalIdeas = totalCount * maxVideos * numIdeas;
-  const contentNoun =
-    hasXhs && hasYt
-      ? "最新内容（YouTube 视频 + 小红书笔记）"
-      : hasXhs
-        ? "最新笔记（视频 + 图文）"
-        : "最新视频";
+  const contentNoun = (() => {
+    const parts: string[] = [];
+    if (hasYt) parts.push("YouTube 视频");
+    if (hasXhs) parts.push("小红书笔记");
+    if (hasDouyin) parts.push("抖音作品");
+    if (parts.length === 0) return "最新内容";
+    if (parts.length === 1) return `最新${parts[0]}`;
+    return `最新内容（${parts.join(" + ")}）`;
+  })();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -182,7 +189,7 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
                           {c.name ? cleanProfileName(c.name) : c.url}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
-                          {c.platform === "xhs" ? "小红书" : "YouTube"}
+                          {PLATFORM_LABEL[c.platform]}
                           {c.subscriberCount != null
                             ? ` · ${formatFollowerCount(c.subscriberCount)} ${followerNoun(c.platform)}`
                             : ""}
@@ -225,7 +232,7 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
                           {c.name ? cleanProfileName(c.name) : c.url}
                         </span>
                           <span className="text-[10px] text-muted-foreground">
-                            {c.platform === "xhs" ? "小红书" : "YouTube"}
+                            {PLATFORM_LABEL[c.platform]}
                             {c.subscriberCount != null
                               ? ` · ${formatFollowerCount(c.subscriberCount)} ${followerNoun(c.platform)}`
                               : ""}
@@ -271,17 +278,17 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
               </p>
             </Field>
 
-            {hasXhs ? (
+            {hasXhs || hasDouyin ? (
               <Field>
-                <FieldLabel>小红书内容类型</FieldLabel>
+                <FieldLabel>内容类型</FieldLabel>
                 <div className="flex gap-2">
-                  {XHS_CONTENT_OPTIONS.map((opt) => (
+                  {CONTENT_FILTER_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => setXhsContentType(opt.value)}
+                      onClick={() => setContentFilter(opt.value)}
                       className={`flex flex-1 flex-col items-start gap-0.5 rounded-md border p-2 text-left text-xs transition-colors ${
-                        xhsContentType === opt.value
+                        contentFilter === opt.value
                           ? "border-foreground bg-foreground/5"
                           : "hover:bg-muted/50"
                       }`}

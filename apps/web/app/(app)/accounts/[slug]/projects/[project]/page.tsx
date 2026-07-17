@@ -109,7 +109,8 @@ export default async function ProjectHubPage({ params }: Props) {
   const a = encodeURIComponent(channel.slug);
   const p = encodeURIComponent(project.slug);
   const activeBible = activeBibleRows[0] ?? null;
-  const itemDone = project.platform === "xhs" ? "篇已巡视" : "个已巡视";
+  const itemDone =
+    project.platform === "douyin" ? "条已巡视" : project.platform === "xhs" ? "篇已巡视" : "个已巡视";
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">

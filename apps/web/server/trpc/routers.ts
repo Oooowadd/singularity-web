@@ -37,10 +37,15 @@ import {
   resolveChannelId,
 } from "@goooose/integrations/clients/tikhub";
 import {
+  expandDouyinShortLink,
+  resolveDouyinUser,
+} from "@goooose/integrations/clients/douyin";
+import {
   expandXhsShortLink,
   isValidXhsProfileUrl,
   resolveXhsUser,
 } from "@goooose/integrations/clients/xhs";
+import { isValidDouyinProfileUrl } from "@goooose/integrations/validators";
 import {
   fetchChannelMetaById,
   fetchChannelMetaByHandle,
@@ -260,7 +265,7 @@ async function ensureProjectSpine(c: {
   userId: string;
   name: string;
   slug: string;
-  platform: "youtube" | "xhs";
+  platform: "youtube" | "xhs" | "douyin";
   platformUrl: string;
   description: string | null;
 }) {
@@ -296,12 +301,13 @@ type CompetitorImportStatus = "added" | "duplicate" | "invalid" | "unresolved";
 // the partial-unique index (un-deletes a soft-deleted match instead of duplicating).
 async function upsertCompetitor(
   userId: string,
-  platform: "youtube" | "xhs",
+  platform: "youtube" | "xhs" | "douyin",
   url: string,
 ): Promise<{ status: CompetitorImportStatus; id: string | null }> {
-  // Mobile share pastes are xhslink.com short links — expand so the dedup key
-  // resolves and the stored url is the full tokenized profile URL.
+  // Mobile share pastes are short links (xhslink.com / v.douyin.com) — expand so the
+  // dedup key resolves and the stored url is the full profile URL.
   if (platform === "xhs") url = await expandXhsShortLink(url);
+  else if (platform === "douyin") url = await expandDouyinShortLink(url);
   const pk = provisionalCompetitorKey(platform, url);
   if (!pk) return { status: "invalid", id: null };
   let key = pk.key;
@@ -364,6 +370,11 @@ async function upsertCompetitor(
       name = u.nickname || null;
       avatarUrl = u.avatarUrl || null;
       subscriberCount = u.fansCount || null;
+    } else if (platform === "douyin") {
+      const u = await resolveDouyinUser(url);
+      name = u.nickname || null;
+      avatarUrl = u.avatarUrl || null;
+      subscriberCount = u.followerCount || null;
     } else if (!needsResolution) {
       const info = await getChannelInfo(key);
       name = info.channel_name || null;
@@ -461,7 +472,7 @@ export const appRouter = router({
         let project: {
           name: string;
           slug: string;
-          platform: "youtube" | "xhs";
+          platform: "youtube" | "xhs" | "douyin";
           targetDurationSeconds: number;
         } | null = null;
         if (input.projectSlug) {
@@ -499,9 +510,13 @@ export const appRouter = router({
           });
         }
         const slug = await uniqueSlug(ctx.user.id, slugify(input.name));
-        // Expand xhslink short-link pastes so the stored URL is the real profile URL.
+        // Expand short-link pastes (xhslink.com / v.douyin.com) so the stored URL is the real profile URL.
         const platformUrl =
-          input.platform === "xhs" ? await expandXhsShortLink(input.platformUrl) : input.platformUrl;
+          input.platform === "xhs"
+            ? await expandXhsShortLink(input.platformUrl)
+            : input.platform === "douyin"
+              ? await expandDouyinShortLink(input.platformUrl)
+              : input.platformUrl;
         const [created] = await db
           .insert(channels)
           .values({
@@ -523,7 +538,11 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const { id, ...patch } = input;
         const platformUrl =
-          patch.platform === "xhs" ? await expandXhsShortLink(patch.platformUrl) : patch.platformUrl;
+          patch.platform === "xhs"
+            ? await expandXhsShortLink(patch.platformUrl)
+            : patch.platform === "douyin"
+              ? await expandDouyinShortLink(patch.platformUrl)
+              : patch.platformUrl;
         const [updated] = await db
           .update(channels)
           .set({
@@ -565,12 +584,38 @@ export const appRouter = router({
     verifyUrl: protectedProcedure
       .input(
         z.object({
-          platform: z.enum(["youtube", "xhs"]),
+          platform: z.enum(["youtube", "xhs", "douyin"]),
           // Not z.string().url(): mobile share pastes embed the link in card text.
           url: z.string().min(1),
         }),
       )
       .mutation(async ({ input }) => {
+        if (input.platform === "douyin") {
+          try {
+            const expanded = await expandDouyinShortLink(input.url);
+            const user = await resolveDouyinUser(expanded);
+            // Bare sec_user_id pastes have no homepage URL — build the canonical one.
+            const url = /^https?:\/\//i.test(expanded)
+              ? expanded
+              : `https://www.douyin.com/user/${user.secUserId}`;
+            return {
+              platform: "douyin" as const,
+              url,
+              name: user.nickname,
+              avatarUrl: user.avatarUrl,
+              subscriberCount: user.followerCount,
+              awemeCount: user.awemeCount,
+              uniqueId: user.uniqueId,
+              ipLocation: user.ipLocation,
+              signature: user.signature,
+            };
+          } catch {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "抖音账号验证失败，请确认主页链接正确",
+            });
+          }
+        }
         if (input.platform === "xhs") {
           if (!isValidXhsProfileUrl(input.url)) {
             throw new TRPCError({
@@ -695,7 +740,9 @@ export const appRouter = router({
         const validUrl =
           ch.platform === "xhs"
             ? isValidXhsProfileUrl(ch.platformUrl)
-            : isValidYoutubeChannelUrl(ch.platformUrl);
+            : ch.platform === "douyin"
+              ? isValidDouyinProfileUrl(ch.platformUrl)
+              : isValidYoutubeChannelUrl(ch.platformUrl);
         if (!validUrl) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -709,6 +756,9 @@ export const appRouter = router({
           if (ch.platform === "xhs") {
             const u = await resolveXhsUser(ch.platformUrl);
             subscriberCount = u.fansCount ?? null;
+          } else if (ch.platform === "douyin") {
+            const u = await resolveDouyinUser(ch.platformUrl);
+            subscriberCount = u.followerCount ?? null;
           } else {
             const parsed = parseYoutubeChannelUrl(ch.platformUrl);
             const yt =
@@ -804,7 +854,7 @@ export const appRouter = router({
       if (input.projectId) await assertProjectOwner(ctx.user.id, input.projectId);
       const results: Array<{
         url: string;
-        platform: "youtube" | "xhs";
+        platform: "youtube" | "xhs" | "douyin";
         status: CompetitorImportStatus;
         id: string | null;
       }> = [];
@@ -855,6 +905,11 @@ export const appRouter = router({
             name = u.nickname || null;
             avatarUrl = u.avatarUrl || null;
             subscriberCount = u.fansCount || null;
+          } else if (acct.platform === "douyin") {
+            const u = await resolveDouyinUser(acct.url);
+            name = u.nickname || null;
+            avatarUrl = u.avatarUrl || null;
+            subscriberCount = u.followerCount || null;
           } else {
             if (needsResolution) {
               const uc = await resolveChannelId(acct.url);
@@ -1654,7 +1709,7 @@ export const appRouter = router({
             language: input.language,
             ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
             ...(extraIds ? { extraCompetitorAccountIds: extraIds } : {}),
-            xhsContentType: input.xhsContentType,
+            contentFilter: input.contentFilter,
           },
           payload: {
             maxVideosPerCompetitor: input.maxVideosPerCompetitor,
@@ -1662,7 +1717,7 @@ export const appRouter = router({
             language: input.language,
             competitorAccountIds: selectedIds,
             extraCompetitorAccountIds: extraIds,
-            xhsContentType: input.xhsContentType,
+            contentFilter: input.contentFilter,
           },
         });
       }),

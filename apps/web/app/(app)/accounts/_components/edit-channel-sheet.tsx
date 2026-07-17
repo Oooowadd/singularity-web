@@ -29,6 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
+  isValidDouyinProfileUrl,
   isValidXhsProfileUrl,
   isValidYoutubeChannelUrl,
   updateChannelInput,
@@ -46,7 +47,7 @@ export function EditChannelSheet({ channel }: Props) {
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(channel.name);
-  const [platform, setPlatform] = useState<"youtube" | "xhs">(channel.platform);
+  const [platform, setPlatform] = useState<"youtube" | "xhs" | "douyin">(channel.platform);
   const [platformUrl, setPlatformUrl] = useState(channel.platformUrl);
   const [description, setDescription] = useState(channel.description ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -69,12 +70,18 @@ export function EditChannelSheet({ channel }: Props) {
     const url = platformUrl.trim();
     if (url) {
       const ownUrlOk =
-        platform === "youtube" ? isValidYoutubeChannelUrl(url) : isValidXhsProfileUrl(url);
+        platform === "youtube"
+          ? isValidYoutubeChannelUrl(url)
+          : platform === "douyin"
+            ? isValidDouyinProfileUrl(url)
+            : isValidXhsProfileUrl(url);
       if (!ownUrlOk) {
         setError(
           platform === "youtube"
             ? "URL 不符合 YouTube 频道格式（应为 /@handle、/channel/UCxxx、/c/name 或 /user/name）"
-            : "URL 不符合小红书主页格式（应为 https://www.xiaohongshu.com/user/profile/{24位hex}）",
+            : platform === "douyin"
+              ? "URL 不符合抖音主页格式（应为 https://www.douyin.com/user/... 或 v.douyin.com 分享短链）"
+              : "URL 不符合小红书主页格式（应为 https://www.xiaohongshu.com/user/profile/{24位hex}）",
         );
         return;
       }
@@ -169,15 +176,16 @@ export function EditChannelSheet({ channel }: Props) {
               <FieldLabel htmlFor="edit-platform">平台</FieldLabel>
               <Select
                 value={platform}
-                onValueChange={(v) => setPlatform(v as "youtube" | "xhs")}
+                onValueChange={(v) => setPlatform(v as "youtube" | "xhs" | "douyin")}
               >
                 <SelectTrigger id="edit-platform">
-                  {platform === "youtube" ? "YouTube" : "XHS (小红书)"}
+                  {platform === "youtube" ? "YouTube" : platform === "douyin" ? "抖音" : "XHS (小红书)"}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="youtube">YouTube</SelectItem>
                     <SelectItem value="xhs">XHS (小红书)</SelectItem>
+                    <SelectItem value="douyin">抖音</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -193,7 +201,9 @@ export function EditChannelSheet({ channel }: Props) {
                 placeholder={
                   platform === "xhs"
                     ? "https://www.xiaohongshu.com/user/profile/{user_id}"
-                    : "https://www.youtube.com/@handle"
+                    : platform === "douyin"
+                      ? "https://www.douyin.com/user/... 或 v.douyin.com 分享短链"
+                      : "https://www.youtube.com/@handle"
                 }
               />
               <ChannelUrlPreview platform={platform} url={platformUrl} />
