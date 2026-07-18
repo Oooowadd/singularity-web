@@ -19,7 +19,7 @@ export default function SecretPage() {
           size="lg"
         >
           <Send data-icon="inline-start" />
-          无限制 Bot
+          越狱 Bot
         </Button>
         <Button
           render={<a href="https://t.me/jujuzmz" target="_blank" rel="noopener noreferrer" />}
