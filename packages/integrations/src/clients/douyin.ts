@@ -65,7 +65,8 @@ function assertBusinessOk(json: RawEnvelope, endpoint: string): void {
 
 // 30s hard timeout (xhs.ts/tikhub.ts have none — a stalled TikHub origin could hang the run).
 // Retry transient 5xx / 429 / documented-transient 400 with backoff; 429 honors retry-after.
-async function get<T>(endpoint: string, params: Record<string, string>, attempts = 3): Promise<T> {
+// 4 × 1500ms·i backoff: live flaps of the "400 Please retry" kind outlasted a 3 × 800ms budget.
+async function get<T>(endpoint: string, params: Record<string, string>, attempts = 4): Promise<T> {
   const qs = new URLSearchParams(params).toString();
   const url = `${BASE}${endpoint}${qs ? `?${qs}` : ""}`;
   let lastErr: Error | undefined;
@@ -84,7 +85,7 @@ async function get<T>(endpoint: string, params: Record<string, string>, attempts
         lastErr = new Error(`TikHub ${endpoint} HTTP ${res.status}: ${body.slice(0, 120)}`);
         if (i < attempts) {
           const retryAfter = Number(res.headers.get("retry-after"));
-          const waitMs = res.status === 429 && retryAfter > 0 ? retryAfter * 1000 : 800 * i;
+          const waitMs = res.status === 429 && retryAfter > 0 ? retryAfter * 1000 : 1500 * i;
           await sleep(waitMs);
           continue;
         }
@@ -104,7 +105,7 @@ async function get<T>(endpoint: string, params: Record<string, string>, attempts
       if (err instanceof TikHubError && !err.retryable) throw err;
       lastErr = err as Error;
       if (i >= attempts) throw lastErr;
-      await sleep(800 * i);
+      await sleep(1500 * i);
     }
   }
   throw lastErr ?? new Error(`TikHub ${endpoint} unreachable`);
