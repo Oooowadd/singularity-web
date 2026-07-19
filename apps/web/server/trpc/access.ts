@@ -36,7 +36,7 @@ const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 function generateCode(): string {
   const bytes = randomBytes(8);
   const chars = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]);
-  return `SING-${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+  return `GOOSE-${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
 }
 
 // Send the approval email only on a real pending→approved transition, so every
@@ -307,16 +307,23 @@ export const adminRouter = router({
       return emailIfApproved(beforeUser?.status !== "approved", request.userId);
     }),
 
-  listBetaApplications: adminProcedure.query(async () => {
-    return db
-      .select()
-      .from(betaApplications)
-      .orderBy(
-        sql`case when ${betaApplications.status} = 'new' then 0 else 1 end`,
-        desc(betaApplications.updatedAt),
-      )
-      .limit(200);
-  }),
+  listBetaApplications: adminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(500).default(100), offset: z.number().int().min(0).default(0) }).optional())
+    .query(async ({ input }) => {
+      const limit = input?.limit ?? 100;
+      const offset = input?.offset ?? 0;
+      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(betaApplications);
+      const rows = await db
+        .select()
+        .from(betaApplications)
+        .orderBy(
+          sql`case when ${betaApplications.status} = 'new' then 0 else 1 end`,
+          desc(betaApplications.updatedAt),
+        )
+        .limit(limit)
+        .offset(offset);
+      return { rows, total: count ?? 0, offset, limit };
+    }),
 
   updateBetaApplication: adminProcedure
     .input(
@@ -420,6 +427,7 @@ export const adminRouter = router({
         plan: users.plan,
         createdAt: users.createdAt,
         lastSeenAt: users.lastSeenAt,
+        lastSeenVersion: users.lastSeenVersion,
         minutesUsed: sql<number>`coalesce(${usageCounters.minutesUsed}, 0)`,
         bonusMinutes: sql<number>`coalesce(${usageCounters.bonusMinutes}, 0)`,
       })
@@ -518,6 +526,53 @@ export const adminRouter = router({
       .groupBy(usageEvents.userId, users.email, month)
       .orderBy(desc(month), desc(sql`sum(${usageEvents.estimatedCostUsd})`));
   }),
+
+  // Ops monitor: recent runs across all users. "running/pending older than 30 min" is the
+  // stuck signal the reaper cron targets — surfaced here so an operator sees it live.
+  listRuns: adminProcedure
+    .input(z.object({ status: z.enum(["all", "active", "failed", "stuck"]).default("all"), limit: z.number().int().min(1).max(200).default(60) }).optional())
+    .query(async ({ input }) => {
+      const filter = input?.status ?? "all";
+      const limit = input?.limit ?? 60;
+      const stuckBefore = sql`now() - interval '30 minutes'`;
+      const cond =
+        filter === "active"
+          ? sql`${pipelineRuns.status} in ('pending','running')`
+          : filter === "failed"
+            ? sql`${pipelineRuns.status} = 'failed'`
+            : filter === "stuck"
+              ? sql`${pipelineRuns.status} in ('pending','running') and ${pipelineRuns.startedAt} < ${stuckBefore}`
+              : sql`true`;
+      const rows = await db
+        .select({
+          id: pipelineRuns.id,
+          agent: pipelineRuns.agent,
+          command: pipelineRuns.command,
+          status: pipelineRuns.status,
+          progress: pipelineRuns.progress,
+          total: pipelineRuns.total,
+          quotaCharged: pipelineRuns.quotaCharged,
+          quotaRefunded: pipelineRuns.quotaRefunded,
+          startedAt: pipelineRuns.startedAt,
+          completedAt: pipelineRuns.completedAt,
+          errorMessage: pipelineRuns.errorMessage,
+          email: users.email,
+          stuck: sql<boolean>`${pipelineRuns.status} in ('pending','running') and ${pipelineRuns.startedAt} < ${stuckBefore}`,
+        })
+        .from(pipelineRuns)
+        .leftJoin(users, eq(users.id, pipelineRuns.userId))
+        .where(cond)
+        .orderBy(desc(pipelineRuns.startedAt))
+        .limit(limit);
+      const [counts] = await db
+        .select({
+          active: sql<number>`count(*) filter (where ${pipelineRuns.status} in ('pending','running'))::int`,
+          stuck: sql<number>`count(*) filter (where ${pipelineRuns.status} in ('pending','running') and ${pipelineRuns.startedAt} < ${stuckBefore})::int`,
+          failed24h: sql<number>`count(*) filter (where ${pipelineRuns.status} = 'failed' and ${pipelineRuns.startedAt} > now() - interval '24 hours')::int`,
+        })
+        .from(pipelineRuns);
+      return { rows, counts: counts ?? { active: 0, stuck: 0, failed24h: 0 } };
+    }),
 
   setUserAccess: adminProcedure
     .input(

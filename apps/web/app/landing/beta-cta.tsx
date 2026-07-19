@@ -70,7 +70,7 @@ export function BetaCta() {
                   validate.mutate({ code });
                 }
               }}
-              placeholder="SING-XXXX-XXXX"
+              placeholder="GOOSE-XXXX-XXXX"
               className="bg-background text-center font-mono tracking-wider"
               maxLength={32}
               autoFocus

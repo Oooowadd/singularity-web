@@ -83,7 +83,7 @@ export function UsagePanel() {
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="SING-XXXX-XXXX"
+              placeholder="GOOSE-XXXX-XXXX"
               className="max-w-xs font-mono"
             />
             <Button

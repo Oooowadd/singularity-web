@@ -149,7 +149,7 @@ export function RequestAccessForm({
           <Input
             value={betaCode}
             onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
-            placeholder="SING-XXXX-XXXX"
+            placeholder="GOOSE-XXXX-XXXX"
             className="font-mono"
             maxLength={32}
           />
