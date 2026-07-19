@@ -1,5 +1,6 @@
 "use client";
 
+import { keepPreviousData } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 import { toast } from "sonner";
 
@@ -52,7 +53,12 @@ function BetaApplicationsCard() {
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(BETA_PAGE_SIZE);
   // offset stays 0 and the limit grows: one query, accumulated rows, honest total.
-  const apps = trpc.admin.listBetaApplications.useQuery({ limit });
+  // keepPreviousData holds the loaded rows visible while the larger page fetches
+  // (the limit is the query key, so growing it otherwise blanks the list mid-refetch).
+  const apps = trpc.admin.listBetaApplications.useQuery(
+    { limit },
+    { placeholderData: keepPreviousData },
+  );
   const rows = apps.data?.rows ?? [];
   const total = apps.data?.total ?? 0;
 
