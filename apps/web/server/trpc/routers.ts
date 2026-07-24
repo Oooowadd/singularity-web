@@ -1643,62 +1643,67 @@ export const appRouter = router({
           .limit(1);
         if (!channel) throw new TRPCError({ code: "NOT_FOUND", message: "Channel not found" });
         await assertProjectOwner(ctx.user.id, input.projectId, channel.id);
-        // Same source as the monitor job: live project_competitors.
-        const bound = await db
-          .select({ id: competitorAccounts.id })
-          .from(projectCompetitors)
-          .innerJoin(
-            competitorAccounts,
-            eq(competitorAccounts.id, projectCompetitors.competitorAccountId),
-          )
-          .where(
-            and(
-              eq(projectCompetitors.projectId, input.projectId),
-              isNull(competitorAccounts.deletedAt),
-            ),
-          );
-        if (bound.length === 0) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "请先为该频道配置至少一个对标账号",
-          });
-        }
-        const boundIds = new Set(bound.map((b) => b.id));
-        const selectedIds = input.competitorAccountIds?.filter((id) => boundIds.has(id));
-
-        // Temp competitors: must be the user's, but need NOT be bound to this project.
+        // Links mode patrols exactly the pasted URLs — competitor bindings don't apply.
+        const linksMode = input.sourceMode === "links";
+        let selectedIds: string[] | undefined;
         let extraIds: string[] | undefined;
-        const extraReq = input.extraCompetitorAccountIds?.filter((id) => !boundIds.has(id));
-        if (extraReq && extraReq.length > 0) {
-          const owned = await db
+        if (!linksMode) {
+          // Same source as the monitor job: live project_competitors.
+          const bound = await db
             .select({ id: competitorAccounts.id })
-            .from(competitorAccounts)
+            .from(projectCompetitors)
+            .innerJoin(
+              competitorAccounts,
+              eq(competitorAccounts.id, projectCompetitors.competitorAccountId),
+            )
             .where(
               and(
-                inArray(competitorAccounts.id, extraReq),
-                eq(competitorAccounts.userId, ctx.user.id),
+                eq(projectCompetitors.projectId, input.projectId),
                 isNull(competitorAccounts.deletedAt),
               ),
             );
-          if (owned.length !== extraReq.length) {
+          if (bound.length === 0) {
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
-              message: "临时对标账号不存在或不属于你",
+              message: "请先为该频道配置至少一个对标账号",
             });
           }
-          extraIds = owned.map((o) => o.id);
-        }
+          const boundIds = new Set(bound.map((b) => b.id));
+          selectedIds = input.competitorAccountIds?.filter((id) => boundIds.has(id));
 
-        // selectedIds === [] is a valid extras-only run; reject only when nothing at all would run.
-        if (
-          input.competitorAccountIds &&
-          (selectedIds?.length ?? 0) === 0 &&
-          (extraIds?.length ?? 0) === 0
-        ) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "请至少选择一个对标账号",
-          });
+          // Temp competitors: must be the user's, but need NOT be bound to this project.
+          const extraReq = input.extraCompetitorAccountIds?.filter((id) => !boundIds.has(id));
+          if (extraReq && extraReq.length > 0) {
+            const owned = await db
+              .select({ id: competitorAccounts.id })
+              .from(competitorAccounts)
+              .where(
+                and(
+                  inArray(competitorAccounts.id, extraReq),
+                  eq(competitorAccounts.userId, ctx.user.id),
+                  isNull(competitorAccounts.deletedAt),
+                ),
+              );
+            if (owned.length !== extraReq.length) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: "临时对标账号不存在或不属于你",
+              });
+            }
+            extraIds = owned.map((o) => o.id);
+          }
+
+          // selectedIds === [] is a valid extras-only run; reject only when nothing at all would run.
+          if (
+            input.competitorAccountIds &&
+            (selectedIds?.length ?? 0) === 0 &&
+            (extraIds?.length ?? 0) === 0
+          ) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "请至少选择一个对标账号",
+            });
+          }
         }
 
         // Playbook reference must be one of the user's own SOPs (any of the three owner chains).
@@ -1737,22 +1742,30 @@ export const appRouter = router({
           agent: "muse",
           taskId: "muse-monitor-competitors",
           config: {
-            maxVideosPerCompetitor: input.maxVideosPerCompetitor,
             numIdeasPerVideo: input.numIdeasPerVideo,
             language: input.language,
-            ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
-            ...(extraIds ? { extraCompetitorAccountIds: extraIds } : {}),
-            contentFilter,
+            ...(linksMode
+              ? { sourceMode: "links", videoUrls: input.videoUrls }
+              : {
+                  maxVideosPerCompetitor: input.maxVideosPerCompetitor,
+                  ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
+                  ...(extraIds ? { extraCompetitorAccountIds: extraIds } : {}),
+                  contentFilter,
+                }),
             ...(direction ? { direction } : {}),
             ...(input.sopId ? { sopId: input.sopId } : {}),
           },
           payload: {
-            maxVideosPerCompetitor: input.maxVideosPerCompetitor,
             numIdeasPerVideo: input.numIdeasPerVideo,
             language: input.language,
-            competitorAccountIds: selectedIds,
-            extraCompetitorAccountIds: extraIds,
-            contentFilter,
+            ...(linksMode
+              ? { sourceMode: "links" as const, videoUrls: input.videoUrls }
+              : {
+                  maxVideosPerCompetitor: input.maxVideosPerCompetitor,
+                  competitorAccountIds: selectedIds,
+                  extraCompetitorAccountIds: extraIds,
+                  contentFilter,
+                }),
             direction,
             sopId: input.sopId,
           },
