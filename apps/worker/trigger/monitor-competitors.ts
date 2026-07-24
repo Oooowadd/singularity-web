@@ -1,5 +1,5 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
-import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, notInArray } from "drizzle-orm";
 
 import {
   channels,
@@ -185,10 +185,13 @@ export const monitorCompetitors = task({
         logger.warn(`Project ${channel.id} has no Bible pin; used channel active-bible fallback`);
       }
 
-      await db
+      // Abort if the reaper already settled this queued run — avoid refund + delivery double.
+      const [started] = await db
         .update(pipelineRuns)
         .set({ status: "running", startedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
+        .where(and(eq(pipelineRuns.id, payload.runId), ne(pipelineRuns.status, "failed")))
+        .returning({ id: pipelineRuns.id });
+      if (!started) throw new Error("run already settled (reaped) — aborting to avoid double-deliver");
       await metadata.set("progress", {
         current: 0,
         total: competitors.length,
@@ -241,7 +244,10 @@ export const monitorCompetitors = task({
           } else if (comp.platform === "douyin") {
             const secUid =
               extractDouyinSecUserId(comp.url) ?? (await resolveDouyinUser(comp.url)).secUserId;
-            let videos = await getDouyinUserVideos(secUid, maxVideosPerCompetitor);
+            // Over-fetch + newest-first sort so old pinned videos don't crowd out fresh ones.
+            let videos = await getDouyinUserVideos(secUid, Math.min(60, maxVideosPerCompetitor * 4));
+            videos.sort((a, b) => b.createTime - a.createTime);
+            videos = videos.slice(0, maxVideosPerCompetitor);
             if (contentFilter !== "all") {
               videos = videos.filter((v) =>
                 contentFilter === "video"
@@ -738,6 +744,10 @@ export const monitorCompetitors = task({
           .where(eq(museMonitorVideos.runId, payload.runId));
         const minutes = processed.reduce((s, v) => s + videoMinutes(v.durationSec), 0);
         await consumeMinutes(db, { userId: payload.userId, amount: minutes });
+        await db
+          .update(pipelineRuns)
+          .set({ quotaCharged: minutes })
+          .where(eq(pipelineRuns.id, payload.runId));
       }
 
       await db

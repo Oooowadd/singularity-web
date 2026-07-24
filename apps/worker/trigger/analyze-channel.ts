@@ -590,10 +590,14 @@ export const analyzeChannel = task({
 
       logger.info(`Analyzing ${isOwn ? "channel" : "competitor"}: ${channel.name} (${channel.platformUrl})`);
       appendLog(`开始分析 ${channel.name}`);
-      await db
+      // Guard the flip: if the reaper already marked this run failed (queued > its cutoff),
+      // abort now — otherwise we'd deliver a run the user was already refunded for.
+      const [started] = await db
         .update(pipelineRuns)
         .set({ status: "running", startedAt: new Date() })
-        .where(eq(pipelineRuns.id, payload.runId));
+        .where(and(eq(pipelineRuns.id, payload.runId), ne(pipelineRuns.status, "failed")))
+        .returning({ id: pipelineRuns.id });
+      if (!started) throw new Error("run already settled (reaped) — aborting to avoid double-deliver");
 
       // Proxy pool only needed for YouTube ASR. XHS path uses TikHub directly.
       let proxyPool: ProxyPool | null = null;
@@ -1047,8 +1051,9 @@ export const analyzeChannel = task({
             extractDouyinSecUserId(channel.platformUrl) ??
             (await resolveDouyinUser(channel.platformUrl)).secUserId;
           // Over-fetch for popular (re-sort) and for recency (filter shrinks the list).
-          const fetchLimit =
-            dySource === "popular" || payload.recencyMonths ? Math.min(60, limit * 4) : limit;
+          // Always over-fetch: the list is pinned-first, so newest/popular both need a
+          // wider window to sort + truncate from, else old pinned videos occupy the slots.
+          const fetchLimit = Math.min(60, Math.max(limit * 4, limit));
           let all = await getDouyinUserVideos(secUid, fetchLimit);
           if (payload.recencyMonths) {
             const cutoff = Date.now() / 1000 - payload.recencyMonths * 30 * 86400;
@@ -2013,6 +2018,12 @@ export const analyzeChannel = task({
         }
       }
 
+      // Every selected item failed → surface a failure (refund via withRunDb) instead of a
+      // silent "done" with 0 output. Incremental with 0 new items is a legitimate no-op.
+      if (selectedCount > 0 && analyzed === 0 && payload.mode !== "incremental") {
+        throw new Error(`所有 ${selectedCount} 个内容处理失败，无产出`);
+      }
+
       // Settle 解析额度 from the videos this run actually stamped (duration-weighted).
       if (payload.userId) {
         const processed = await db
@@ -2021,6 +2032,11 @@ export const analyzeChannel = task({
           .where(eq(clerkVideos.runId, payload.runId));
         const minutes = processed.reduce((s, v) => s + videoMinutes(v.durationSec), 0);
         await consumeMinutes(db, { userId: payload.userId, amount: minutes });
+        // Record what was charged so ops sees it and a post-settle crash refunds the right amount.
+        await db
+          .update(pipelineRuns)
+          .set({ quotaCharged: minutes })
+          .where(eq(pipelineRuns.id, payload.runId));
       }
 
       await db
