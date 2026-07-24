@@ -47,16 +47,20 @@ const RUN_STATUS_LABEL: Record<string, string> = {
 export function OpsTab() {
   const [status, setStatus] = useState<RunStatus>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedErrId, setExpandedErrId] = useState<string | null>(null);
   const runs = trpc.admin.listRuns.useQuery({ status });
   const rows = runs.data?.rows ?? [];
   const counts = runs.data?.counts ?? { active: 0, stuck: 0, failed24h: 0 };
+  const errors = trpc.admin.listErrors.useQuery();
+  const errorRows = errors.data?.rows ?? [];
+  const errorCounts = errors.data?.counts ?? { last24h: 0, last7d: 0 };
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="进行中" value={counts.active} />
         <StatCard label="卡住（>30 分钟）" value={counts.stuck} alert={counts.stuck > 0} />
-        <StatCard label="24h 失败" value={counts.failed24h} />
+        <StatCard label="24h 错误" value={errorCounts.last24h} alert={errorCounts.last24h > 0} />
       </div>
 
       <Card>
@@ -168,6 +172,70 @@ export function OpsTab() {
             </p>
           )}
           {/* TODO: manual refund / cancel actions — read-only this round. */}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>错误日志</CardTitle>
+          <CardDescription>
+            服务端捕获的运行时错误（登录态 404/500 等，外部监控看不到的）· 近 7 天 {errorCounts.last7d} 条 · 自动保留 30 天
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {errorRows.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>时间</TableHead>
+                  <TableHead>路由</TableHead>
+                  <TableHead>用户</TableHead>
+                  <TableHead>错误</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {errorRows.map((e) => {
+                  const expanded = expandedErrId === e.id;
+                  return (
+                    <Fragment key={e.id}>
+                      <TableRow>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {new Date(e.occurredAt).toLocaleString("zh-CN")}
+                        </TableCell>
+                        <TableCell className="max-w-40 truncate font-mono text-xs" title={e.route ?? ""}>
+                          {e.route ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{e.email ?? "—"}</TableCell>
+                        <TableCell className="max-w-64 text-xs">
+                          <button
+                            type="button"
+                            className="block max-w-64 truncate text-left text-destructive hover:underline"
+                            title={e.message}
+                            onClick={() => setExpandedErrId(expanded ? null : e.id)}
+                          >
+                            {e.message}
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                      {expanded ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="bg-muted/30">
+                            <p className="whitespace-pre-wrap py-1 font-mono text-[11px]">
+                              {e.stack ?? e.message}
+                            </p>
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {errors.isLoading ? "加载中…" : "近期无错误 🎉"}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

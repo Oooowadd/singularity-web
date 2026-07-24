@@ -12,3 +12,4 @@ export * from "./poet";
 export * from "./project";
 export * from "./proxy";
 export * from "./channel-series";
+export * from "./error-events";

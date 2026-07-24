@@ -1,0 +1,33 @@
+import "server-only";
+
+import { errorEvents } from "@goooose/db";
+
+import { db } from "./db";
+
+type LogInput = {
+  message: string;
+  stack?: string | null;
+  route?: string | null;
+  method?: string | null;
+  kind?: string | null;
+  digest?: string | null;
+  meta?: Record<string, unknown> | null;
+};
+
+// Fire-and-forget error capture into our own DB (own-DB observability). Never throws —
+// a failing log must not break the request that triggered it.
+export async function logServerError(input: LogInput): Promise<void> {
+  try {
+    await db.insert(errorEvents).values({
+      message: input.message.slice(0, 4000),
+      stack: input.stack?.slice(0, 8000) ?? null,
+      route: input.route ?? null,
+      method: input.method ?? null,
+      kind: input.kind ?? null,
+      digest: input.digest ?? null,
+      meta: input.meta ?? null,
+    });
+  } catch {
+    /* observability must never take down the request path */
+  }
+}

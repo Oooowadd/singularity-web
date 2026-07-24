@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { bibleImportFiles, pipelineRuns, proxySessions, refundRunQuota } from "@goooose/db";
+import { bibleImportFiles, errorEvents, pipelineRuns, proxySessions, refundRunQuota } from "@goooose/db";
 
 function openDb() {
   const client = postgres(process.env.DATABASE_URL!, { prepare: false });
@@ -63,6 +63,25 @@ export const gcBibleImports = schedules.task({
         )
         .returning({ id: bibleImportFiles.id });
       logger.info(`purged ${purged.length} expired bible import uploads`);
+      return { purged: purged.length };
+    } finally {
+      await client.end();
+    }
+  },
+});
+
+// Keep the own-DB error log bounded — 30 days is plenty for post-incident triage.
+export const gcErrorEvents = schedules.task({
+  id: "maint-gc-error-events",
+  cron: { pattern: "45 3 * * *", environments: ["PRODUCTION"] },
+  run: async () => {
+    const { client, db } = openDb();
+    try {
+      const purged = await db
+        .delete(errorEvents)
+        .where(sql`${errorEvents.occurredAt} < now() - interval '30 days'`)
+        .returning({ id: errorEvents.id });
+      logger.info(`purged ${purged.length} old error events`);
       return { purged: purged.length };
     } finally {
       await client.end();

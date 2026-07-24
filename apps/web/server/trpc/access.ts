@@ -13,6 +13,7 @@ import {
   checkMinutes,
   codeRedemptions,
   currentPeriod,
+  errorEvents,
   grantMinutes,
   loginEvents,
   pipelineRuns,
@@ -578,6 +579,35 @@ export const adminRouter = router({
         })
         .from(pipelineRuns);
       return { rows, counts: counts ?? { active: 0, stuck: 0, failed24h: 0 } };
+    }),
+
+  // Own-DB error observability: captured server-side by instrumentation onRequestError.
+  listErrors: adminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).default(60) }).optional())
+    .query(async ({ input }) => {
+      const limit = input?.limit ?? 60;
+      const rows = await db
+        .select({
+          id: errorEvents.id,
+          occurredAt: errorEvents.occurredAt,
+          route: errorEvents.route,
+          method: errorEvents.method,
+          kind: errorEvents.kind,
+          message: errorEvents.message,
+          stack: errorEvents.stack,
+          email: users.email,
+        })
+        .from(errorEvents)
+        .leftJoin(users, eq(users.id, errorEvents.userId))
+        .orderBy(desc(errorEvents.occurredAt))
+        .limit(limit);
+      const [counts] = await db
+        .select({
+          last24h: sql<number>`count(*) filter (where ${errorEvents.occurredAt} > now() - interval '24 hours')::int`,
+          last7d: sql<number>`count(*) filter (where ${errorEvents.occurredAt} > now() - interval '7 days')::int`,
+        })
+        .from(errorEvents);
+      return { rows, counts: counts ?? { last24h: 0, last7d: 0 } };
     }),
 
   setUserAccess: adminProcedure
