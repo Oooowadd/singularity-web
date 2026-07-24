@@ -5,6 +5,7 @@ import { buildXhsNoteUrl, getXhsNoteXsecToken } from "@goooose/integrations/clie
 import { runWithUsage } from "@goooose/integrations/metering";
 
 import { db } from "@/lib/db";
+import { rateLimitOk } from "@/server/access-code";
 import { ensureCurrentUser } from "@/lib/users";
 
 const NOTE_ID = /^[a-f0-9]{16,32}$/i;
@@ -29,6 +30,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   const cached = tokenCache.get(noteId);
   if (cached && cached.exp > now) {
     return NextResponse.redirect(buildXhsNoteUrl(noteId, cached.token));
+  }
+
+  // Per-user cap on cache-miss resolves — each spends the shared TikHub key.
+  if (!rateLimitOk(`xhs-token:${user.id}`, 60)) {
+    return new NextResponse("rate limited", { status: 429 });
   }
 
   try {

@@ -148,6 +148,10 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
 
   const isXhs = video.contentType.startsWith("xhs_");
   const isImagePost = video.contentType.endsWith("_image");
+  // Douyin cover URLs expire (~2wk signed) — re-resolve fresh via the proxy at view time.
+  const coverSrc = video.contentType.startsWith("douyin_")
+    ? `/api/douyin-cover?v=${encodeURIComponent(video.platformVideoId)}`
+    : video.thumbnailUrl;
   const hasTimeline =
     !!video.durationSec &&
     ((video.chapters?.length ?? 0) > 0 || (video.sponsorChapters?.length ?? 0) > 0);
@@ -158,10 +162,10 @@ export default async function ClerkVideoDetailPage({ params }: Props) {
 
       <Card>
         <div className="grid grid-cols-1 gap-0 md:grid-cols-[260px_minmax(0,1fr)]">
-          {video.thumbnailUrl ? (
+          {coverSrc ? (
             <div className="relative aspect-video w-full overflow-hidden bg-muted">
               <Image
-                src={video.thumbnailUrl}
+                src={coverSrc}
                 alt={video.title}
                 fill
                 sizes="(max-width: 768px) 100vw, 260px"

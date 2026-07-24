@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -359,6 +359,10 @@ export const adminRouter = router({
           .where(eq(betaApplications.id, input.id))
           .limit(1);
         if (!app) throw new TRPCError({ code: "NOT_FOUND", message: "申请不存在" });
+        // Guard against a second admin window minting a duplicate code for the same applicant.
+        if (app.status === "invited") {
+          throw new TRPCError({ code: "CONFLICT", message: "该申请已发码" });
+        }
         const [created] = await tx
           .insert(redemptionCodes)
           .values({
@@ -370,10 +374,12 @@ export const adminRouter = router({
             createdBy: ctx.user.id,
           })
           .returning();
-        await tx
+        const marked = await tx
           .update(betaApplications)
           .set({ status: "invited", updatedAt: new Date() })
-          .where(eq(betaApplications.id, input.id));
+          .where(and(eq(betaApplications.id, input.id), ne(betaApplications.status, "invited")))
+          .returning({ id: betaApplications.id });
+        if (marked.length === 0) throw new TRPCError({ code: "CONFLICT", message: "该申请已发码" });
         return { code: created!.code, email: app.email };
       });
     }),
