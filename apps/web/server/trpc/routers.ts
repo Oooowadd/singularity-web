@@ -1701,9 +1701,34 @@ export const appRouter = router({
           });
         }
 
+        // Playbook reference must be one of the user's own SOPs (any of the three owner chains).
+        if (input.sopId) {
+          const [sop] = await db
+            .select({ id: clerkSops.id })
+            .from(clerkSops)
+            .leftJoin(channels, eq(channels.id, clerkSops.channelId))
+            .leftJoin(ownAccounts, eq(ownAccounts.id, clerkSops.ownAccountId))
+            .leftJoin(competitorAccounts, eq(competitorAccounts.id, clerkSops.competitorAccountId))
+            .where(
+              and(
+                eq(clerkSops.id, input.sopId),
+                or(
+                  eq(channels.userId, ctx.user.id),
+                  eq(ownAccounts.userId, ctx.user.id),
+                  eq(competitorAccounts.userId, ctx.user.id),
+                ),
+              ),
+            )
+            .limit(1);
+          if (!sop) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "打法参考 SOP 不存在或不属于你" });
+          }
+        }
+
         await assertNoActiveRun(channel.id, "muse");
 
         const contentFilter = input.contentFilter ?? input.xhsContentType ?? "all";
+        const direction = input.direction?.trim() || undefined;
 
         return stageAndTriggerRun({
           userId: ctx.user.id,
@@ -1718,6 +1743,8 @@ export const appRouter = router({
             ...(selectedIds ? { competitorAccountIds: selectedIds } : {}),
             ...(extraIds ? { extraCompetitorAccountIds: extraIds } : {}),
             contentFilter,
+            ...(direction ? { direction } : {}),
+            ...(input.sopId ? { sopId: input.sopId } : {}),
           },
           payload: {
             maxVideosPerCompetitor: input.maxVideosPerCompetitor,
@@ -1726,9 +1753,40 @@ export const appRouter = router({
             competitorAccountIds: selectedIds,
             extraCompetitorAccountIds: extraIds,
             contentFilter,
+            direction,
+            sopId: input.sopId,
           },
         });
       }),
+
+    // Options for the patrol's playbook selector — every SOP the user owns, light rows only.
+    sopOptions: protectedProcedure.query(async ({ ctx }) => {
+      return db
+        .select({
+          id: clerkSops.id,
+          sopType: clerkSops.sopType,
+          language: clerkSops.language,
+          generatedAt: clerkSops.generatedAt,
+          group: sql<"single_video" | "competitor" | "own">`case
+            when ${clerkSops.sopType} = 'single_video' then 'single_video'
+            when ${clerkSops.competitorAccountId} is not null then 'competitor'
+            else 'own' end`,
+          label: sql<string>`coalesce(${clerkVideos.title}, ${channels.name}, ${ownAccounts.name}, ${competitorAccounts.name}, ${competitorAccounts.url}, '未命名 SOP')`,
+        })
+        .from(clerkSops)
+        .leftJoin(channels, eq(channels.id, clerkSops.channelId))
+        .leftJoin(ownAccounts, eq(ownAccounts.id, clerkSops.ownAccountId))
+        .leftJoin(competitorAccounts, eq(competitorAccounts.id, clerkSops.competitorAccountId))
+        .leftJoin(clerkVideos, eq(clerkVideos.id, clerkSops.videoId))
+        .where(
+          or(
+            eq(channels.userId, ctx.user.id),
+            eq(ownAccounts.userId, ctx.user.id),
+            eq(competitorAccounts.userId, ctx.user.id),
+          ),
+        )
+        .orderBy(desc(clerkSops.generatedAt));
+    }),
 
     activeRun: protectedProcedure
       .input(z.object({ channelId: z.string().uuid() }))

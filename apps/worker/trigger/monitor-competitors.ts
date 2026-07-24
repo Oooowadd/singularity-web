@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, ne, notInArray } from "drizzle-orm";
 
 import {
   channels,
+  clerkSops,
   competitorAccounts,
   consumeMinutes,
   videoMinutes,
@@ -68,6 +69,10 @@ type Payload = {
   contentFilter?: "all" | "video" | "image";
   // Legacy name for contentFilter — read as fallback for in-flight payloads.
   xhsContentType?: "all" | "video" | "image";
+  // Free-text topic direction/constraints, injected into idea generation as hard rules.
+  direction?: string;
+  // clerk_sops id chosen as playbook reference (ownership checked at trigger time).
+  sopId?: string;
 };
 
 
@@ -183,6 +188,18 @@ export const monitorCompetitors = task({
         : undefined;
       if (resolvedBible?.viaFallback) {
         logger.warn(`Project ${channel.id} has no Bible pin; used channel active-bible fallback`);
+      }
+
+      // Playbook reference is optional; a row deleted since selection just degrades.
+      let sopReference: string | undefined;
+      if (payload.sopId) {
+        const [sopRow] = await db
+          .select({ contentMd: clerkSops.contentMd })
+          .from(clerkSops)
+          .where(eq(clerkSops.id, payload.sopId))
+          .limit(1);
+        if (sopRow) sopReference = sopRow.contentMd;
+        else logger.warn(`Reference SOP ${payload.sopId} not found — generating without it`);
       }
 
       // Abort if the reaper already settled this queued run — avoid refund + delivery double.
@@ -692,6 +709,8 @@ export const monitorCompetitors = task({
               language,
               biblePositioning,
               transcript: row.transcript,
+              direction: payload.direction,
+              sopReference,
             });
 
             if (ideasResult.ideas.length === 0) {

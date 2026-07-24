@@ -14,6 +14,10 @@ export const startMonitorInput = z.object({
   contentFilter: z.enum(["all", "video", "image"]).optional(),
   // Legacy alias for contentFilter; kept so older clients keep working.
   xhsContentType: z.enum(["all", "video", "image"]).optional(),
+  // Free-text topic direction/constraints, injected into idea generation as hard rules.
+  direction: z.string().trim().max(500).optional(),
+  // clerk_sops id used as a playbook reference during idea generation.
+  sopId: z.string().uuid().optional(),
 });
 
 export type StartMonitorInput = z.infer<typeof startMonitorInput>;

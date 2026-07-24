@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button";
 import { CompetitorAvatar } from "@/components/competitor-avatar";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -17,6 +25,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { cleanProfileName } from "@/lib/display-name";
 import { followerNoun, formatFollowerCount } from "@/lib/format-count";
 import { PLATFORM_LABEL } from "@/lib/platform";
@@ -56,6 +65,17 @@ const CONTENT_FILTER_OPTIONS: Array<{ value: ContentFilter; label: string; hint:
   { value: "image", label: "仅图文", hint: "标题 + 正文分析" },
 ];
 
+const SOP_GROUP_LABEL = {
+  competitor: "对标账号 SOP",
+  single_video: "单条爆款拆解",
+  own: "我的账号 SOP",
+} as const;
+const SOP_TYPE_TAG: Record<string, string> = {
+  human: "人读版",
+  ai_reference: "AI 参考版",
+  hottest: "爆款拆解",
+};
+
 export function MuseStartSheet({ channelId, projectId, channelName, competitors, disabled }: Props) {
   const router = useRouter();
   const utils = trpc.useUtils();
@@ -68,10 +88,13 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
     () => new Set(competitors.map((c) => c.id)),
   );
   const [extraIds, setExtraIds] = useState<Set<string>>(() => new Set());
+  const [direction, setDirection] = useState("");
+  const [sopId, setSopId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Only load the user's competitor pool once the sheet is opened.
   const allCompetitors = trpc.competitors.list.useQuery(undefined, { enabled: open });
+  const sopOptions = trpc.muse.sopOptions.useQuery(undefined, { enabled: open });
   const boundIdSet = useMemo(() => new Set(competitors.map((c) => c.id)), [competitors]);
   const unbound = useMemo(
     () => (allCompetitors.data ?? []).filter((c) => !boundIdSet.has(c.id)),
@@ -138,8 +161,19 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
         ? { extraCompetitorAccountIds: extraSelected.map((c) => c.id) }
         : {}),
       contentFilter,
+      ...(direction.trim() ? { direction: direction.trim() } : {}),
+      ...(sopId ? { sopId } : {}),
     });
   };
+
+  const sopGroups = (["competitor", "single_video", "own"] as const)
+    .map((key) => ({
+      key,
+      label: SOP_GROUP_LABEL[key],
+      items: (sopOptions.data ?? []).filter((s) => s.group === key),
+    }))
+    .filter((g) => g.items.length > 0);
+  const selectedSop = (sopOptions.data ?? []).find((s) => s.id === sopId) ?? null;
 
   const totalCount = selected.length + extraSelected.length;
   const totalIdeas = totalCount * maxVideos * numIdeas;
@@ -347,6 +381,58 @@ export function MuseStartSheet({ channelId, projectId, channelName, competitors,
                 对标无论中文还是英文，分析按各自源语言进行；选题统一用这个语言生成。
               </p>
             </Field>
+
+            <Field>
+              <FieldLabel htmlFor="muse-direction">选题方向（可选）</FieldLabel>
+              <Textarea
+                id="muse-direction"
+                value={direction}
+                onChange={(e) => setDirection(e.target.value)}
+                placeholder="例：只要围绕 AI 工具实测的选题；不要涉及硬件；想做成系列"
+                maxLength={500}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                作为硬约束注入选题生成 — 不符合方向的选题会被直接丢弃
+              </p>
+            </Field>
+
+            {sopGroups.length > 0 ? (
+              <Field>
+                <FieldLabel>打法参考 SOP（可选）</FieldLabel>
+                <Select
+                  value={sopId ?? "none"}
+                  onValueChange={(v) => setSopId(v === "none" || typeof v !== "string" ? null : v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <span className="truncate">
+                      {selectedSop
+                        ? `${selectedSop.label}${SOP_TYPE_TAG[selectedSop.sopType] ? ` · ${SOP_TYPE_TAG[selectedSop.sopType]}` : ""}`
+                        : "不使用"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="none">不使用</SelectItem>
+                    </SelectGroup>
+                    {sopGroups.map((g) => (
+                      <SelectGroup key={g.key}>
+                        <SelectLabel>{g.label}</SelectLabel>
+                        {g.items.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.label}
+                            {SOP_TYPE_TAG[s.sopType] ? ` · ${SOP_TYPE_TAG[s.sopType]}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  选题会对齐该 SOP 的打法，建议钩子直接复用其中的钩子名
+                </p>
+              </Field>
+            ) : null}
 
             <div className="rounded-md border bg-muted/30 p-3 text-xs">
               <span className="font-medium text-foreground">预估上限：</span>
