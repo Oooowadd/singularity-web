@@ -27,7 +27,9 @@ export async function logServerError(input: LogInput): Promise<void> {
       digest: input.digest ?? null,
       meta: input.meta ?? null,
     });
-  } catch {
-    /* observability must never take down the request path */
+  } catch (e) {
+    // Never take down the request path — but keep a trace in the function log so a
+    // failing error-logger isn't itself invisible (else the panel would falsely read healthy).
+    console.error("logServerError failed:", e);
   }
 }

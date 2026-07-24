@@ -22,7 +22,8 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
       digest,
       meta: { routePath: context.routePath, renderSource: context.renderSource },
     });
-  } catch {
-    /* observability must never take down the request path */
+  } catch (e) {
+    // Swallow so observability never breaks the request, but leave a function-log trace.
+    console.error("onRequestError capture failed:", e);
   }
 };

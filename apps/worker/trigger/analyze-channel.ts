@@ -1050,10 +1050,9 @@ export const analyzeChannel = task({
           const secUid =
             extractDouyinSecUserId(channel.platformUrl) ??
             (await resolveDouyinUser(channel.platformUrl)).secUserId;
-          // Over-fetch for popular (re-sort) and for recency (filter shrinks the list).
           // Always over-fetch: the list is pinned-first, so newest/popular both need a
           // wider window to sort + truncate from, else old pinned videos occupy the slots.
-          const fetchLimit = Math.min(60, Math.max(limit * 4, limit));
+          const fetchLimit = Math.min(60, limit * 4);
           let all = await getDouyinUserVideos(secUid, fetchLimit);
           if (payload.recencyMonths) {
             const cutoff = Date.now() / 1000 - payload.recencyMonths * 30 * 86400;

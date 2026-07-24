@@ -189,7 +189,6 @@ export function OpsTab() {
                 <TableRow>
                   <TableHead>时间</TableHead>
                   <TableHead>路由</TableHead>
-                  <TableHead>用户</TableHead>
                   <TableHead>错误</TableHead>
                 </TableRow>
               </TableHeader>
@@ -205,7 +204,6 @@ export function OpsTab() {
                         <TableCell className="max-w-40 truncate font-mono text-xs" title={e.route ?? ""}>
                           {e.route ?? "—"}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{e.email ?? "—"}</TableCell>
                         <TableCell className="max-w-64 text-xs">
                           <button
                             type="button"
@@ -219,7 +217,7 @@ export function OpsTab() {
                       </TableRow>
                       {expanded ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="bg-muted/30">
+                          <TableCell colSpan={3} className="bg-muted/30">
                             <p className="whitespace-pre-wrap py-1 font-mono text-[11px]">
                               {e.stack ?? e.message}
                             </p>
@@ -233,7 +231,7 @@ export function OpsTab() {
             </Table>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {errors.isLoading ? "加载中…" : "近期无错误 🎉"}
+              {errors.isLoading ? "加载中…" : "近期无错误"}
             </p>
           )}
         </CardContent>
